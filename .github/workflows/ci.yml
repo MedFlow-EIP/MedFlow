@@ -21,16 +21,38 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-      
+          pip install -r tests/requirements-test.txt
+
+      - name: Run backend tests (pytest)
+        run: |
+          cd backend
+          pytest --disable-warnings -q
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-      
-      - name: Install Node dependencies and build
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
         run: |
           cd frontend
-          npm install
+          npm ci
+
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Run frontend tests (jest)
+        run: |
+          cd frontend
+          npm test -- --watchAll=false
+
+      - name: Build frontend
+        run: |
+          cd frontend
           npm run build
 
   docker-build:
