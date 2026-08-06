@@ -22,7 +22,16 @@ jobs:
           TARGET_REPO: ${{ secrets.TARGET_REPO_NAME }}
         run: |
           set -e
-          git remote add mirror "https://x-access-token:${TARGET_TOKEN}@github.com/${TARGET_ORG}/${TARGET_REPO}.git"
+          # Nettoie tout espace/retour à la ligne parasite (copier-coller, Ctrl+D...)
+          CLEAN_TOKEN="$(printf '%s' "$TARGET_TOKEN" | tr -d '[:space:]')"
+          CLEAN_ORG="$(printf '%s' "$TARGET_ORG" | tr -d '[:space:]')"
+          CLEAN_REPO="$(printf '%s' "$TARGET_REPO" | tr -d '[:space:]')"
+
+          echo "Longueur token (nettoyé): ${#CLEAN_TOKEN} caractères (brut: ${#TARGET_TOKEN})"
+          echo "Org (nettoyée): '${CLEAN_ORG}' (longueur: ${#CLEAN_ORG})"
+          echo "Repo (nettoyé): '${CLEAN_REPO}' (longueur: ${#CLEAN_REPO})"
+
+          git remote add mirror "https://x-access-token:${CLEAN_TOKEN}@github.com/${CLEAN_ORG}/${CLEAN_REPO}.git"
           # --mirror pousse toutes les branches et tags, et fait correspondre
           # le repo cible EXACTEMENT au repo source (y compris suppressions).
           git push mirror --mirror
