@@ -63,7 +63,7 @@ export default function Login() {
       const result = await signInWithPopup(auth, provider);
       await saveUserToFirestore(result.user);
       navigate("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Échec de la connexion avec Google.");
     }
   };

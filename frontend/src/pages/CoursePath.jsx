@@ -14,7 +14,7 @@ import {
 export default function CoursePath() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const [_user, setUser] = useState(null);
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -255,7 +255,7 @@ export default function CoursePath() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes spin-slow {
           from {
             transform: rotate(0deg);
