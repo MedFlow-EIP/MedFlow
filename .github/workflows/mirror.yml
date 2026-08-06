@@ -1,0 +1,28 @@
+name: Mirror to Epitech
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Push mirror to Epitech repo
+        env:
+          TARGET_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
+          TARGET_ORG: ${{ secrets.TARGET_ORG_NAME }}
+          TARGET_REPO: ${{ secrets.TARGET_REPO_NAME }}
+        run: |
+          set -e
+          git remote add mirror "https://x-access-token:${TARGET_TOKEN}@github.com/${TARGET_ORG}/${TARGET_REPO}.git"
+          # --mirror pousse toutes les branches et tags, et fait correspondre
+          # le repo cible EXACTEMENT au repo source (y compris suppressions).
+          git push mirror --mirror
