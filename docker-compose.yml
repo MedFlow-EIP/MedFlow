@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: medflow-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+      - GCP_TYPE=${GCP_TYPE}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_PRIVATE_KEY_ID=${GCP_PRIVATE_KEY_ID}
+      - GCP_PRIVATE_KEY=${GCP_PRIVATE_KEY}
+      - GCP_CLIENT_EMAIL=${GCP_CLIENT_EMAIL}
+      - GCP_CLIENT_ID=${GCP_CLIENT_ID}
+      - GCP_AUTH_URI=${GCP_AUTH_URI}
+      - GCP_TOKEN_URI=${GCP_TOKEN_URI}
+      - GCP_AUTH_PROVIDER_X509_CERT_URL=${GCP_AUTH_PROVIDER_X509_CERT_URL}
+      - GCP_CLIENT_X509_CERT_URL=${GCP_CLIENT_X509_CERT_URL}
+      - GCP_UNIVERSE_DOMAIN=${GCP_UNIVERSE_DOMAIN}
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/data:/app/data
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: medflow-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always

@@ -1,0 +1,725 @@
+openapi: "3.0.3"
+info:
+  title: MEDFLOW API
+  description: |
+    REST API for the MEDFLOW medical learning platform.
+
+    ## Authentication
+
+    **Production** — Pass a Firebase ID token as a Bearer token:
+    ```
+    Authorization: Bearer <firebase_id_token>
+    ```
+
+    **Development / Legacy** — Pass the raw Firebase UID in a custom header
+    (only available when `FIREBASE_VERIFY=false`):
+    ```
+    X-User-UID: <firebase_uid>
+    ```
+
+    Additional optional headers (used for display purposes only):
+    - `X-User-Name` — user display name
+    - `X-User-Avatar` — user avatar URL
+  version: "2.0.0"
+  contact:
+    name: MEDFLOW Support
+
+servers:
+  - url: /
+    description: Current server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID Token
+      description: Firebase ID token obtained from the client-side Firebase SDK.
+    LegacyHeader:
+      type: apiKey
+      in: header
+      name: X-User-UID
+      description: |
+        Raw Firebase UID (dev/legacy mode only — requires `FIREBASE_VERIFY=false` on server).
+
+  schemas:
+    Flashcard:
+      type: object
+      required: [question, answer]
+      properties:
+        question:
+          type: string
+          example: "Quel est le rôle du ventricule gauche ?"
+        answer:
+          type: string
+          example: "Pomper le sang oxygéné vers la circulation systémique."
+
+    QuizOption:
+      type: object
+      description: Map of option letter to option text.
+      additionalProperties:
+        type: string
+      example:
+        A: "Pompe le sang vers les poumons"
+        B: "Pompe le sang vers le corps"
+        C: "Reçoit le sang des poumons"
+        D: "Filtre le sang"
+
+    QuizQuestion:
+      type: object
+      required: [question, options, correct]
+      properties:
+        question:
+          type: string
+          example: "Quel est le rôle du ventricule gauche ?"
+        options:
+          $ref: "#/components/schemas/QuizOption"
+        correct:
+          type: string
+          example: "B"
+
+    CourseSummary:
+      type: object
+      required: [id, nom, sessions]
+      properties:
+        id:
+          type: string
+          example: "cardiologie_cours_1"
+        nom:
+          type: string
+          example: "Cardiologie - Bases essentielles"
+        sessions:
+          type: integer
+          example: 3
+
+    Course:
+      type: object
+      required: [id, nom, summary, flashcards, quiz, sessions]
+      properties:
+        id:
+          type: string
+          example: "cardiologie_cours_1"
+        nom:
+          type: string
+          example: "Cardiologie - Bases essentielles"
+        summary:
+          type: string
+          description: HTML-formatted course summary.
+          example: "<h2>Introduction</h2><p>La cardiologie est...</p>"
+        flashcards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flashcard"
+        quiz:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestion"
+        sessions:
+          type: integer
+          example: 3
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserProfile:
+      type: object
+      required: [uid, displayName]
+      properties:
+        uid:
+          type: string
+          example: "abc123firebaseuid"
+        displayName:
+          type: string
+          example: "Marie Dupont"
+        photoURL:
+          type: string
+          nullable: true
+          example: "https://example.com/avatar.jpg"
+
+    UserStats:
+      type: object
+      properties:
+        cours:
+          type: integer
+          example: 5
+        flashcards:
+          type: integer
+          example: 25
+        sessions:
+          type: integer
+          example: 12
+        detailed_sessions:
+          type: object
+
+    Pagination:
+      type: object
+      required: [page, per_page, total, pages]
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 47
+        pages:
+          type: integer
+          example: 3
+
+    Path:
+      type: object
+      required: [id, title, description, progress, totalLessons, completedLessons, isLocked, color, emoji]
+      properties:
+        id:
+          type: string
+          example: "cardiology"
+        title:
+          type: string
+          example: "Cardiologie"
+        description:
+          type: string
+          example: "Système cardiovasculaire et pathologies"
+        progress:
+          type: number
+          format: float
+          example: 40.0
+        totalLessons:
+          type: integer
+          example: 10
+        completedLessons:
+          type: integer
+          example: 4
+        isLocked:
+          type: boolean
+          example: false
+        color:
+          type: string
+          example: "#ef4444"
+        emoji:
+          type: string
+          example: "❤️"
+
+    Lesson:
+      type: object
+      required: [id, title, type, status, stars, position, xp]
+      properties:
+        id:
+          type: string
+          example: "1"
+        title:
+          type: string
+          example: "Introduction"
+        type:
+          type: string
+          enum: [lesson, review, test]
+        status:
+          type: string
+          enum: [locked, available, completed]
+        stars:
+          type: integer
+          example: 2
+        position:
+          type: string
+          enum: [left, center, right]
+        xp:
+          type: integer
+          example: 10
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "UID Firebase requis"
+
+security:
+  - BearerAuth: []
+  - LegacyHeader: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns server and database status. No authentication required.
+      operationId: healthCheck
+      security: []
+      tags: [Operations]
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  db:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: "2.0.0"
+
+  /api/dashboard:
+    get:
+      summary: Get user dashboard
+      description: |
+        Returns the authenticated user's courses and statistics.
+        Supports optional pagination via `page` and `per_page` query parameters.
+      operationId: getDashboard
+      tags: [Courses]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Page number (1-based)
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: Number of courses per page
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, cours, stats, pagination]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+                  cours:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CourseSummary"
+                  stats:
+                    $ref: "#/components/schemas/UserStats"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+              example:
+                user:
+                  uid: "abc123"
+                  displayName: "Marie Dupont"
+                  photoURL: null
+                cours:
+                  - id: "cardio_1"
+                    nom: "Cardiologie - Bases"
+                    sessions: 2
+                stats:
+                  cours: 1
+                  flashcards: 5
+                  sessions: 2
+                pagination:
+                  page: 1
+                  per_page: 20
+                  total: 1
+                  pages: 1
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/course/{course_id}:
+    get:
+      summary: Get a course
+      description: Returns the full content of a single course (summary, flashcards, quiz).
+      operationId: getCourse
+      tags: [Courses]
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "cardiologie_cours_1"
+      responses:
+        "200":
+          description: Course content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a course
+      description: Permanently deletes a course belonging to the authenticated user.
+      operationId: deleteCourse
+      tags: [Courses]
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "cardiologie_cours_1"
+      responses:
+        "200":
+          description: Course deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/process:
+    post:
+      summary: Upload and process a PDF
+      description: |
+        Upload a PDF file. The backend extracts text and generates (in parallel):
+        - A course title
+        - Flashcards (5 Q&A pairs)
+        - An HTML summary
+        - A quiz (5 multiple-choice questions)
+
+        The generated course is saved and the full course object is returned.
+      operationId: processPDF
+      tags: [Courses]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to process (max recommended size 20 MB)
+      responses:
+        "200":
+          description: Course generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "400":
+          description: Bad request (missing file, wrong format, empty PDF)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/revision:
+    post:
+      summary: Start a revision session
+      description: |
+        Returns a set of flashcards and quiz questions for revision.
+
+        **mode=all** — draws from all user courses (up to 10 flashcards, all quiz questions).
+        **mode=course** — draws from a specific course only (up to 10 of each).
+      operationId: startRevision
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [all, course]
+                  example: course
+                course_id:
+                  type: string
+                  nullable: true
+                  description: Required when mode=course
+                  example: "cardiologie_cours_1"
+      responses:
+        "200":
+          description: Revision session data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [flashcards, quiz, mode]
+                properties:
+                  flashcards:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Flashcard"
+                  quiz:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuizQuestion"
+                  mode:
+                    type: string
+                    enum: [all, course]
+                  course_id:
+                    type: string
+                    description: Present when mode=course
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/session-done:
+    post:
+      summary: Record session completion
+      description: Records the result of a completed revision session.
+      operationId: sessionDone
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [all, course]
+                  example: course
+                course_id:
+                  type: string
+                  nullable: true
+                  description: Required when mode=course
+                session_type:
+                  type: string
+                  enum: [revision, flashcards, quiz]
+                  default: revision
+                score:
+                  type: integer
+                  nullable: true
+                  example: 8
+                total_questions:
+                  type: integer
+                  nullable: true
+                  example: 10
+      responses:
+        "200":
+          description: Session recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/account:
+    get:
+      summary: Get user account
+      description: Returns the authenticated user's full profile and learning statistics.
+      operationId: getAccount
+      tags: [Account]
+      responses:
+        "200":
+          description: User profile and stats
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, stats]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+                  stats:
+                    type: object
+                    properties:
+                      courses:
+                        type: integer
+                        example: 5
+                      flashcards:
+                        type: integer
+                        example: 25
+                      sessions:
+                        type: integer
+                        example: 12
+                      avg_score:
+                        type: number
+                        example: 7.4
+                      revision_sessions:
+                        type: integer
+                        example: 4
+                      flashcard_sessions:
+                        type: integer
+                        example: 5
+                      quiz_sessions:
+                        type: integer
+                        example: 3
+                      xp:
+                        type: integer
+                        example: 120
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/paths:
+    get:
+      summary: Get learning paths
+      description: Returns all learning paths with the authenticated user's progress.
+      operationId: getPaths
+      tags: [Learning Paths]
+      responses:
+        "200":
+          description: List of learning paths
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [paths]
+                properties:
+                  paths:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Path"
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/lessons/{path_id}:
+    get:
+      summary: Get lessons for a path
+      description: Returns all lessons within a learning path for the authenticated user.
+      operationId: getLessons
+      tags: [Learning Paths]
+      parameters:
+        - name: path_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "cardiology"
+      responses:
+        "200":
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lessons]
+                properties:
+                  lessons:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Lesson"
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/lessons/{path_id}/{lesson_id}/complete:
+    post:
+      summary: Complete a lesson
+      description: Marks a lesson as completed and unlocks the next lesson in the path.
+      operationId: completeLesson
+      tags: [Learning Paths]
+      parameters:
+        - name: path_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "cardiology"
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "3"
+      responses:
+        "200":
+          description: Lesson marked as completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "400":
+          description: Missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+tags:
+  - name: Operations
+    description: Health check and operational endpoints
+  - name: Courses
+    description: PDF upload, course retrieval and management
+  - name: Sessions
+    description: Revision sessions and progress tracking
+  - name: Account
+    description: User profile and statistics
+  - name: Learning Paths
+    description: Structured learning paths and lessons
