@@ -82,7 +82,7 @@ jest.mock('../components/PublicRoute', () => {
 
 jest.mock('../components/theme-provider', () => {
   return {
-    ThemeProvider: function MockThemeProvider({ children, attribute, defaultTheme, enableSystem }) {
+    ThemeProvider: function MockThemeProvider({ children, attribute, defaultTheme }) {
       return (
         <div data-testid="theme-provider" data-attribute={attribute} data-default-theme={defaultTheme}>
           {children}
@@ -96,6 +96,12 @@ jest.mock('react-router-dom', () => ({
   BrowserRouter: ({ children }) => <div data-testid="browser-router">{children}</div>,
   Routes: ({ children }) => <div data-testid="routes">{children}</div>,
   Route: ({ path, element }) => <div data-testid={`route-${path}`}>{element}</div>,
+  Link: ({ children, to }) => <a href={to}>{children}</a>,
+  Navigate: () => null,
+  useNavigate: () => jest.fn(),
+  useParams: () => ({}),
+  useLocation: () => ({ pathname: '/', search: '', hash: '', state: null }),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
 }));
 
 describe('App Component', () => {

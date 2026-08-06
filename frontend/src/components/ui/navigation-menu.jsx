@@ -139,6 +139,7 @@ function NavigationMenuIndicator({
   );
 }
 
+/* eslint-disable react-refresh/only-export-components -- pattern standard shadcn/ui (helper de style exporté à côté des composants) */
 export {
   NavigationMenu,
   NavigationMenuList,
@@ -150,3 +151,4 @@ export {
   NavigationMenuViewport,
   navigationMenuTriggerStyle,
 }
+/* eslint-enable react-refresh/only-export-components */

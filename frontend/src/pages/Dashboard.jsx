@@ -337,8 +337,8 @@ function TutorialOverlay({ onClose }) {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DashboardNew() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [_user, setUser] = useState(null);
+  const [_profile, setProfile] = useState(null);
   const [cours, setCours] = useState([]);
   const [stats, setStats] = useState({ cours: 0, flashcards: 0, sessions: 0 });
   const [filterSubject, setFilterSubject] = useState("all");

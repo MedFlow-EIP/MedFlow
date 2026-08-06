@@ -29,7 +29,7 @@ export default function Register() {
     { label: "1 majuscule", check: (pw) => /[A-Z]/.test(pw) },
     { label: "1 minuscule", check: (pw) => /[a-z]/.test(pw) },
     { label: "1 chiffre", check: (pw) => /\d/.test(pw) },
-    { label: "1 caractère spécial", check: (pw) => /[!@#$%^&*(),.?\":{}|<>]/.test(pw) },
+    { label: "1 caractère spécial", check: (pw) => /[!@#$%^&*(),.?":{}|<>]/.test(pw) },
   ];
 
   const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
@@ -102,7 +102,7 @@ export default function Register() {
       );
 
       navigate("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Échec de l'inscription avec Google.");
     }
   };
