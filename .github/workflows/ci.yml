@@ -3,20 +3,30 @@ name: CI MedFlow
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".github/workflows/mirror.yml"
+      - ".github/workflows/mobile-build.yml"
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".github/workflows/mirror.yml"
+      - ".github/workflows/mobile-build.yml"
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Install Python dependencies
         run: |
           cd backend
@@ -69,12 +79,27 @@ jobs:
         run: |
           echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > backend/credentials.json
 
-      - name: Create .env file for Docker
+      - name: Create backend/.env file for Docker
         run: |
           cat > backend/.env << EOF
-          # Google Cloud Credentials
           GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
           EOF
+
+      - name: Create root .env file (interpolation docker-compose.yml)
+        run: |
+          {
+            echo "GCP_TYPE=$(jq -r '.type' backend/credentials.json)"
+            echo "GCP_PROJECT_ID=$(jq -r '.project_id' backend/credentials.json)"
+            echo "GCP_PRIVATE_KEY_ID=$(jq -r '.private_key_id' backend/credentials.json)"
+            echo "GCP_PRIVATE_KEY=$(jq -r '.private_key' backend/credentials.json)"
+            echo "GCP_CLIENT_EMAIL=$(jq -r '.client_email' backend/credentials.json)"
+            echo "GCP_CLIENT_ID=$(jq -r '.client_id' backend/credentials.json)"
+            echo "GCP_AUTH_URI=$(jq -r '.auth_uri' backend/credentials.json)"
+            echo "GCP_TOKEN_URI=$(jq -r '.token_uri' backend/credentials.json)"
+            echo "GCP_AUTH_PROVIDER_X509_CERT_URL=$(jq -r '.auth_provider_x509_cert_url' backend/credentials.json)"
+            echo "GCP_CLIENT_X509_CERT_URL=$(jq -r '.client_x509_cert_url' backend/credentials.json)"
+            echo "GCP_UNIVERSE_DOMAIN=$(jq -r '.universe_domain' backend/credentials.json)"
+          } > .env
 
       - name: Build Docker images
         run: |

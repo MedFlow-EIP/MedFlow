@@ -8,6 +8,7 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
+    if: github.repository == 'MedFlow-EIP/MedFlow'
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
