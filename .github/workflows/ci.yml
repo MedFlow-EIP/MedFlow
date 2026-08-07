@@ -87,11 +87,12 @@ jobs:
 
       - name: Create root .env file (interpolation docker-compose.yml)
         run: |
+          PRIVATE_KEY_ESCAPED=$(jq -r '.private_key' backend/credentials.json | sed ':a;N;$!ba;s/\n/\\n/g')
           {
             echo "GCP_TYPE=$(jq -r '.type' backend/credentials.json)"
             echo "GCP_PROJECT_ID=$(jq -r '.project_id' backend/credentials.json)"
             echo "GCP_PRIVATE_KEY_ID=$(jq -r '.private_key_id' backend/credentials.json)"
-            echo "GCP_PRIVATE_KEY=$(jq -r '.private_key' backend/credentials.json)"
+            echo "GCP_PRIVATE_KEY=${PRIVATE_KEY_ESCAPED}"
             echo "GCP_CLIENT_EMAIL=$(jq -r '.client_email' backend/credentials.json)"
             echo "GCP_CLIENT_ID=$(jq -r '.client_id' backend/credentials.json)"
             echo "GCP_AUTH_URI=$(jq -r '.auth_uri' backend/credentials.json)"
