@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 interface QuizOption {
   id: string;
@@ -16,6 +18,9 @@ interface QuickQuizCardsProps {
 }
 
 export function QuickQuizCardsStep({ question, options, correctId, onComplete }: QuickQuizCardsProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [selected, setSelected] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -37,19 +42,19 @@ export function QuickQuizCardsStep({ question, options, correctId, onComplete }:
             const isSelected = selected === option.id;
             const isCorrectOption = option.id === correctId;
 
-            let borderColor = "#e5e7eb";
-            let backgroundColor = "#ffffff";
-            let textColor = "#111827";
+            let borderColor = colors.border;
+            let backgroundColor = colors.surface;
+            let textColor = colors.textPrimary;
             
             if (showFeedback) {
               if (isCorrectOption) {
-                borderColor = "#10b981";
-                backgroundColor = "#f0fdf4";
-                textColor = "#111827";
+                borderColor = colors.success;
+                backgroundColor = colors.tintSuccess;
+                textColor = colors.textPrimary;
               } else if (isSelected && !isCorrectOption) {
-                borderColor = "#ef4444";
-                backgroundColor = "#fef2f2";
-                textColor = "#111827";
+                borderColor = colors.danger;
+                backgroundColor = colors.tintDanger;
+                textColor = colors.textPrimary;
               }
             }
 
@@ -71,10 +76,10 @@ export function QuickQuizCardsStep({ question, options, correctId, onComplete }:
                     {option.text}
                   </Text>
                   {showFeedback && isCorrectOption && (
-                    <MaterialIcons name="check-circle" size={24} color="#10b981" />
+                    <MaterialIcons name="check-circle" size={24} color={colors.success} />
                   )}
                   {showFeedback && isSelected && !isCorrectOption && (
-                    <MaterialIcons name="cancel" size={24} color="#ef4444" />
+                    <MaterialIcons name="cancel" size={24} color={colors.danger} />
                   )}
                 </View>
               </TouchableOpacity>
@@ -87,7 +92,7 @@ export function QuickQuizCardsStep({ question, options, correctId, onComplete }:
         <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.feedback}>
           <View style={[
             styles.feedbackCard,
-            { backgroundColor: selected === correctId ? "#10b981" : "#ef4444" }
+            { backgroundColor: selected === correctId ? colors.success : colors.danger }
           ]}>
             <Text style={styles.feedbackText}>
               {selected === correctId ? "✓ Correct !" : "✗ Try again!"}
@@ -99,56 +104,58 @@ export function QuickQuizCardsStep({ question, options, correctId, onComplete }:
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-    backgroundColor: "#f9fafb",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  question: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  optionsContainer: {
-    gap: 12,
-  },
-  option: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  optionContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  optionText: {
-    fontSize: 16,
-    fontWeight: "500",
-    flex: 1,
-  },
-  feedback: {
-    marginTop: 20,
-  },
-  feedbackCard: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  feedbackText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      justifyContent: "center",
+      backgroundColor: colors.background,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      padding: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    question: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 20,
+      textAlign: "center",
+    },
+    optionsContainer: {
+      gap: 12,
+    },
+    option: {
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    optionContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    optionText: {
+      fontSize: 16,
+      fontWeight: "500",
+      flex: 1,
+    },
+    feedback: {
+      marginTop: 20,
+    },
+    feedbackCard: {
+      padding: 16,
+      borderRadius: 12,
+      alignItems: "center",
+    },
+    feedbackText: {
+      color: colors.textInverse,
+      fontWeight: "600",
+      fontSize: 16,
+    },
+  });
+}
