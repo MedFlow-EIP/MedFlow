@@ -1,11 +1,6 @@
 name: Mobile Build (APK)
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - "mobile/**"
-      - ".github/workflows/mobile-build.yml"
   workflow_dispatch:
     inputs:
       profile:
