@@ -18,29 +18,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
-import { TutorialScreen } from './TutorialScreen';
-import { isFirstTimeUser, resetTutorial } from '../../utils/firstTime';
-
 
 interface HomeScreenProps {
   navigation: any;
   route: any;
 }
 
-const handleReset = async () => {
-    await resetTutorial();
-};
-
 export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [paths, setPaths] = useState<Path[]>([]);
-  const [showTutorial, setShowTutorial] = useState(false);
-
-  useEffect(() => {
-    isFirstTimeUser().then(setShowTutorial);
-  }, []);
 
   const [greeting, setGreeting] = useState('');
   const user = getAuth().currentUser;
@@ -90,13 +78,6 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      
-      {/* Bouton reset tutoriel */}
-      {/* <TutorialScreen
-        visible={showTutorial}
-        onComplete={() => setShowTutorial(false)}
-        currentTab="Home"
-      /> */}
       {/* Header */}
       <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.header}>
         <View>
