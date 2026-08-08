@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,13 @@ import {
 import { auth } from '../../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 export function ForgotPasswordScreen({ navigation }: any) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -51,11 +56,11 @@ export function ForgotPasswordScreen({ navigation }: any) {
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Ionicons name="arrow-back" size={24} color="#3b82f6" />
+        <Ionicons name="arrow-back" size={24} color={colors.primary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Ionicons name="lock-open-outline" size={80} color="#3b82f6" />
+        <Ionicons name="lock-open-outline" size={80} color={colors.primary} />
         <Text style={styles.title}>Mot de passe oublié</Text>
         <Text style={styles.subtitle}>
           Entrez votre email pour recevoir un lien de réinitialisation
@@ -63,10 +68,11 @@ export function ForgotPasswordScreen({ navigation }: any) {
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={24} color="#9ca3af" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={24} color={colors.muted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Votre email"
+              placeholderTextColor={colors.muted}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -113,89 +119,92 @@ export function ForgotPasswordScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 20,
-  },
-  backButton: {
-    marginTop: 40,
-    marginBottom: 20,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 40,
-    paddingHorizontal: 20,
-  },
-  form: {
-    width: '100%',
-    gap: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: 56,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#3b82f6',
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    backgroundColor: '#93c5fd',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  successText: {
-    color: '#10b981',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  linkText: {
-    color: '#6b7280',
-    fontSize: 14,
-  },
-  linkTextBold: {
-    color: '#3b82f6',
-    fontWeight: '600',
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: 20,
+    },
+    backButton: {
+      marginTop: 40,
+      marginBottom: 20,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 40,
+      paddingHorizontal: 20,
+    },
+    form: {
+      width: '100%',
+      gap: 16,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      height: 56,
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      height: 56,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    successText: {
+      color: colors.success,
+      fontSize: 14,
+      textAlign: 'center',
+      marginTop: 10,
+      marginBottom: 20,
+    },
+    linkButton: {
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    linkText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    linkTextBold: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  });
+}
