@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -42,6 +42,8 @@ import { API_URL } from '@/services/api';
 import Markdown from 'react-native-markdown-display';
 import RenderHTML from 'react-native-render-html';
 import { useWindowDimensions } from "react-native";
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 const TAB_BAR_HEIGHT = 70;
 
@@ -74,6 +76,9 @@ const { height } = Dimensions.get('window');
 const STORAGE_KEY = "@ai_conversations";
 
 export function AIChatScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [input, setInput] = useState("");
@@ -326,22 +331,22 @@ export function AIChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <BlurView intensity={80} tint="light" style={styles.header}>
+      <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.header}>
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => setIsHistoryVisible(true)}
         >
-          <Ionicons name="menu" size={24} color="#4b5563" />
+          <Ionicons name="menu" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
           <LinearGradient
-            colors={['#3b82f6', '#2563eb']}
+            colors={[colors.primary, colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerBadge}
           >
-            <Ionicons name="sparkles" size={16} color="#ffffff" />
+            <Ionicons name="sparkles" size={16} color={colors.textInverse} />
           </LinearGradient>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {currentConv?.title || "Assistant Médical"}
@@ -352,7 +357,7 @@ export function AIChatScreen() {
           style={styles.headerButton}
           onPress={createNewConversation}
         >
-          <Ionicons name="create-outline" size={24} color="#4b5563" />
+          <Ionicons name="create-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </BlurView>
 
@@ -368,7 +373,7 @@ export function AIChatScreen() {
             style={styles.modalContent}
           >
             <LinearGradient
-              colors={['#ffffff', '#f9fafb']}
+              colors={[colors.surface, colors.background]}
               style={styles.modalGradient}
             >
               <View style={styles.modalHeader}>
@@ -377,7 +382,7 @@ export function AIChatScreen() {
                   style={styles.modalClose}
                   onPress={() => setIsHistoryVisible(false)}
                 >
-                  <Ionicons name="close" size={24} color="#6b7280" />
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
@@ -401,7 +406,7 @@ export function AIChatScreen() {
                         <Ionicons 
                           name="chatbubble-ellipses" 
                           size={20} 
-                          color={item.id === currentConvId ? "#ffffff" : "#3b82f6"} 
+                          color={item.id === currentConvId ? colors.textInverse : colors.primary} 
                         />
                       </View>
                       <View style={styles.historyInfo}>
@@ -427,7 +432,7 @@ export function AIChatScreen() {
                       <Ionicons 
                         name="trash-outline" 
                         size={18} 
-                        color={item.id === currentConvId ? "#ffffff" : "#ef4444"} 
+                        color={item.id === currentConvId ? colors.textInverse : colors.danger} 
                       />
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -439,12 +444,12 @@ export function AIChatScreen() {
                 onPress={createNewConversation}
               >
                 <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
+                  colors={[colors.primary, colors.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.newConversationGradient}
                 >
-                  <Ionicons name="add" size={24} color="#ffffff" />
+                  <Ionicons name="add" size={24} color={colors.textInverse} />
                   <Text style={styles.newConversationText}>
                     Nouvelle conversation
                   </Text>
@@ -468,10 +473,10 @@ export function AIChatScreen() {
         {currentConv?.messages.length === 0 ? (
           <View style={styles.emptyState}>
             <LinearGradient
-              colors={['#dbeafe', '#eff6ff']}
+              colors={[colors.tintPrimary, colors.tintPrimary]}
               style={styles.emptyIcon}
             >
-              <Ionicons name="chatbubble-ellipses" size={48} color="#3b82f6" />
+              <Ionicons name="chatbubble-ellipses" size={48} color={colors.primary} />
             </LinearGradient>
             <Text style={styles.emptyTitle}>Comment puis-je vous aider ?</Text>
             <Text style={styles.emptyText}>
@@ -490,10 +495,10 @@ export function AIChatScreen() {
             >
               {message.type === 'ai' && (
                 <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.aiAvatar}
                 >
-                  <Ionicons name="sparkles" size={16} color="#ffffff" />
+                  <Ionicons name="sparkles" size={16} color={colors.textInverse} />
                 </LinearGradient>
               )}
 
@@ -506,8 +511,8 @@ export function AIChatScreen() {
                       {att.type === 'image' ? (
                         <Image source={{ uri: att.uri }} style={styles.attachmentImage} />
                       ) : (
-                        <BlurView intensity={60} style={styles.attachmentFile}>
-                          <Ionicons name="document-text" size={24} color="#3b82f6" />
+                        <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentFile}>
+                          <Ionicons name="document-text" size={24} color={colors.primary} />
                           <Text style={styles.attachmentFileName}>{att.name}</Text>
                         </BlurView>
                       )}
@@ -519,19 +524,21 @@ export function AIChatScreen() {
                       <RenderHTML
                         contentWidth={width}
                         source={{ html: message.text }}
+                        baseStyle={{ color: colors.textPrimary }}
                       />
                     ) : (
                       <Markdown
                         style={{
                           body: {
-                            color: "#111827",
+                            color: colors.textPrimary,
                             fontSize: 14,
                             lineHeight: 20,
                           },
                           strong: { fontWeight: "700" },
                           bullet_list: { marginTop: 4 },
                           code_inline: {
-                            backgroundColor: "#e5e7eb",
+                            backgroundColor: colors.surfaceAlt,
+                            color: colors.textPrimary,
                             padding: 4,
                             borderRadius: 6,
                           },
@@ -568,10 +575,10 @@ export function AIChatScreen() {
             style={[styles.messageRow, styles.aiRow]}
           >
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={[colors.primary, colors.primaryDark]}
               style={styles.aiAvatar}
             >
-              <Ionicons name="sparkles" size={16} color="#ffffff" />
+              <Ionicons name="sparkles" size={16} color={colors.textInverse} />
             </LinearGradient>
             <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
               <View style={styles.typingIndicator}>
@@ -595,19 +602,19 @@ export function AIChatScreen() {
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {attachments.map((att, index) => (
-              <BlurView key={index} intensity={60} style={styles.attachmentItem}>
+              <BlurView key={index} intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentItem}>
                 {att.type === 'image' ? (
                   <Image source={{ uri: att.uri }} style={styles.attachmentThumb} />
                 ) : (
                   <View style={styles.attachmentThumbFile}>
-                    <Ionicons name="document-text" size={30} color="#3b82f6" />
+                    <Ionicons name="document-text" size={30} color={colors.primary} />
                   </View>
                 )}
                 <TouchableOpacity 
                   style={styles.removeAttachment}
                   onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}
                 >
-                  <Ionicons name="close-circle" size={22} color="#ef4444" />
+                  <Ionicons name="close-circle" size={22} color={colors.danger} />
                 </TouchableOpacity>
               </BlurView>
             ))}
@@ -622,7 +629,7 @@ export function AIChatScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={styles.keyboardAvoidingView}
         >
-          <BlurView intensity={80} tint="light" style={styles.inputContainer}>
+          <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
             {/* <TouchableOpacity 
               style={styles.attachButton}
               onPress={() => {
@@ -639,7 +646,7 @@ export function AIChatScreen() {
               placeholder="Écrivez votre message..."
               style={styles.input}
               multiline
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.muted}
             />
             
             <View style={styles.inputActions}>
@@ -679,12 +686,12 @@ export function AIChatScreen() {
                 disabled={!input.trim() && attachments.length === 0}
               >
                 <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
+                  colors={[colors.primary, colors.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.sendGradient}
                 >
-                  <Ionicons name="send" size={18} color="#ffffff" />
+                  <Ionicons name="send" size={18} color={colors.textInverse} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -693,12 +700,12 @@ export function AIChatScreen() {
           {/* Menu d'attachement */}
           {menuAnimation.value > 0 && (
             <Animated.View style={[styles.attachmentMenu, menuStyle]}>
-              <BlurView intensity={80} tint="light" style={styles.attachmentMenuBlur}>
+              <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.attachmentMenuBlur}>
                 <TouchableOpacity 
                   style={styles.attachmentMenuItem}
                   onPress={async () => {
                     const result = await ImagePicker.launchImageLibraryAsync({
-                      mediaTypes: ['images'],
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
                       allowsEditing: true,
                       quality: 1,
                     });
@@ -712,7 +719,7 @@ export function AIChatScreen() {
                     menuAnimation.value = withSpring(0);
                   }}
                 >
-                  <Ionicons name="image-outline" size={24} color="#3b82f6" />
+                  <Ionicons name="image-outline" size={24} color={colors.primary} />
                   <Text style={styles.attachmentMenuItemText}>Image</Text>
                 </TouchableOpacity>
                 
@@ -732,7 +739,7 @@ export function AIChatScreen() {
                     menuAnimation.value = withSpring(0);
                   }}
                 >
-                  <Ionicons name="document-outline" size={24} color="#3b82f6" />
+                  <Ionicons name="document-outline" size={24} color={colors.primary} />
                   <Text style={styles.attachmentMenuItemText}>Document</Text>
                 </TouchableOpacity>
               </BlurView>
@@ -744,506 +751,509 @@ export function AIChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    paddingTop: 25,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229,231,235,0.5)',
-    zIndex: 10,
-  },
-
-  menuButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  headerBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  keyboardAvoidingView: {
-    position: 'absolute',
-    bottom: TAB_BAR_HEIGHT,
-    left: 0,
-    right: 0,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-
-  modalContent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '80%',
-    backgroundColor: '#ffffff',
-    borderTopRightRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-  },
-
-  modalGradient: {
-    flex: 1,
-    padding: 20,
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-
-  modalClose: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-    backgroundColor: '#f9fafb',
-  },
-
-  historyItemActive: {
-    backgroundColor: '#3b82f6',
-  },
-
-  historyItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-
-  historyIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#dbeafe',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  historyIconActive: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-
-  historyInfo: {
-    flex: 1,
-  },
-
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-
-  historyTitleActive: {
-    color: '#ffffff',
-  },
-
-  historyDate: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-
-  historyDelete: {
-    padding: 8,
-  },
-
-  newConversationButton: {
-    marginTop: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-
-  newConversationGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 8,
-  },
-
-  newConversationText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-
-  messagesContainer: {
-    flex: 1,
-    marginBottom: TAB_BAR_HEIGHT + 70,
-  },
-
-  messagesContent: {
-    padding: 20,
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    minHeight: height * 0.6,
-  },
-
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-
-  emptyText: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    lineHeight: 20,
-  },
-
-  messageRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    gap: 12,
-  },
-
-  userRow: {
-    justifyContent: 'flex-end',
-  },
-
-  aiRow: {
-    justifyContent: 'flex-start',
-  },
-
-  aiAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-end',
-    marginBottom: 4,
-  },
-
-  messageBubble: {
-    maxWidth: '75%',
-    padding: 12,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  userBubble: {
-    backgroundColor: '#3b82f6',
-    borderBottomRightRadius: 4,
-  },
-
-  aiBubble: {
-    backgroundColor: '#ffffff',
-    borderBottomLeftRadius: 4,
-  },
-
-  typingBubble: {
-    padding: 16,
-  },
-
-  typingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-
-  typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3b82f6',
-    opacity: 0.5,
-  },
-
-  typingDotDelay: {
-    opacity: 0.7,
-  },
-
-  typingDotDelay2: {
-    opacity: 1,
-  },
-
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-
-  userText: {
-    color: '#ffffff',
-  },
-
-  aiText: {
-    color: '#111827',
-  },
-
-  messageTime: {
-    fontSize: 10,
-    alignSelf: 'flex-end',
-  },
-
-  userTime: {
-    color: 'rgba(255,255,255,0.7)',
-  },
-
-  aiTime: {
-    color: '#9ca3af',
-  },
-
-  attachmentsContainer: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    zIndex: 20,
-  },
-
-  attachmentItem: {
-    width: 70,
-    height: 70,
-    marginRight: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-
-  attachmentThumb: {
-    width: '100%',
-    height: '100%',
-  },
-
-  attachmentThumbFile: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
-  },
-
-  removeAttachment: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#ffffff',
-    borderRadius: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  attachmentPreview: {
-    marginBottom: 8,
-  },
-
-  attachmentImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-
-  attachmentFile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-
-  attachmentFileName: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(229,231,235,0.5)',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    marginHorizontal: 8,
-    marginBottom: 8,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-
-  attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  input: {
-    flex: 1,
-    marginHorizontal: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    maxHeight: 100,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 20,
-    fontSize: 14,
-  },
-
-  inputActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  actionButtonActive: {
-    backgroundColor: '#3b82f6',
-  },
-
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-
-  sendGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  attachmentMenu: {
-    position: 'absolute',
-    bottom: 80,
-    left: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  attachmentMenuBlur: {
-    padding: 8,
-  },
-
-  attachmentMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    gap: 12,
-  },
-
-  attachmentMenuItemText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: 25,
+    },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      zIndex: 10,
+    },
+
+    menuButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    headerCenter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+
+    headerBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+
+    headerButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    keyboardAvoidingView: {
+      position: 'absolute',
+      bottom: TAB_BAR_HEIGHT,
+      left: 0,
+      right: 0,
+    },
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+
+    modalContent: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: '80%',
+      backgroundColor: colors.surface,
+      borderTopRightRadius: 24,
+      borderBottomRightRadius: 24,
+      overflow: 'hidden',
+    },
+
+    modalGradient: {
+      flex: 1,
+      padding: 20,
+    },
+
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+
+    modalTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+
+    modalClose: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    historyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 12,
+      borderRadius: 16,
+      marginBottom: 8,
+      backgroundColor: colors.surfaceAlt,
+    },
+
+    historyItemActive: {
+      backgroundColor: colors.primary,
+    },
+
+    historyItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 12,
+    },
+
+    historyIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.tintPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    historyIconActive: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+
+    historyInfo: {
+      flex: 1,
+    },
+
+    historyTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+
+    historyTitleActive: {
+      color: colors.textInverse,
+    },
+
+    historyDate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+
+    historyDelete: {
+      padding: 8,
+    },
+
+    newConversationButton: {
+      marginTop: 20,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+
+    newConversationGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16,
+      gap: 8,
+    },
+
+    newConversationText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textInverse,
+    },
+
+    messagesContainer: {
+      flex: 1,
+      marginBottom: TAB_BAR_HEIGHT + 70,
+    },
+
+    messagesContent: {
+      padding: 20,
+    },
+
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      minHeight: height * 0.6,
+    },
+
+    emptyIcon: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+    },
+
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 12,
+    },
+
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 40,
+      lineHeight: 20,
+    },
+
+    messageRow: {
+      flexDirection: 'row',
+      marginBottom: 16,
+      gap: 12,
+    },
+
+    userRow: {
+      justifyContent: 'flex-end',
+    },
+
+    aiRow: {
+      justifyContent: 'flex-start',
+    },
+
+    aiAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'flex-end',
+      marginBottom: 4,
+    },
+
+    messageBubble: {
+      maxWidth: '75%',
+      padding: 12,
+      borderRadius: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    userBubble: {
+      backgroundColor: colors.primary,
+      borderBottomRightRadius: 4,
+    },
+
+    aiBubble: {
+      backgroundColor: colors.surface,
+      borderBottomLeftRadius: 4,
+    },
+
+    typingBubble: {
+      padding: 16,
+    },
+
+    typingIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+
+    typingDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+      opacity: 0.5,
+    },
+
+    typingDotDelay: {
+      opacity: 0.7,
+    },
+
+    typingDotDelay2: {
+      opacity: 1,
+    },
+
+    messageText: {
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+
+    userText: {
+      color: colors.textInverse,
+    },
+
+    aiText: {
+      color: colors.textPrimary,
+    },
+
+    messageTime: {
+      fontSize: 10,
+      alignSelf: 'flex-end',
+    },
+
+    userTime: {
+      color: 'rgba(255,255,255,0.7)',
+    },
+
+    aiTime: {
+      color: colors.muted,
+    },
+
+    attachmentsContainer: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      zIndex: 20,
+    },
+
+    attachmentItem: {
+      width: 70,
+      height: 70,
+      marginRight: 8,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceAlt,
+    },
+
+    attachmentThumb: {
+      width: '100%',
+      height: '100%',
+    },
+
+    attachmentThumbFile: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceAlt,
+    },
+
+    removeAttachment: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      backgroundColor: colors.surface,
+      borderRadius: 11,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    attachmentPreview: {
+      marginBottom: 8,
+    },
+
+    attachmentImage: {
+      width: '100%',
+      height: 150,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+
+    attachmentFile: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      gap: 8,
+      backgroundColor: colors.surfaceAlt,
+    },
+
+    attachmentFileName: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      flex: 1,
+    },
+
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.surface,
+      marginHorizontal: 8,
+      marginBottom: 8,
+      borderRadius: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+
+    attachButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    input: {
+      flex: 1,
+      marginHorizontal: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      maxHeight: 100,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 20,
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+
+    inputActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+
+    actionButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    actionButtonActive: {
+      backgroundColor: colors.primary,
+    },
+
+    sendButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      overflow: 'hidden',
+    },
+
+    sendGradient: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    attachmentMenu: {
+      position: 'absolute',
+      bottom: 80,
+      left: 20,
+      borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+
+    attachmentMenuBlur: {
+      padding: 8,
+    },
+
+    attachmentMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      gap: 12,
+    },
+
+    attachmentMenuItemText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+  });
+}
 
 export default AIChatScreen;
