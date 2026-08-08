@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import { BlurView } from "expo-blur";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 const { width, height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
@@ -50,6 +52,9 @@ type RecentActivity = {
 };
 
 export function AccountScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const user = auth.currentUser;
@@ -165,7 +170,7 @@ export function AccountScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text>Aucun utilisateur connecté</Text>
+        <Text style={{ color: colors.textPrimary }}>Aucun utilisateur connecté</Text>
       </View>
     );
   }
@@ -193,7 +198,7 @@ export function AccountScreen() {
             <Ionicons
               name="settings-outline"
               size={24}
-              color="#6b7280"
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
           {/* <TouchableOpacity style={styles.headerButton}>
@@ -208,7 +213,7 @@ export function AccountScreen() {
               <Image source={{ uri: user.photoURL }} style={styles.avatar} />
             ) : (
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={styles.avatarPlaceholder}
               >
                 <Text style={styles.avatarText}>
@@ -225,8 +230,8 @@ export function AccountScreen() {
           <Text style={styles.email}>{user.email}</Text>
           
           <View style={styles.badgeContainer}>
-            <BlurView intensity={40} tint="light" style={styles.badge}>
-              <Ionicons name="calendar" size={14} color="#3b82f6" />
+            <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={styles.badge}>
+              <Ionicons name="calendar" size={14} color={colors.primary} />
               <Text style={styles.badgeText}>Membre depuis le {joinedDate}</Text>
             </BlurView>
           </View>
@@ -429,7 +434,7 @@ export function AccountScreen() {
             <Ionicons
               name="mail-outline"
               size={22}
-              color="#3b82f6"
+              color={colors.primary}
             />
 
             <View style={styles.contactContent}>
@@ -508,13 +513,10 @@ export function AccountScreen() {
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LinearGradient
-            colors={['#fee2e2', '#fecaca']}
-            style={styles.logoutGradient}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+          <View style={styles.logoutGradient}>
+            <Ionicons name="log-out-outline" size={20} color={colors.danger} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
 
         <View style={[styles.bottomSpacing, { height: TAB_BAR_HEIGHT + 20 }]} />
@@ -523,466 +525,469 @@ export function AccountScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-
-  scrollContent: {
-    paddingBottom: 20,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 20,
-    paddingTop: 35,
-    gap: 12,
-  },
-
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  profileCard: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
-  },
-
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: 16,
-  },
-
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  avatarText: {
-    fontSize: 40,
-    fontWeight: "600",
-    color: "#ffffff",
-  },
-
-  editProfileButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#3b82f6",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#ffffff",
-  },
-
-  name: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
-  },
-
-  email: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginBottom: 12,
-  },
-
-  badgeContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    overflow: 'hidden',
-  },
-
-  badgeText: {
-    fontSize: 12,
-    color: "#4b5563",
-  },
-
-  statsGrid: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-  },
-
-  statCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-
-  statLabel: {
-    fontSize: 12,
-    color: "#6b7280",
-    textAlign: "center",
-  },
-
-  levelCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-
-  levelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  levelInfo: {
-    flex: 1,
-  },
-
-  levelLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 4,
-  },
-
-  levelXp: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-
-  levelPercentage: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#3b82f6",
-  },
-
-  progressBar: {
-    height: 8,
-    backgroundColor: "#e5e7eb",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-
-  section: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-  },
-
-  seeAllText: {
-    fontSize: 14,
-    color: "#3b82f6",
-    fontWeight: "500",
-  },
-
-  badgesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-  },
-
-  badgeItem: {
-    alignItems: "center",
-    marginRight: 16,
-    width: 80,
-  },
-
-  badgeIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-
-  badgeName: {
-    fontSize: 12,
-    color: "#4b5563",
-    textAlign: "center",
-  },
-
-  achievementCard: {
-    flexDirection: "row",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-
-  achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  achievementContent: {
-    flex: 1,
-    justifyContent: "center",
-  },
-
-  achievementTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 8,
-  },
-
-  achievementProgress: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  achievementProgressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#e5e7eb",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-
-  achievementProgressFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-
-  achievementProgressText: {
-    fontSize: 12,
-    color: "#6b7280",
-    width: 35,
-  },
-
-  activityCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-
-  activityIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  activityContent: {
-    flex: 1,
-  },
-
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 4,
-  },
-
-  activityTime: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-
-  activityXp: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-
-  activityXpText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#f59e0b",
-  },
-
-  quickActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-
-  quickAction: {
-    alignItems: "center",
-  },
-
-  quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-
-  quickActionText: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-
-  logoutButton: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-
-  logoutGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    gap: 8,
-  },
-
-  logoutText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ef4444",
-  },
-
-  bottomSpacing: {
-    width: '100%',
-  },
-
-  aboutText: {
-    fontSize: 14,
-    color: "#6b7280",
-    lineHeight: 22,
-    marginTop: 10,
-    marginBottom: 16,
-  },
-
-  contactButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
 
-  contactContent: {
-    marginLeft: 12,
-  },
+    scrollContent: {
+      paddingBottom: 20,
+    },
 
-  contactTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111827",
-  },
+    header: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      paddingHorizontal: 20,
+      paddingTop: 35,
+      gap: 12,
+    },
 
-  contactSubtitle: {
-    fontSize: 13,
-    color: "#6b7280",
-    marginTop: 2,
-  },
+    headerButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    profileCard: {
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 24,
+    },
+
+    profileImageContainer: {
+      position: "relative",
+      marginBottom: 16,
+    },
+
+    avatar: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      borderWidth: 3,
+      borderColor: colors.surface,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+
+    avatarPlaceholder: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: colors.surface,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+
+    avatarText: {
+      fontSize: 40,
+      fontWeight: "600",
+      color: colors.textInverse,
+    },
+
+    editProfileButton: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      backgroundColor: colors.primary,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: colors.surface,
+    },
+
+    name: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+
+    email: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 12,
+    },
+
+    badgeContainer: {
+      flexDirection: "row",
+      gap: 8,
+    },
+
+    badge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 6,
+      overflow: 'hidden',
+    },
+
+    badgeText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+
+    statsGrid: {
+      flexDirection: "row",
+      paddingHorizontal: 20,
+      gap: 12,
+      marginBottom: 20,
+    },
+
+    statCard: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 16,
+      alignItems: "center",
+    },
+
+    statNumber: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+
+    levelCard: {
+      marginHorizontal: 20,
+      marginBottom: 24,
+      padding: 20,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+
+    levelHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+
+    levelInfo: {
+      flex: 1,
+    },
+
+    levelLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+
+    levelXp: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+
+    levelPercentage: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.primary,
+    },
+
+    progressBar: {
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+
+    progressFill: {
+      height: "100%",
+      borderRadius: 4,
+    },
+
+    section: {
+      marginBottom: 24,
+      paddingHorizontal: 20,
+    },
+
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+
+    seeAllText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: "500",
+    },
+
+    badgesScroll: {
+      marginHorizontal: -20,
+      paddingHorizontal: 20,
+    },
+
+    badgeItem: {
+      alignItems: "center",
+      marginRight: 16,
+      width: 80,
+    },
+
+    badgeIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+
+    badgeName: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+
+    achievementCard: {
+      flexDirection: "row",
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      overflow: 'hidden',
+    },
+
+    achievementIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+
+    achievementContent: {
+      flex: 1,
+      justifyContent: "center",
+    },
+
+    achievementTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginBottom: 8,
+    },
+
+    achievementProgress: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+
+    achievementProgressBar: {
+      flex: 1,
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+
+    achievementProgressFill: {
+      height: "100%",
+      borderRadius: 3,
+    },
+
+    achievementProgressText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      width: 35,
+    },
+
+    activityCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      overflow: 'hidden',
+    },
+
+    activityIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+
+    activityContent: {
+      flex: 1,
+    },
+
+    activityTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+
+    activityTime: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+
+    activityXp: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+
+    activityXpText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.warning,
+    },
+
+    quickActions: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+
+    quickAction: {
+      alignItems: "center",
+    },
+
+    quickActionIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+
+    quickActionText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+
+    logoutButton: {
+      marginHorizontal: 20,
+      marginBottom: 20,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+
+    logoutGradient: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 16,
+      gap: 8,
+      backgroundColor: colors.tintDanger,
+    },
+
+    logoutText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.danger,
+    },
+
+    bottomSpacing: {
+      width: '100%',
+    },
+
+    aboutText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      marginTop: 10,
+      marginBottom: 16,
+    },
+
+    contactButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 14,
+      marginBottom: 10,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    contactContent: {
+      marginLeft: 12,
+    },
+
+    contactTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+
+    contactSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
 
-  socialButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    padding: 15,
-    borderRadius: 14,
-    marginTop: 10,
-  },
+    socialButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      padding: 15,
+      borderRadius: 14,
+      marginTop: 10,
+    },
 
-  socialText: {
-    marginLeft: 12,
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#374151",
-  },
-});
+    socialText: {
+      marginLeft: 12,
+      fontSize: 15,
+      fontWeight: "500",
+      color: colors.textPrimary,
+    },
+  });
+}

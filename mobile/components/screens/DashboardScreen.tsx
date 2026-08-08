@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { API_URL } from '@/services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 type Stats = {
   minutesToday: number;
@@ -31,6 +33,9 @@ type CourseSummary = {
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function DashboardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const user = auth.currentUser;
   const navigation = useNavigation<Nav>();
   const [courses, setCourses] = useState<CourseSummary[]>([]);
@@ -127,7 +132,7 @@ export function DashboardScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text>Aucun utilisateur connecté</Text>
+        <Text style={{ color: colors.textPrimary }}>Aucun utilisateur connecté</Text>
       </View>
     );
   }
@@ -139,6 +144,12 @@ export function DashboardScreen() {
           <Text style={styles.title}>Tableau de bord</Text>
           <Text style={styles.subtitle}>Vue d'ensemble de votre apprentissage</Text>
         </View>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('Progress')}
+        >
+          <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
         {/* <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="notifications-outline" size={24} color="#6b7280" />
@@ -170,7 +181,7 @@ export function DashboardScreen() {
         }
       >
         <View style={styles.courseIcon}>
-          <Ionicons name="document-text" size={20} color="#3b82f6" />
+          <Ionicons name="document-text" size={20} color={colors.primary} />
         </View>
 
         <View>
@@ -189,7 +200,7 @@ export function DashboardScreen() {
           onPress={() => handleDeleteCourse(course.id)}
           style={styles.actionBtn}
         >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          <Ionicons name="trash-outline" size={20} color={colors.danger} />
         </TouchableOpacity>
       </View>
 
@@ -379,434 +390,436 @@ export function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  header: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingTop: 25,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    header: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 20,
+      paddingTop: 25,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
+    title: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
 
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
 
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+    headerIcons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
 
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    iconButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  scrollView: {
-    flex: 1,
-  },
+    scrollView: {
+      flex: 1,
+    },
 
-  scrollContent: {
-    padding: 20,
-  },
+    scrollContent: {
+      padding: 20,
+    },
 
-  section: {
-    marginBottom: 24,
-  },
+    section: {
+      marginBottom: 24,
+    },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
 
-  sectionTitle: {
-    marginLeft: 10,
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-  },
+    sectionTitle: {
+      marginLeft: 10,
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  seeAllText: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontWeight: '500',
-  },
+    seeAllText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
 
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
 
-  statCard: {
-    flex: 1,
-    minWidth: '48%',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+    statCard: {
+      flex: 1,
+      minWidth: '48%',
+      padding: 16,
+      borderRadius: 16,
+      alignItems: 'center',
+      marginBottom: 12,
+    },
 
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
-    marginBottom: 4,
-  },
+    statNumber: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 8,
+      marginBottom: 4,
+    },
 
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
 
-  focusCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+    focusCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    },
 
-  focusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+    focusHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
 
-  focusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    focusIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
 
-  focusTitleContainer: {
-    flex: 1,
-  },
+    focusTitleContainer: {
+      flex: 1,
+    },
 
-  focusTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
+    focusTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  focusSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
+    focusSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3b82f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    playButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  progressContainer: {
-    marginBottom: 16,
-  },
+    progressContainer: {
+      marginBottom: 16,
+    },
 
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
+    progressBar: {
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: 8,
+    },
 
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3b82f6',
-    borderRadius: 4,
-  },
+    progressFill: {
+      height: '100%',
+      backgroundColor: colors.primary,
+      borderRadius: 4,
+    },
 
-  progressText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
+    progressText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
 
-  focusDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
+    focusDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
 
-  focusActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-    paddingTop: 16,
-  },
+    focusActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 16,
+    },
 
-  actionButton: {
-    alignItems: 'center',
-  },
+    actionButton: {
+      alignItems: 'center',
+    },
 
-  actionText: {
-    fontSize: 12,
-    color: '#3b82f6',
-    marginTop: 4,
-    fontWeight: '500',
-  },
+    actionText: {
+      fontSize: 12,
+      color: colors.primary,
+      marginTop: 4,
+      fontWeight: '500',
+    },
 
-  activityList: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
+    activityList: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
 
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
+    activityItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
 
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    activityIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
 
-  activityContent: {
-    flex: 1,
-  },
+    activityContent: {
+      flex: 1,
+    },
 
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
+    activityTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
 
-  activityTime: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
+    activityTime: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
 
-  activityScore: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10b981',
-  },
+    activityScore: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.success,
+    },
 
-  startButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+    startButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
 
-  startButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+    startButtonText: {
+      color: colors.textInverse,
+      fontSize: 12,
+      fontWeight: '600',
+    },
 
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+    actionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
 
-  actionCard: {
-    flex: 1,
-    minWidth: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
+    actionCard: {
+      flex: 1,
+      minWidth: '48%',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+      marginBottom: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 1,
+    },
 
-  actionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
+    actionIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
 
-  actionCardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
+    actionCardTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
 
-  actionCardDesc: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
+    actionCardDesc: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
 
-  quoteCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 24,
-  },
+    quoteCard: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 24,
+    },
 
-  quoteIcon: {
-    marginBottom: 12,
-  },
+    quoteIcon: {
+      marginBottom: 12,
+    },
 
-  quoteText: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    color: '#475569',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 8,
-  },
+    quoteText: {
+      fontSize: 16,
+      fontStyle: 'italic',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+      marginBottom: 8,
+    },
 
-  quoteAuthor: {
-    fontSize: 14,
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
+    quoteAuthor: {
+      fontSize: 14,
+      color: colors.muted,
+      fontStyle: 'italic',
+    },
 
-  bottomSpacing: {
-    height: 20,
-  },
+    bottomSpacing: {
+      height: 20,
+    },
 
-  courseSection: {
-    marginBottom: 24,
-    marginTop: 20,
-  },
+    courseSection: {
+      marginBottom: 24,
+      marginTop: 20,
+    },
 
-  courseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
+    courseCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: 14,
+      borderRadius: 16,
+      marginBottom: 10,
+      shadowColor: '#000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      elevation: 2,
+    },
 
-  courseSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
+    courseSubtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
-  courseCardModern: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    courseCardModern: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
 
-    backgroundColor: '#ffffff',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 16,
+      backgroundColor: colors.surface,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderRadius: 16,
 
-    marginBottom: 10,
+      marginBottom: 10,
 
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
-  },
+      shadowColor: '#000',
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      elevation: 2,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
+    },
 
-  courseLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+    courseLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
 
-  courseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#eff6ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    courseIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: colors.tintPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
 
-  courseTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
-    maxWidth: 200,
-  },
+    courseTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      maxWidth: 200,
+    },
 
-  courseMeta: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
+    courseMeta: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
-  courseActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+    courseActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
 
-  actionBtn: {
-    padding: 8,
-    borderRadius: 10,
-  },
+    actionBtn: {
+      padding: 8,
+      borderRadius: 10,
+    },
 
-  emptyText: {
-    textAlign: 'center',
-    color: '#94a3b8',
-    marginTop: 20,
-    fontSize: 14,
-  },
-});
+    emptyText: {
+      textAlign: 'center',
+      color: colors.muted,
+      marginTop: 20,
+      fontSize: 14,
+    },
+  });
+}

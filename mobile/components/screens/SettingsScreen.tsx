@@ -19,10 +19,12 @@ import {
 import { auth } from "../../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
 import {LinearGradient} from "expo-linear-gradient";
+import { useTheme } from "../../theme/ThemeContext";
 
 export function SettingsScreen() {
   const navigation = useNavigation();
   const user = auth.currentUser;
+  const { colors, preference, setPreference } = useTheme();
 
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
@@ -148,6 +150,71 @@ export function SettingsScreen() {
         </Text>
 
         <View style={{ width: 26 }} />
+      </View>
+
+      {/* APPARENCE */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: '600',
+            color: colors.textSecondary,
+            marginBottom: 8,
+            textTransform: 'uppercase',
+          }}
+        >
+          Apparence
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            backgroundColor: colors.surfaceAlt,
+            borderRadius: 12,
+            padding: 4,
+            gap: 4,
+          }}
+        >
+          {(
+            [
+              { key: 'system', label: 'Système', icon: 'phone-portrait-outline' },
+              { key: 'light', label: 'Clair', icon: 'sunny-outline' },
+              { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
+            ] as const
+          ).map((option) => {
+            const active = preference === option.key;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                onPress={() => setPreference(option.key)}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 10,
+                  borderRadius: 9,
+                  backgroundColor: active ? colors.surface : 'transparent',
+                }}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={16}
+                  color={active ? colors.primary : colors.textSecondary}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: active ? '600' : '400',
+                    color: active ? colors.textPrimary : colors.textSecondary,
+                  }}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {/* PROFILE CARD */}
