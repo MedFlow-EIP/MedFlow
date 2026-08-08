@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,13 @@ import RenderHTML from "react-native-render-html";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../../firebaseConfig";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 export function UploadCourseScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [file, setFile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -111,7 +116,7 @@ export function UploadCourseScreen() {
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <View style={{ flex: 1, marginLeft: 10, marginTop: 30 }}>
@@ -124,7 +129,7 @@ export function UploadCourseScreen() {
 
       {/* UPLOAD CARD */}
       <TouchableOpacity style={styles.uploadCard} onPress={pickDocument}>
-        <Ionicons name="cloud-upload-outline" size={28} color="#60a5fa" />
+        <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
         <Text style={styles.uploadText}>
           {file ? "Changer de PDF" : "Importer un PDF"}
         </Text>
@@ -136,7 +141,7 @@ export function UploadCourseScreen() {
       {/* FILE */}
       {file && (
         <View style={styles.fileCard}>
-          <Ionicons name="document-text" size={20} color="#22c55e" />
+          <Ionicons name="document-text" size={20} color={colors.success} />
           <View style={{ marginLeft: 10 }}>
             <Text style={styles.fileName}>{file.name}</Text>
             <Text style={styles.fileSize}>
@@ -154,7 +159,7 @@ export function UploadCourseScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textInverse} />
           ) : (
             <Text style={styles.generateText}>
               Générer le contenu
@@ -206,6 +211,7 @@ export function UploadCourseScreen() {
               <RenderHTML
                 contentWidth={width}
                 source={{ html: data.resume }}
+                baseStyle={{ color: colors.textSecondary }}
               />
             </View>
           )}
@@ -233,13 +239,13 @@ export function UploadCourseScreen() {
                     const isCorrect = key === q.correct;
                     const isSelected = quizAnswers[i] === key;
 
-                    let bg = "#374151";
+                    let bg = colors.surfaceAlt;
 
                     if (quizValidation) {
-                      if (isCorrect) bg = "#22c55e";
-                      else if (isSelected) bg = "#ef4444";
+                      if (isCorrect) bg = colors.success;
+                      else if (isSelected) bg = colors.danger;
                     } else if (isSelected) {
-                      bg = "#3b82f6";
+                      bg = colors.primary;
                     }
 
                     return (
@@ -281,308 +287,311 @@ export function UploadCourseScreen() {
 
 /* ---------------- STYLE ---------------- */
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  content: {
-    padding: 20,
-  },
+    content: {
+      padding: 20,
+    },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-    gap: 12,
-  },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      gap: 12,
+    },
 
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    marginTop: 30,
-    marginLeft: 10,
-  },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 6,
+      elevation: 2,
+      marginTop: 30,
+      marginLeft: 10,
+    },
 
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-  },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
 
-  subtitle: {
-    fontSize: 13,
-    color: "#6b7280",
-    marginTop: 2,
-  },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
-  uploadCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 22,
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
+    uploadCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 22,
+      alignItems: "center",
+      marginBottom: 16,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      elevation: 2,
+    },
 
-  uploadTitle: {
-    marginTop: 10,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#111827",
-  },
+    uploadTitle: {
+      marginTop: 10,
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
 
-  uploadHint: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: 4,
-  },
+    uploadHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
 
-  fileBox: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    fileBox: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+    },
 
-  fileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    padding: 14,
-    borderRadius: 16,
-    marginTop: 12,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
+    fileCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      padding: 14,
+      borderRadius: 16,
+      marginTop: 12,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+    },
 
-  fileName: {
-    color: "#111827",
-    fontWeight: "600",
-    fontSize: 14,
-  },
+    fileName: {
+      color: colors.textPrimary,
+      fontWeight: "600",
+      fontSize: 14,
+    },
 
-  fileSize: {
-    color: "#6b7280",
-    fontSize: 12,
-    marginTop: 2,
-  },
+    fileSize: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+    },
 
-  generateBtn: {
-    backgroundColor: "#3b82f6",
-    padding: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 16,
-    alignSelf: "center",
-    gap: 12,
-    width: "95%",
+    generateBtn: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 14,
+      alignItems: "center",
+      marginTop: 16,
+      alignSelf: "center",
+      gap: 12,
+      width: "95%",
 
-    shadowColor: "#3b82f6",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-  },
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 3,
+    },
 
-  generateText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 15,
-  },
+    generateText: {
+      color: colors.textInverse,
+      fontWeight: "700",
+      fontSize: 15,
+    },
 
-  primaryBtn: {
-    backgroundColor: "#3b82f6",
-    padding: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 16,
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 14,
+      alignItems: "center",
+      marginTop: 16,
 
-    shadowColor: "#3b82f6",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-    
-  },
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 3,
+      
+    },
 
-  primaryText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+    primaryText: {
+      color: colors.textInverse,
+      fontWeight: "700",
+    },
 
-  error: {
-    color: "#ef4444",
-    marginTop: 10,
-    fontWeight: "500",
-  },
+    error: {
+      color: colors.danger,
+      marginTop: 10,
+      fontWeight: "500",
+    },
 
-  success: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
-    textAlign: "center",
-  },
+    success: {
+      fontSize: 18,
+      fontWeight: "700",
+      marginBottom: 12,
+      textAlign: "center",
+      color: colors.textPrimary,
+    },
 
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
+    },
 
-  flashcard: {
-    backgroundColor: "#ffffff",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    flashcard: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 12,
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
+    },
 
-  question: {
-    color: "#111827",
-    fontWeight: "700",
-    marginBottom: 6,
-    
-  },
+    question: {
+      color: colors.textPrimary,
+      fontWeight: "700",
+      marginBottom: 6,
+      
+    },
 
-  answer: {
-    color: "#6b7280",
-  },
+    answer: {
+      color: colors.textSecondary,
+    },
 
-  quizBox: {
-    backgroundColor: "#ffffff",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
+    quizBox: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 20,
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
-  },
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
+    },
 
-  optionButton: {
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 8,
-  },
+    optionButton: {
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 8,
+    },
 
-  optionText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
+    optionText: {
+      color: colors.textInverse,
+      fontWeight: "600",
+    },
 
-  uploadText: {
-    color: "#111827",
-    fontWeight: "700",
-    marginTop: 10,
-    fontSize: 16,
-  },
+    uploadText: {
+      color: colors.textPrimary,
+      fontWeight: "700",
+      marginTop: 10,
+      fontSize: 16,
+    },
 
-  tabs: {
-    flexDirection: "row",
-    backgroundColor: "#eef2ff",
-    borderRadius: 14,
-    padding: 4,
-    marginTop: 10,
-    marginBottom: 16,
-    gap: 12,
-    alignSelf: "center",
-    width: "95%",
-  },
+    tabs: {
+      flexDirection: "row",
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      padding: 4,
+      marginTop: 10,
+      marginBottom: 16,
+      gap: 12,
+      alignSelf: "center",
+      width: "95%",
+    },
 
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-  },
+    tabButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignItems: "center",
+    },
 
-  activeTab: {
-    backgroundColor: "#3b82f6",
-  },
+    activeTab: {
+      backgroundColor: colors.primary,
+    },
 
-  tabText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
-  },
+    tabText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
 
-  tabTextActive: {
-    color: "#fff",
-  },
+    tabTextActive: {
+      color: colors.textInverse,
+    },
 
-  validateBtn: {
-    backgroundColor: "#3b82f6",
-    padding: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 16,
-    marginBottom: 20,
+    validateBtn: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 14,
+      alignItems: "center",
+      marginTop: 16,
+      marginBottom: 20,
 
-    shadowColor: "#3b82f6",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-  },
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 3,
+    },
 
-  validateText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-});
+    validateText: {
+      color: colors.textInverse,
+      fontWeight: "700",
+      fontSize: 15,
+    },
+  });
+}
