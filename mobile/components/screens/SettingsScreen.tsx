@@ -22,11 +22,15 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { resetTutorial } from "../../utils/firstTime";
+import { useTutorial } from "../../context/TutorialContext";
+import { navigationRef } from "../../navigationRef";
 
 export function SettingsScreen() {
   const navigation = useNavigation();
   const user = auth.currentUser;
   const { colors, preference, setPreference } = useTheme();
+  const { show: showTutorial } = useTutorial();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [fullName, setFullName] = useState(user?.displayName || "");
@@ -124,6 +128,14 @@ export function SettingsScreen() {
   };
 
   // ---------------- LOGOUT ----------------
+  const handleReplayTutorial = async () => {
+    await resetTutorial();
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('MainTabs', { screen: 'Home' });
+    }
+    showTutorial();
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -175,6 +187,15 @@ export function SettingsScreen() {
             );
           })}
         </View>
+      </View>
+
+      {/* AIDE */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Aide</Text>
+        <TouchableOpacity onPress={handleReplayTutorial} style={styles.replayButton}>
+          <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.replayButtonText}>Revoir le tutoriel</Text>
+        </TouchableOpacity>
       </View>
 
       {/* PROFILE CARD */}
@@ -391,6 +412,23 @@ function makeStyles(colors: ThemeColors) {
     },
 
     appearanceTextActive: {
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+
+    replayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 14,
+    },
+
+    replayButtonText: {
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textPrimary,
     },
