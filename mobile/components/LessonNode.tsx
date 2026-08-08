@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Lesson } from '../types';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemeColors } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +40,9 @@ export function LessonNode({
   isLast = false,
   isFirst = false,
 }: LessonNodeProps) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [currentStatus, setCurrentStatus] = useState(status);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -348,7 +353,7 @@ export function LessonNode({
             </Animated.View>
 
             {currentStatus === 'completed' && stars > 0 && (
-              <BlurView intensity={80} style={styles.starsBadge}>
+              <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.starsBadge}>
                 <View style={styles.starsRow}>
                   {[1, 2, 3].map((i) => (
                     <Ionicons
@@ -363,13 +368,13 @@ export function LessonNode({
             )}
 
             {currentStatus === 'locked' && (
-              <BlurView intensity={60} style={styles.lockContainer}>
+              <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.lockContainer}>
                 <Ionicons name="lock-closed" size={20} color="#ffffff" />
               </BlurView>
             )}
 
             {currentStatus === 'available' && (
-              <BlurView intensity={60} style={styles.availableBadge}>
+              <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.availableBadge}>
                 <Ionicons name="play" size={12} color="#ffffff" />
               </BlurView>
             )}
@@ -377,7 +382,7 @@ export function LessonNode({
         </Animated.View>
       </TouchableOpacity>
 
-      <BlurView intensity={40} tint="light" style={[
+      <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={[
         styles.titleContainer,
         currentStatus === 'completed' && styles.titleContainerCompleted
       ]}>
@@ -429,202 +434,204 @@ export function LessonNode({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: 120,
-    marginBottom: 30,
-    position: 'relative',
-  },
-  withConnector: {
-    marginBottom: 40,
-  },
-  firstNode: {
-    marginTop: 20,
-  },
-  connector: {
-    position: 'absolute',
-    bottom: -30,
-    width: 4,
-    height: 30,
-    borderRadius: 2,
-    zIndex: -1,
-  },
-  glowEffect: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    opacity: 0.3,
-    zIndex: -2,
-  },
-  completedGlow: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#FFD700',
-    opacity: 0.3,
-    zIndex: -2,
-  },
-  completedGlowLarge: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: '#FFD700',
-    opacity: 0.1,
-    zIndex: -3,
-  },
-  nodeWrapper: {
-    position: 'relative',
-    marginBottom: 8,
-  },
-  outerRing: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 50,
-    opacity: 0.5,
-  },
-  node: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  completedOverlay: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 45,
-    zIndex: 1,
-  },
-  particle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFD700',
-  },
-  particle1: {
-    top: -10,
-    right: 10,
-  },
-  particle2: {
-    bottom: -10,
-    left: 20,
-  },
-  particle3: {
-    top: 20,
-    left: -10,
-  },
-  particle4: {
-    bottom: 20,
-    right: -10,
-  },
-  starsBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    overflow: 'hidden',
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  lockContainer: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  availableBadge: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  titleContainer: {
-    borderRadius: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    overflow: 'hidden',
-    marginTop: 4,
-    maxWidth: 100,
-  },
-  titleContainerCompleted: {
-    borderWidth: 1,
-    borderColor: '#FFD700',
-  },
-  title: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  titleLocked: {
-    color: '#9ca3af',
-  },
-  titleCompleted: {
-    color: '#FFD700',
-  },
-  typeIndicator: {
-    marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  typeText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  completedRibbon: {
-    position: 'absolute',
-    top: -5,
-    right: -15,
-    transform: [{ rotate: '15deg' }],
-  },
-  completedRibbonGradient: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  completedRibbonText: {
-    color: '#ffffff',
-    fontSize: 8,
-    fontWeight: '700',
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      width: 120,
+      marginBottom: 30,
+      position: 'relative',
+    },
+    withConnector: {
+      marginBottom: 40,
+    },
+    firstNode: {
+      marginTop: 20,
+    },
+    connector: {
+      position: 'absolute',
+      bottom: -30,
+      width: 4,
+      height: 30,
+      borderRadius: 2,
+      zIndex: -1,
+    },
+    glowEffect: {
+      position: 'absolute',
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      opacity: 0.3,
+      zIndex: -2,
+    },
+    completedGlow: {
+      position: 'absolute',
+      width: 110,
+      height: 110,
+      borderRadius: 55,
+      backgroundColor: '#FFD700',
+      opacity: 0.3,
+      zIndex: -2,
+    },
+    completedGlowLarge: {
+      position: 'absolute',
+      width: 130,
+      height: 130,
+      borderRadius: 65,
+      backgroundColor: '#FFD700',
+      opacity: 0.1,
+      zIndex: -3,
+    },
+    nodeWrapper: {
+      position: 'relative',
+      marginBottom: 8,
+    },
+    outerRing: {
+      position: 'absolute',
+      top: -4,
+      left: -4,
+      right: -4,
+      bottom: -4,
+      borderRadius: 50,
+      opacity: 0.5,
+    },
+    node: {
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 8,
+      borderWidth: 3,
+      borderColor: 'rgba(255,255,255,0.3)',
+    },
+    completedOverlay: {
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      borderRadius: 45,
+      zIndex: 1,
+    },
+    particle: {
+      position: 'absolute',
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#FFD700',
+    },
+    particle1: {
+      top: -10,
+      right: 10,
+    },
+    particle2: {
+      bottom: -10,
+      left: 20,
+    },
+    particle3: {
+      top: 20,
+      left: -10,
+    },
+    particle4: {
+      bottom: 20,
+      right: -10,
+    },
+    starsBadge: {
+      position: 'absolute',
+      top: -8,
+      right: -8,
+      borderRadius: 12,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      overflow: 'hidden',
+    },
+    starsRow: {
+      flexDirection: 'row',
+      gap: 2,
+    },
+    lockContainer: {
+      position: 'absolute',
+      bottom: -5,
+      right: -5,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.5)',
+    },
+    availableBadge: {
+      position: 'absolute',
+      bottom: -5,
+      right: -5,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.5)',
+    },
+    titleContainer: {
+      borderRadius: 15,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      overflow: 'hidden',
+      marginTop: 4,
+      maxWidth: 100,
+    },
+    titleContainerCompleted: {
+      borderWidth: 1,
+      borderColor: '#FFD700',
+    },
+    title: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    titleLocked: {
+      color: colors.muted,
+    },
+    titleCompleted: {
+      color: '#FFD700',
+    },
+    typeIndicator: {
+      marginTop: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    typeText: {
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    completedRibbon: {
+      position: 'absolute',
+      top: -5,
+      right: -15,
+      transform: [{ rotate: '15deg' }],
+    },
+    completedRibbonGradient: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    completedRibbonText: {
+      color: '#ffffff',
+      fontSize: 8,
+      fontWeight: '700',
+    },
+  });
+}

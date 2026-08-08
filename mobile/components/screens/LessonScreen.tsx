@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { FlashCard } from '../../components/FlashCard';
 import { Button } from '../ui/button';
@@ -10,6 +10,8 @@ import { SwipeCardsStep } from "../../components/steps/SwipeCardsStep";
 import { SpeedChallengeStep } from "../../components/steps/SpeedChallengeStep";
 import { QuickQuizCardsStep } from "../../components/steps/QuickQuizzCardsStep";
 import { VisualDiscovery } from "../../components/steps/VisualDiscoveryStep";
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 type ExplanationStepType = {
   type: "explanation";
@@ -63,6 +65,9 @@ interface LessonScreenProps {
 }
 
 export function LessonScreen({ route, navigation }: LessonScreenProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const { path, lesson } = route.params;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
@@ -285,95 +290,97 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  progressBarContainer: {
-    marginBottom: 4,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  footer: {
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  buttonWrapper: {
-    flex: 1,
-  },
-  resultsContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  successIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#d1fae5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  successEmoji: {
-    fontSize: 48,
-  },
-  resultsTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  resultsSubtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  statsCard: {
-    width: '100%',
-    marginBottom: 32,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    progressText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    progressBarContainer: {
+      marginBottom: 4,
+    },
+    content: {
+      flex: 1,
+      padding: 20,
+      justifyContent: 'center',
+    },
+    footer: {
+      padding: 20,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    buttonWrapper: {
+      flex: 1,
+    },
+    resultsContainer: {
+      flex: 1,
+      padding: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    successIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.tintSuccess,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+    },
+    successEmoji: {
+      fontSize: 48,
+    },
+    resultsTitle: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    resultsSubtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginBottom: 32,
+      textAlign: 'center',
+    },
+    statsCard: {
+      width: '100%',
+      marginBottom: 32,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+    statItem: {
+      alignItems: 'center',
+    },
+    statEmoji: {
+      fontSize: 32,
+      marginBottom: 8,
+    },
+    statValue: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+  });
+}

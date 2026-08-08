@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 interface Card {
   id: string;
@@ -14,6 +16,9 @@ interface SwipeCardsStepProps {
 }
 
 export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleNext = () => {
@@ -60,7 +65,7 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           onPress={handlePrev}
           disabled={currentIndex === 0}
         >
-          <Ionicons name="chevron-back" size={24} color="#fff" />
+          <Ionicons name="chevron-back" size={24} color={colors.textInverse} />
         </Pressable>
 
         {isLastCard && (
@@ -77,87 +82,92 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           onPress={handleNext}
           disabled={isLastCard}
         >
-          <Ionicons name="chevron-forward" size={24} color="#fff" />
+          <Ionicons name="chevron-forward" size={24} color={colors.textInverse} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20 
-  },
-  header: { 
-    fontSize: 24, 
-    fontWeight: "700", 
-    marginBottom: 16 
-  },
-  cardContainer: {
-    width: "100%",
-    backgroundColor: "#dbeafe",
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  image: { 
-    width: "100%", 
-    height: 180, 
-    borderRadius: 12, 
-    marginBottom: 12 
-  },
-  concept: { 
-    fontSize: 18, 
-    fontWeight: "600", 
-    textAlign: "center" 
-  },
-  indicators: { 
-    flexDirection: "row", 
-    gap: 8, 
-    marginBottom: 20 
-  },
-  dot: { 
-    width: 8, 
-    height: 8, 
-    borderRadius: 4, 
-    backgroundColor: "#cbd5e1" 
-  },
-  activeDot: { 
-    width: 16, 
-    backgroundColor: "#3b82f6" 
-  },
-  navRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    width: "100%", 
-    alignItems: "center" 
-  },
-  navButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#3b82f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  disabled: { 
-    backgroundColor: "#94a3b8" 
-  },
-  continueButton: {
-    flex: 1,
-    marginHorizontal: 12,
-    paddingVertical: 14,
-    backgroundColor: "#10b981",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  continueText: { 
-    color: "#fff", 
-    fontWeight: "700" 
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { 
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20,
+      backgroundColor: colors.background,
+    },
+    header: { 
+      fontSize: 24, 
+      fontWeight: "700", 
+      marginBottom: 16,
+      color: colors.textPrimary,
+    },
+    cardContainer: {
+      width: "100%",
+      backgroundColor: colors.tintPrimary,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    image: { 
+      width: "100%", 
+      height: 180, 
+      borderRadius: 12, 
+      marginBottom: 12,
+    },
+    concept: { 
+      fontSize: 18, 
+      fontWeight: "600", 
+      textAlign: "center",
+      color: colors.textPrimary,
+    },
+    indicators: { 
+      flexDirection: "row", 
+      gap: 8, 
+      marginBottom: 20,
+    },
+    dot: { 
+      width: 8, 
+      height: 8, 
+      borderRadius: 4, 
+      backgroundColor: colors.muted,
+    },
+    activeDot: { 
+      width: 16, 
+      backgroundColor: colors.primary,
+    },
+    navRow: { 
+      flexDirection: "row", 
+      justifyContent: "space-between", 
+      width: "100%", 
+      alignItems: "center",
+    },
+    navButton: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      backgroundColor: colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    disabled: { 
+      backgroundColor: colors.muted,
+    },
+    continueButton: {
+      flex: 1,
+      marginHorizontal: 12,
+      paddingVertical: 14,
+      backgroundColor: colors.success,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    continueText: { 
+      color: colors.textInverse, 
+      fontWeight: "700",
+    },
+  });
+}

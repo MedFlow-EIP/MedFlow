@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { LessonNode } from '../../components/LessonNode';
 import { Lesson, Path } from '../../types';
@@ -6,6 +6,8 @@ import { getAuth } from 'firebase/auth';
 import { API_URL } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native-gesture-handler';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 interface PathScreenProps {
   route: any;
@@ -13,6 +15,9 @@ interface PathScreenProps {
 }
 
 export function PathScreen({ route, navigation }: PathScreenProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const { path }: { path: Path } = route.params;
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -71,7 +76,7 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
       <View style={[styles.header, { backgroundColor: path.color + '15' }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -107,60 +112,62 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  levelText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  pathTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingVertical: 32,
-    paddingBottom: 100,
-  },
-  pathContainer: {
-    position: 'relative',
-    paddingHorizontal: 20,
-  },
-  connectingLine: {
-    position: 'absolute',
-    left: '50%',
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: '#e5e7eb',
-    marginLeft: -1.5,
-    zIndex: -1,
-  },
-  lessonWrapper: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  headerLeft: {
-    position: 'absolute',
-    left: 20,
-    top: 60,
-    zIndex: 2,
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerContent: {
+      alignItems: 'center',
+    },
+    levelText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    pathTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingVertical: 32,
+      paddingBottom: 100,
+    },
+    pathContainer: {
+      position: 'relative',
+      paddingHorizontal: 20,
+    },
+    connectingLine: {
+      position: 'absolute',
+      left: '50%',
+      top: 0,
+      bottom: 0,
+      width: 3,
+      backgroundColor: colors.border,
+      marginLeft: -1.5,
+      zIndex: -1,
+    },
+    lessonWrapper: {
+      marginBottom: 32,
+      alignItems: 'center',
+    },
+    headerLeft: {
+      position: 'absolute',
+      left: 20,
+      top: 60,
+      zIndex: 2,
+    },
+  });
+}

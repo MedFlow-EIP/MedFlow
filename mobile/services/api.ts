@@ -1,1 +1,1 @@
-export const API_URL = "https://married-unwired-marshland.ngrok-free.dev";
+export const API_URL = "http://162.19.34.243:8080";

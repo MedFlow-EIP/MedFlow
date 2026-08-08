@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
 export function RegisterScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -83,7 +88,7 @@ export function RegisterScreen({ navigation }: any) {
     >
       {/* Background */}
       <LinearGradient
-        colors={['#f8fafc', '#f1f5f9']}
+        colors={[colors.background, colors.surface]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -97,10 +102,10 @@ export function RegisterScreen({ navigation }: any) {
           style={styles.header}
         >
           <LinearGradient
-            colors={['#3b82f6', '#2563eb']}
+            colors={[colors.primary, colors.primaryDark]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color="#ffffff" />
+            <Ionicons name="medical" size={40} color={colors.textInverse} />
           </LinearGradient>
           <Text style={styles.title}>Créer un compte</Text>
           <Text style={styles.subtitle}>Rejoignez notre plateforme médicale</Text>
@@ -112,12 +117,12 @@ export function RegisterScreen({ navigation }: any) {
           style={styles.form}
         >
           {/* Prénom */}
-          <BlurView intensity={60} tint="light" style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
             <TextInput 
               style={styles.input} 
               placeholder="Prénom" 
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.muted}
               value={firstName} 
               onChangeText={setFirstName} 
               autoCapitalize="words"
@@ -125,12 +130,12 @@ export function RegisterScreen({ navigation }: any) {
           </BlurView>
 
           {/* Nom */}
-          <BlurView intensity={60} tint="light" style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
             <TextInput 
               style={styles.input} 
               placeholder="Nom" 
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.muted}
               value={lastName} 
               onChangeText={setLastName} 
               autoCapitalize="words"
@@ -138,12 +143,12 @@ export function RegisterScreen({ navigation }: any) {
           </BlurView>
 
           {/* Email */}
-          <BlurView intensity={60} tint="light" style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color={colors.primary} style={styles.inputIcon} />
             <TextInput 
               style={styles.input} 
               placeholder="Email" 
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.muted}
               value={email} 
               onChangeText={setEmail} 
               autoCapitalize="none" 
@@ -152,12 +157,12 @@ export function RegisterScreen({ navigation }: any) {
           </BlurView>
 
           {/* Mot de passe */}
-          <BlurView intensity={60} tint="light" style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
             <TextInput 
               style={styles.input} 
               placeholder="Mot de passe" 
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.muted}
               value={password} 
               onChangeText={setPassword} 
               secureTextEntry={!showPassword}
@@ -166,18 +171,18 @@ export function RegisterScreen({ navigation }: any) {
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
-                color="#94a3b8" 
+                color={colors.muted} 
               />
             </TouchableOpacity>
           </BlurView>
 
           {/* Confirmation mot de passe */}
-          <BlurView intensity={60} tint="light" style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
             <TextInput 
               style={styles.input} 
               placeholder="Confirmer le mot de passe" 
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.muted}
               value={confirmPassword} 
               onChangeText={setConfirmPassword} 
               secureTextEntry={!showConfirmPassword}
@@ -186,7 +191,7 @@ export function RegisterScreen({ navigation }: any) {
               <Ionicons 
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
-                color="#94a3b8" 
+                color={colors.muted} 
               />
             </TouchableOpacity>
           </BlurView>
@@ -199,7 +204,7 @@ export function RegisterScreen({ navigation }: any) {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={[colors.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.buttonGradient}
@@ -209,7 +214,7 @@ export function RegisterScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>S'inscrire</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+                  <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
                 </>
               )}
             </LinearGradient>
@@ -237,112 +242,114 @@ export function RegisterScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  form: {
-    gap: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderWidth: 1,
-    borderColor: 'rgba(229,231,235,0.5)',
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: 52,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  button: {
-    marginTop: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonGradient: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  linkText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  linkTextBold: {
-    color: '#3b82f6',
-    fontWeight: '600',
-  },
-  termsText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 24,
-    lineHeight: 18,
-  },
-  termsLink: {
-    color: '#3b82f6',
-    fontWeight: '500',
-  },
-});
+function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    form: {
+      gap: 16,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: isDarkBg ? 'rgba(28,31,41,0.7)' : 'rgba(255,255,255,0.7)',
+      borderWidth: 1,
+      borderColor: isDarkBg ? 'rgba(50,54,71,0.6)' : 'rgba(229,231,235,0.5)',
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      height: 52,
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    button: {
+      marginTop: 8,
+      borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    buttonGradient: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    linkButton: {
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    linkText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    linkTextBold: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    termsText: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: colors.muted,
+      marginTop: 24,
+      lineHeight: 18,
+    },
+    termsLink: {
+      color: colors.primary,
+      fontWeight: '500',
+    },
+  });
+}

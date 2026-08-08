@@ -8,6 +8,7 @@ import {
   Image,
   Switch,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -18,11 +19,19 @@ import {
 } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
-import {LinearGradient} from "expo-linear-gradient";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
+import { resetTutorial } from "../../utils/firstTime";
+import { useTutorial } from "../../context/TutorialContext";
+import { navigationRef } from "../../navigationRef";
 
 export function SettingsScreen() {
   const navigation = useNavigation();
   const user = auth.currentUser;
+  const { colors, preference, setPreference } = useTheme();
+  const { show: showTutorial } = useTutorial();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
@@ -119,6 +128,14 @@ export function SettingsScreen() {
   };
 
   // ---------------- LOGOUT ----------------
+  const handleReplayTutorial = async () => {
+    await resetTutorial();
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('MainTabs', { screen: 'Home' });
+    }
+    showTutorial();
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -128,57 +145,69 @@ export function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
+    <ScrollView style={styles.container}>
       {/* HEADER */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: 20,
-          paddingTop: 40,
-        }}
-      >
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={26} color="#111827" />
+          <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Text style={{ fontSize: 18, fontWeight: "700" }}>
-          Paramètres
-        </Text>
+        <Text style={styles.headerTitle}>Paramètres</Text>
 
         <View style={{ width: 26 }} />
       </View>
 
+      {/* APPARENCE */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Apparence</Text>
+        <View style={styles.appearanceToggle}>
+          {(
+            [
+              { key: 'system', label: 'Système', icon: 'phone-portrait-outline' },
+              { key: 'light', label: 'Clair', icon: 'sunny-outline' },
+              { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
+            ] as const
+          ).map((option) => {
+            const active = preference === option.key;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                onPress={() => setPreference(option.key)}
+                style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={16}
+                  color={active ? colors.primary : colors.textSecondary}
+                />
+                <Text style={[styles.appearanceText, active && styles.appearanceTextActive]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* AIDE */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Aide</Text>
+        <TouchableOpacity onPress={handleReplayTutorial} style={styles.replayButton}>
+          <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.replayButtonText}>Revoir le tutoriel</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* PROFILE CARD */}
-      <View style={{ alignItems: "center", marginBottom: 16 }}>
+      <View style={styles.profileCenter}>
         {photo ? (
-          <Image
-            source={{ uri: photo }}
-            style={{
-              width: 90,
-              height: 90,
-              borderRadius: 45,
-            }}
-          />
+          <Image source={{ uri: photo }} style={styles.avatar} />
         ) : (
           <LinearGradient
-            colors={["#3b82f6", "#2563eb"]}
-            style={{
-              width: 90,
-              height: 90,
-              borderRadius: 45,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            colors={[colors.primary, colors.primaryDark]}
+            style={styles.avatar}
           >
-            <Text
-              style={{
-                fontSize: 34,
-                fontWeight: "700",
-                color: "white",
-              }}
-            >
+            <Text style={styles.avatarText}>
               {user?.displayName
                 ? user.displayName.charAt(0).toUpperCase()
                 : "U"}
@@ -187,94 +216,54 @@ export function SettingsScreen() {
         )}
 
         {/* <TouchableOpacity onPress={pickImage}>
-          <Text style={{ color: "#3b82f6", marginTop: 8 }}>
+          <Text style={styles.link}>
             Changer la photo
           </Text>
         </TouchableOpacity> */}
       </View>
-      <View style={{ padding: 20, paddingTop: 0 }}>
-          <Text>Nom</Text>
-          <TextInput
-            value={fullName}
-            onChangeText={setFullName}
-            style={{
-              backgroundColor: "#f3f4f6",
-              padding: 12,
-              borderRadius: 10,
-              marginTop: 6,
-            }}
-          />
 
-          <Text style={{ marginTop: 10 }}>Email</Text>
-          <TextInput
-            value={user?.email || ""}
-            editable={false}
-            style={{
-              backgroundColor: "#e5e7eb",
-              padding: 12,
-              borderRadius: 10,
-              marginTop: 6,
-            }}
-          />
+      <View style={styles.formSection}>
+        <Text style={styles.fieldLabel}>Nom</Text>
+        <TextInput
+          value={fullName}
+          onChangeText={setFullName}
+          style={styles.input}
+          placeholderTextColor={colors.muted}
+        />
 
-          <TouchableOpacity
-            onPress={handleSaveProfile}
-            style={{
-              backgroundColor: "#3b82f6",
-              padding: 12,
-              borderRadius: 10,
-              marginTop: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: "white",
-                textAlign: "center",
-                fontWeight: "600",
-              }}
-            >
-              Sauvegarder
-            </Text>
-          </TouchableOpacity>
+        <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Email</Text>
+        <TextInput
+          value={user?.email || ""}
+          editable={false}
+          style={styles.inputDisabled}
+        />
+
+        <TouchableOpacity onPress={handleSaveProfile} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>Sauvegarder</Text>
+        </TouchableOpacity>
       </View>
 
       {/* SECURITY */}
-      <View style={{ padding: 20, paddingTop: 0 }}>
-        <View
-          style={{
-            backgroundColor: "white",
-            padding: 16,
-            borderRadius: 16,
-            marginBottom: 16,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 10 }}>
-            Sécurité
-          </Text>
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Sécurité</Text>
 
           <TextInput
             placeholder="Nouveau mot de passe"
+            placeholderTextColor={colors.muted}
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
-            style={{
-              backgroundColor: "#f3f4f6",
-              padding: 12,
-              borderRadius: 10,
-              marginBottom: 10,
-            }}
+            style={[styles.input, { marginBottom: 10 }]}
           />
 
           <TextInput
             placeholder="Confirmer le mot de passe"
+            placeholderTextColor={colors.muted}
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            style={{
-              backgroundColor: "#f3f4f6",
-              padding: 12,
-              borderRadius: 10,
-            }}
+            style={styles.input}
           />
 
           {/* PASSWORD RULES */}
@@ -289,231 +278,287 @@ export function SettingsScreen() {
                 ok: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
               },
             ].map((r, i) => (
-              <View
-                key={i}
-                style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}
-              >
+              <View key={i} style={styles.ruleRow}>
                 <Ionicons
                   name={r.ok ? "checkmark-circle" : "close-circle"}
                   size={18}
-                  color={r.ok ? "#22c55e" : "#ef4444"}
+                  color={r.ok ? colors.success : colors.danger}
                 />
-                <Text style={{ marginLeft: 8 }}>{r.label}</Text>
+                <Text style={styles.ruleText}>{r.label}</Text>
               </View>
             ))}
           </View>
 
           <TouchableOpacity
             onPress={handleUpdatePassword}
-            style={{
-              backgroundColor:
-                isPasswordValid && passwordsMatch ? "#22c55e" : "#9ca3af",
-              padding: 12,
-              borderRadius: 10,
-              marginTop: 12,
-            }}
+            style={[
+              styles.successButton,
+              !(isPasswordValid && passwordsMatch) && styles.buttonDisabled,
+            ]}
             disabled={!isPasswordValid || !passwordsMatch}
           >
-            <Text style={{ color: "white", textAlign: "center" }}>
+            <Text style={styles.successButtonText}>
               Mettre à jour le mot de passe
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* APP SETTINGS */}
-        {/* <View
-          style={{
-            backgroundColor: "white",
-            padding: 16,
-            borderRadius: 16,
-            marginBottom: 16,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 10 }}>
+        {/* <View style={styles.card}>
+          <Text style={styles.cardTitle}>
             Application
           </Text> */}
 
           {/* DARK MODE */}
-          {/* <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 12,
-              alignItems: "center",
-            }}
-          >
-            <Text>Mode sombre</Text>
+          {/* <View style={styles.row}>
+            <Text style={{ color: colors.textPrimary }}>Mode sombre</Text>
             <Switch value={darkMode} onValueChange={setDarkMode} />
           </View> */}
 
           {/* NOTIFICATIONS */}
-          {/* <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 12,
-              alignItems: "center",
-            }}
-          >
-            <Text>Notifications</Text>
+          {/* <View style={styles.row}>
+            <Text style={{ color: colors.textPrimary }}>Notifications</Text>
             <Switch value={notifications} onValueChange={setNotifications} />
           </View>
         </View> */}
 
         {/* SUBSCRIPTION */}
-        {/* <View
-          style={{
-            backgroundColor: "white",
-            padding: 16,
-            borderRadius: 16,
-            marginBottom: 16,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700" }}>
+        {/* <View style={styles.card}>
+          <Text style={styles.cardTitle}>
             Abonnement
           </Text>
 
-          <Text style={{ marginTop: 6, color: "#6b7280" }}>
+          <Text style={{ marginTop: 6, color: colors.textSecondary }}>
             Plan actuel : Gratuit
           </Text>
 
-          <TouchableOpacity
-            style={{
-              marginTop: 10,
-              backgroundColor: "#7c3aed",
-              padding: 12,
-              borderRadius: 10,
-            }}
-          >
-            <Text style={{ color: "white", textAlign: "center" }}>
+          <TouchableOpacity style={styles.premiumButton}>
+            <Text style={styles.primaryButtonText}>
               Passer en Premium
             </Text>
           </TouchableOpacity>
         </View> */}
 
         {/* LOGOUT */}
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={{
-            backgroundColor: "#ef4444",
-            padding: 14,
-            borderRadius: 12,
-          }}
-        >
-          <Text
-            style={{
-              color: "white",
-              textAlign: "center",
-              fontWeight: "600",
-            }}
-          >
-            Se déconnecter
-          </Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.dangerButton}>
+          <Text style={styles.primaryButtonText}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
 
-const styles = {
-  container: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  section: {
-    padding: 20,
-    paddingTop: 0,
-  },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: 20,
+      paddingTop: 40,
+    },
 
-  card: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
 
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
+    section: {
+      padding: 20,
+      paddingTop: 0,
+    },
 
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 12,
-    color: "#111827",
-  },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
 
-  input: {
-    backgroundColor: "#f3f4f6",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 6,
-  },
+    appearanceToggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      padding: 4,
+      gap: 4,
+    },
 
-  inputDisabled: {
-    backgroundColor: "#e5e7eb",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 6,
-    color: "#6b7280",
-  },
+    appearanceOption: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 9,
+      backgroundColor: 'transparent',
+    },
 
-  primaryButton: {
-    backgroundColor: "#3b82f6",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 12,
-  },
+    appearanceOptionActive: {
+      backgroundColor: colors.surface,
+    },
 
-  primaryButtonText: {
-    color: "white",
-    textAlign: "center",
-    fontWeight: "600",
-  },
+    appearanceText: {
+      fontSize: 13,
+      fontWeight: '400',
+      color: colors.textSecondary,
+    },
 
-  successButton: {
-    backgroundColor: "#22c55e",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 12,
-  },
+    appearanceTextActive: {
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  dangerButton: {
-    backgroundColor: "#ef4444",
-    padding: 14,
-    borderRadius: 12,
-  },
+    replayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 14,
+    },
 
-  premiumButton: {
-    backgroundColor: "#7c3aed",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 10,
-  },
+    replayButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
+    profileCenter: {
+      alignItems: "center",
+      marginBottom: 16,
+    },
 
-  center: {
-    alignItems: "center",
-    marginBottom: 16,
-  },
+    avatar: {
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  link: {
-    color: "#3b82f6",
-    marginTop: 8,
-    fontWeight: "500",
-  },
+    avatarText: {
+      fontSize: 34,
+      fontWeight: "700",
+      color: colors.textInverse,
+    },
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-};
+    formSection: {
+      padding: 20,
+      paddingTop: 0,
+    },
+
+    fieldLabel: {
+      color: colors.textPrimary,
+    },
+
+    input: {
+      backgroundColor: colors.surfaceAlt,
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 6,
+      color: colors.textPrimary,
+    },
+
+    inputDisabled: {
+      backgroundColor: colors.surfaceAlt,
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 6,
+      color: colors.textSecondary,
+      opacity: 0.7,
+    },
+
+    primaryButton: {
+      backgroundColor: colors.primary,
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 12,
+    },
+
+    primaryButtonText: {
+      color: colors.textInverse,
+      textAlign: "center",
+      fontWeight: "600",
+    },
+
+    card: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    cardTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      marginBottom: 10,
+      color: colors.textPrimary,
+    },
+
+    ruleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 4,
+    },
+
+    ruleText: {
+      marginLeft: 8,
+      color: colors.textSecondary,
+    },
+
+    successButton: {
+      backgroundColor: colors.success,
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 12,
+    },
+
+    successButtonText: {
+      color: colors.textInverse,
+      textAlign: "center",
+      fontWeight: "600",
+    },
+
+    buttonDisabled: {
+      backgroundColor: colors.muted,
+    },
+
+    dangerButton: {
+      backgroundColor: colors.danger,
+      padding: 14,
+      borderRadius: 12,
+    },
+
+    premiumButton: {
+      backgroundColor: colors.secondary,
+      padding: 14,
+      borderRadius: 12,
+      marginTop: 10,
+    },
+
+    link: {
+      color: colors.primary,
+      marginTop: 8,
+      fontWeight: "500",
+    },
+
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 10,
+    },
+  });
+}

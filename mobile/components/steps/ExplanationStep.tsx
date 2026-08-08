@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Image, Pressable } from "react-native";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 interface Props {
   title: string;
@@ -14,6 +16,9 @@ export function ExplanationStep({
   image,
   onContinue,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
@@ -37,54 +42,55 @@ export function ExplanationStep({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      justifyContent: "center",
+      backgroundColor: colors.background,
+    },
 
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-    backgroundColor: "#f9fafb",
-  },
+    card: {
+      backgroundColor: colors.surface,
+      padding: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
 
-  card: {
-    backgroundColor: "#ffffff",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
+    title: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 16,
+    },
 
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
-  },
+    text: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      lineHeight: 24,
+    },
 
-  text: {
-    fontSize: 16,
-    color: "#6b7280",
-    lineHeight: 24,
-  },
+    image: {
+      width: "100%",
+      height: 200,
+      borderRadius: 12,
+      marginBottom: 16,
+    },
 
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
+    button: {
+      marginTop: 24,
+      backgroundColor: colors.textPrimary,
+      padding: 16,
+      borderRadius: 12,
+    },
 
-  button: {
-    marginTop: 24,
-    backgroundColor: "#111827",
-    padding: 16,
-    borderRadius: 12,
-  },
-
-  buttonText: {
-    textAlign: "center",
-    color: "white",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-});
+    buttonText: {
+      textAlign: "center",
+      color: colors.background,
+      fontWeight: "600",
+      fontSize: 16,
+    },
+  });
+}

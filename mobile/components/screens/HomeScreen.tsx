@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { API_URL } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 interface HomeScreenProps {
   navigation: any;
@@ -23,7 +25,11 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ navigation, route }: HomeScreenProps) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [paths, setPaths] = useState<Path[]>([]);
+
   const [greeting, setGreeting] = useState('');
   const user = getAuth().currentUser;
 
@@ -73,7 +79,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <BlurView intensity={80} tint="light" style={styles.header}>
+      <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.header}>
         <View>
           {/* <Text style={styles.greeting}>{greeting},</Text> */}
           <Text style={styles.userName}>{user?.displayName?.split(' ')[0] || 'Médecin'}</Text>
@@ -156,7 +162,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
           {paths.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="school-outline" size={48} color="#cbd5e1" />
+              <Ionicons name="school-outline" size={48} color={colors.muted} />
               <Text style={styles.emptyStateTitle}>Aucun parcours</Text>
               <Text style={styles.emptyStateText}>
                 Commencez par importer un cours ou créer votre premier parcours
@@ -227,267 +233,269 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    paddingTop: 10,
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: 10,
+    },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
-  },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
 
-  greeting: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+    greeting: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
 
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 2,
-  },
+    userName: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 2,
+    },
 
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
 
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+    headerButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
 
-  headerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
+    headerAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+    },
 
-  headerAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#3b82f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    headerAvatarPlaceholder: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  headerAvatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
+    headerAvatarText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textInverse,
+    },
 
-  scrollContent: {
-    padding: 20,
-  },
+    scrollContent: {
+      padding: 20,
+    },
 
-  welcomeCard: {
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
+    welcomeCard: {
+      borderRadius: 24,
+      padding: 20,
+      marginBottom: 24,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 8,
+    },
 
-  welcomeContent: {
-    gap: 12,
-  },
+    welcomeContent: {
+      gap: 12,
+    },
 
-  welcomeTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
+    welcomeTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textInverse,
+    },
 
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-  },
+    welcomeSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255,255,255,0.9)',
+    },
 
-  welcomeProgress: {
-    marginTop: 8,
-  },
+    welcomeProgress: {
+      marginTop: 8,
+    },
 
-  welcomeProgressBar: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
+    welcomeProgressBar: {
+      height: 6,
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
 
-  welcomeProgressFill: {
-    height: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: 3,
-  },
+    welcomeProgressFill: {
+      height: '100%',
+      backgroundColor: colors.textInverse,
+      borderRadius: 3,
+    },
 
-  welcomeStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-  },
+    welcomeStats: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.2)',
+    },
 
-  welcomeStat: {
-    alignItems: 'center',
-    gap: 4,
-  },
+    welcomeStat: {
+      alignItems: 'center',
+      gap: 4,
+    },
 
-  welcomeStatValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
+    welcomeStatValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textInverse,
+    },
 
-  welcomeStatLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-  },
+    welcomeStatLabel: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.8)',
+    },
 
-  welcomeStatDivider: {
-    width: 1,
-    height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
+    welcomeStatDivider: {
+      width: 1,
+      height: '100%',
+      backgroundColor: 'rgba(255,255,255,0.2)',
+    },
 
-  section: {
-    marginBottom: 24,
-  },
+    section: {
+      marginBottom: 24,
+    },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
 
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  seeAllText: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontWeight: '500',
-  },
+    seeAllText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
 
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    gap: 12,
-  },
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      gap: 12,
+    },
 
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
+    emptyStateTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
 
-  emptyStateText: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
 
-  quickActionsSection: {
-    marginBottom: 24,
-  },
+    quickActionsSection: {
+      marginBottom: 24,
+    },
 
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-  },
+    quickActionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginTop: 16,
+    },
 
-  quickActionItem: {
-    flex: 1,
-    minWidth: '22%',
-    alignItems: 'center',
-    gap: 8,
-  },
+    quickActionItem: {
+      flex: 1,
+      minWidth: '22%',
+      alignItems: 'center',
+      gap: 8,
+    },
 
-  quickActionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    quickActionIcon: {
+      width: 60,
+      height: 60,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  quickActionLabel: {
-    fontSize: 12,
-    color: '#4b5563',
-    fontWeight: '500',
-  },
+    quickActionLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
 
-  tipCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 16,
-    gap: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-  },
+    tipCard: {
+      flexDirection: 'row',
+      padding: 16,
+      borderRadius: 16,
+      gap: 12,
+      overflow: 'hidden',
+      marginBottom: 24,
+      backgroundColor: 'rgba(255,255,255,0.7)',
+    },
 
-  tipIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fef3c7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    tipIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.tintWarning,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  tipContent: {
-    flex: 1,
-  },
+    tipContent: {
+      flex: 1,
+    },
 
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
+    tipTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
 
-  tipDescription: {
-    fontSize: 13,
-    color: '#6b7280',
-    lineHeight: 18,
-  },
+    tipDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
 
-  bottomSpacing: {
-    height: 20,
-  },
-});
+    bottomSpacing: {
+      height: 20,
+    },
+  });
+}

@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../theme/ThemeContext';
+import type { ThemeColors } from '../../theme/colors';
 
 export function AddScreen({ navigation }: any) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Que veux-tu faire ?</Text>
@@ -13,30 +18,33 @@ export function AddScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: '#f8fafc' 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 40 
-  },
-  optionButton: {
-    width: '70%',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#3b82f6',
-    marginVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optionText: 
-  { color: '#fff', 
-    fontSize: 18, 
-    fontWeight: '600' 
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      backgroundColor: colors.background,
+    },
+    title: { 
+      fontSize: 24, 
+      fontWeight: 'bold', 
+      marginBottom: 40,
+      color: colors.textPrimary,
+    },
+    optionButton: {
+      width: '70%',
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      marginVertical: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    optionText: { 
+      color: colors.textInverse, 
+      fontSize: 18, 
+      fontWeight: '600',
+    },
+  });
+}

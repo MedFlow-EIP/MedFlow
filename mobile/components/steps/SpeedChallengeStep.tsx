@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 interface Option {
   id: string;
@@ -22,6 +24,9 @@ export function SpeedChallengeStep({
   timeLimit,
   onComplete,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [time, setTime] = useState(timeLimit);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -66,7 +71,7 @@ export function SpeedChallengeStep({
     }, 1500);
   };
 
-  const timerColor = time <= 3 ? "#ef4444" : "#111827";
+  const timerColor = time <= 3 ? colors.danger : colors.textPrimary;
 
   return (
     <View style={styles.container}>
@@ -86,17 +91,17 @@ export function SpeedChallengeStep({
           const isSelected = selectedId === o.id;
           const isCorrect = o.id === correctId;
 
-          let borderColor = "#e5e7eb";
-          let backgroundColor = "#ffffff";
-          let textColor = "#111827";
+          let borderColor = colors.border;
+          let backgroundColor = colors.surface;
+          let textColor = colors.textPrimary;
           
           if (answered) {
             if (isCorrect) {
-              borderColor = "#10b981";
-              backgroundColor = "#f0fdf4";
+              borderColor = colors.success;
+              backgroundColor = colors.tintSuccess;
             } else if (isSelected && !isCorrect) {
-              borderColor = "#ef4444";
-              backgroundColor = "#fef2f2";
+              borderColor = colors.danger;
+              backgroundColor = colors.tintDanger;
             }
           }
 
@@ -134,7 +139,7 @@ export function SpeedChallengeStep({
         <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.feedback}>
           <View style={[
             styles.feedbackCard,
-            { backgroundColor: selectedId === correctId ? "#10b981" : "#ef4444" }
+            { backgroundColor: selectedId === correctId ? colors.success : colors.danger }
           ]}>
             <Text style={styles.feedbackText}>
               {selectedId === correctId ? "✓ Correct !" : "✗ Try again!"}
@@ -151,73 +156,75 @@ export function SpeedChallengeStep({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-    backgroundColor: "#f9fafb",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    alignItems: "center",
-  },
-  timer: {
-    fontSize: 48,
-    fontWeight: "700",
-  },
-  question: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-    textAlign: "center",
-  },
-  optionsContainer: {
-    gap: 12,
-    marginBottom: 8,
-  },
-  option: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: "#ffffff",
-  },
-  optionContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  optionText: {
-    fontSize: 16,
-    fontWeight: "500",
-    flex: 1,
-  },
-  checkIcon: {
-    fontSize: 20,
-    color: "#10b981",
-    fontWeight: "700",
-  },
-  crossIcon: {
-    fontSize: 20,
-    color: "#ef4444",
-    fontWeight: "700",
-  },
-  feedback: {
-    marginTop: 20,
-  },
-  feedbackCard: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  feedbackText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 16,
-    textAlign: "center",
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { 
+      flex: 1,
+      padding: 20,
+      justifyContent: "center",
+      backgroundColor: colors.background,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      padding: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    timer: {
+      fontSize: 48,
+      fontWeight: "700",
+    },
+    question: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    optionsContainer: {
+      gap: 12,
+      marginBottom: 8,
+    },
+    option: {
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      backgroundColor: colors.surface,
+    },
+    optionContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    optionText: {
+      fontSize: 16,
+      fontWeight: "500",
+      flex: 1,
+    },
+    checkIcon: {
+      fontSize: 20,
+      color: colors.success,
+      fontWeight: "700",
+    },
+    crossIcon: {
+      fontSize: 20,
+      color: colors.danger,
+      fontWeight: "700",
+    },
+    feedback: {
+      marginTop: 20,
+    },
+    feedbackCard: {
+      padding: 16,
+      borderRadius: 12,
+      alignItems: "center",
+    },
+    feedbackText: {
+      color: colors.textInverse,
+      fontWeight: "600",
+      fontSize: 16,
+      textAlign: "center",
+    },
+  });
+}

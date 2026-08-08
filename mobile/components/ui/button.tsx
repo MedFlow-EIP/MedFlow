@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useMemo } from "react";
 import {
   Pressable,
   Text,
@@ -8,6 +9,8 @@ import {
   TextStyle,
   StyleProp,
 } from "react-native";
+import { useTheme } from "../../theme/ThemeContext";
+import type { ThemeColors } from "../../theme/colors";
 
 type Variant = "default" | "secondary" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
@@ -38,6 +41,10 @@ export function Button({
   textStyle,
   color,
 }: ButtonProps) {
+  const { colors } = useTheme();
+  const variantStyles = useMemo(() => makeVariantStyles(colors), [colors]);
+  const styles = useMemo(() => makeBaseStyles(), []);
+
   const v = variantStyles[variant];
   const s = sizeStyles[size];
 
@@ -69,56 +76,59 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  textBase: {
-    fontWeight: "700",
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
-  },
-});
-
-const variantStyles: Record<
-  Variant,
-  { container: ViewStyle; text: TextStyle; spinnerColor: string }
-> = {
-  default: {
-    container: { backgroundColor: "#111827" },
-    text: { color: "#ffffff" },
-    spinnerColor: "#ffffff",
-  },
-  secondary: {
-    container: { backgroundColor: "#f3f4f6" },
-    text: { color: "#111827" },
-    spinnerColor: "#111827",
-  },
-  outline: {
-    container: {
-      backgroundColor: "transparent",
-      borderWidth: 1,
-      borderColor: "#d1d5db",
+function makeBaseStyles() {
+  return StyleSheet.create({
+    base: {
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      minHeight: 44,
+      paddingHorizontal: 16,
     },
-    text: { color: "#111827" },
-    spinnerColor: "#111827",
-  },
-  ghost: {
-    container: { backgroundColor: "transparent" },
-    text: { color: "#111827" },
-    spinnerColor: "#111827",
-  },
-};
+    textBase: {
+      fontWeight: "700",
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    pressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.99 }],
+    },
+  });
+}
+
+function makeVariantStyles(
+  colors: ThemeColors
+): Record<Variant, { container: ViewStyle; text: TextStyle; spinnerColor: string }> {
+  return {
+    default: {
+      container: { backgroundColor: colors.textPrimary },
+      text: { color: colors.background },
+      spinnerColor: colors.background,
+    },
+    secondary: {
+      container: { backgroundColor: colors.surfaceAlt },
+      text: { color: colors.textPrimary },
+      spinnerColor: colors.textPrimary,
+    },
+    outline: {
+      container: {
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      text: { color: colors.textPrimary },
+      spinnerColor: colors.textPrimary,
+    },
+    ghost: {
+      container: { backgroundColor: "transparent" },
+      text: { color: colors.textPrimary },
+      spinnerColor: colors.textPrimary,
+    },
+  };
+}
 
 const sizeStyles: Record<Size, { container: ViewStyle; text: TextStyle }> = {
   sm: {
