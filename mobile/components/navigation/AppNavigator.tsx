@@ -14,6 +14,7 @@ import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-na
 import { Ionicons } from '@expo/vector-icons';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/native';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { auth } from '../../firebaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -41,15 +42,19 @@ import { PathScreen } from '../screens/PathScreen';
 import { LessonScreen } from '../screens/LessonScreen';
 import { CourseDetailScreen } from '../screens/CourseDetail';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { TutorialScreen } from '../screens/TutorialScreen';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { useTutorial } from '../../context/TutorialContext';
+import { navigationRef } from '../../navigationRef';
+import { isFirstTimeUser } from '../../utils/firstTime';
 
 const { width, height } = Dimensions.get('window');
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<MainTabParamList>;
   AIChat: undefined;
   CourseDetail: { courseId: string };
   UploadCourse: undefined;
@@ -297,6 +302,7 @@ function AuthStack() {
 export function AppNavigator() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { visible: tutorialVisible, hide: hideTutorial, show: showTutorial } = useTutorial();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -308,6 +314,17 @@ export function AppNavigator() {
     });
     return unsubscribe;
   }, []);
+
+  // Vérifié une fois par session (au login), pas à chaque focus d'écran —
+  // maintenant que TutorialScreen est monté ici et non plus dans HomeScreen,
+  // ce composant ne re-render pas à chaque changement d'onglet.
+  useEffect(() => {
+    if (user) {
+      isFirstTimeUser().then((firstTime) => {
+        if (firstTime) showTutorial();
+      });
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -324,22 +341,37 @@ export function AppNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
-        <>
-          <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen name="AIChat" component={AIChatScreen} />
-          <Stack.Screen name="UploadCourse" component={UploadCourseScreen} />
-          <Stack.Screen name="Path" component={PathScreen} />
-          <Stack.Screen name="Lesson" component={LessonScreen} />
-          <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="Progress" component={ProgressScreen} />
-        </>
-      ) : (
-        <Stack.Screen name="Auth" component={AuthStack} />
+    <>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen name="AIChat" component={AIChatScreen} />
+            <Stack.Screen name="UploadCourse" component={UploadCourseScreen} />
+            <Stack.Screen name="Path" component={PathScreen} />
+            <Stack.Screen name="Lesson" component={LessonScreen} />
+            <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Progress" component={ProgressScreen} />
+          </>
+        ) : (
+          <Stack.Screen name="Auth" component={AuthStack} />
+        )}
+      </Stack.Navigator>
+
+      {/* Monté ICI, en dehors de tout Tab.Screen/Stack.Screen : react-native-screens
+          détache les écrans inactifs de l'arbre natif pour optimiser les perfs, ce
+          qui faisait disparaître le Modal du tutoriel dès qu'on changeait d'onglet
+          quand il vivait à l'intérieur de HomeScreen. À ce niveau, il ne peut
+          jamais être détaché. */}
+      {user && (
+        <TutorialScreen
+          visible={tutorialVisible}
+          onComplete={hideTutorial}
+          navigation={navigationRef}
+        />
       )}
-    </Stack.Navigator>
+    </>
   );
 }
 
