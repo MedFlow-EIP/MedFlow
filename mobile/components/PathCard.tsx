@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Path } from '../types';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemeColors } from '../theme/colors';
 
 interface PathCardProps extends Path {
   onPress: () => void;
@@ -28,6 +29,9 @@ export function PathCard({
   onPress,
   index = 0,
 }: PathCardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const progressPercentage = Math.min(100, Math.max(0, progress));
 
   return (
@@ -43,8 +47,8 @@ export function PathCard({
       >
         <LinearGradient
           colors={isLocked 
-            ? ['#f8fafc', '#f1f5f9']
-            : ['#ffffff', '#f8fafc']
+            ? [colors.surfaceAlt, colors.background]
+            : [colors.surface, colors.surfaceAlt]
           }
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
@@ -67,11 +71,11 @@ export function PathCard({
 
             {isLocked ? (
               <View style={styles.lockBadge}>
-                <Ionicons name="lock-closed" size={20} color="#94a3b8" />
+                <Ionicons name="lock-closed" size={20} color={colors.muted} />
               </View>
             ) : (
               <View style={[styles.arrowBadge, { backgroundColor: color }]}>
-                <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+                <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
               </View>
             )}
           </View>
@@ -80,7 +84,7 @@ export function PathCard({
           <View style={styles.footer}>
             <View style={styles.progressHeader}>
               <View style={styles.progressInfo}>
-                <Ionicons name="document-text" size={14} color="#64748b" />
+                <Ionicons name="document-text" size={14} color={colors.textSecondary} />
                 <Text style={styles.progressText}>
                   {completedLessons}/{totalLessons} leçons
                 </Text>
@@ -110,7 +114,7 @@ export function PathCard({
 
             {progressPercentage === 100 && (
               <View style={styles.completedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                 <Text style={styles.completedText}>Terminé</Text>
               </View>
             )}
@@ -121,122 +125,124 @@ export function PathCard({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 12,
-    paddingHorizontal: 16,
-  },
-  card: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  locked: {
-    opacity: 0.7,
-  },
-  gradient: {
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  emoji: {
-    fontSize: 26,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginBottom: 2,
-  },
-  titleLocked: {
-    color: '#64748b',
-  },
-  description: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-  descriptionLocked: {
-    color: '#94a3b8',
-  },
-  lockBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f1f5f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footer: {
-    gap: 8,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  percentage: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  progressBarBackground: {
-    height: 6,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  continueText: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  completedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  completedText: {
-    fontSize: 13,
-    color: '#10b981',
-    fontWeight: '500',
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrapper: {
+      marginBottom: 12,
+      paddingHorizontal: 16,
+    },
+    card: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    locked: {
+      opacity: 0.7,
+    },
+    gradient: {
+      padding: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    iconContainer: {
+      width: 52,
+      height: 52,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    emoji: {
+      fontSize: 26,
+    },
+    headerContent: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+    titleLocked: {
+      color: colors.textSecondary,
+    },
+    description: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    descriptionLocked: {
+      color: colors.muted,
+    },
+    lockBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    arrowBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    footer: {
+      gap: 8,
+    },
+    progressHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    progressInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    progressText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    percentage: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    progressBarBackground: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+    continueText: {
+      fontSize: 13,
+      fontWeight: '500',
+      marginTop: 4,
+    },
+    completedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 4,
+    },
+    completedText: {
+      fontSize: 13,
+      color: colors.success,
+      fontWeight: '500',
+    },
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemeColors } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,6 +22,9 @@ interface FloatingActionButtonProps {
 }
 
 export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActionButtonProps) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
 
@@ -75,7 +80,7 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
           activeOpacity={1}
           onPress={toggleMenu}
         >
-          <BlurView intensity={80} style={StyleSheet.absoluteFill}>
+          <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill}>
             <View style={styles.modalContent}>
               <Animated.View
                 style={[
@@ -150,65 +155,67 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
   );
 }
 
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 90,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    zIndex: 1000,
-  },
-  fabIcon: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 90,
-    paddingRight: 20,
-    alignItems: 'flex-end',
-  },
-  optionContainer: {
-    marginBottom: 16,
-    alignItems: 'flex-end',
-  },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 30,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  uploadOption: {
-    backgroundColor: '#10b981',
-  },
-  voiceOption: {
-    backgroundColor: '#8b5cf6',
-  },
-  optionText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 90,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      zIndex: 1000,
+    },
+    fabIcon: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      paddingBottom: 90,
+      paddingRight: 20,
+      alignItems: 'flex-end',
+    },
+    optionContainer: {
+      marginBottom: 16,
+      alignItems: 'flex-end',
+    },
+    optionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 30,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+    },
+    uploadOption: {
+      backgroundColor: colors.success,
+    },
+    voiceOption: {
+      backgroundColor: colors.secondary,
+    },
+    optionText: {
+      color: '#ffffff',
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
+  });
+}
