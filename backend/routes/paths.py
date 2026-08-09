@@ -62,5 +62,6 @@ def get_lessons(path_id):
 @require_auth
 def complete_lesson(path_id, lesson_id):
     """Mark a lesson as completed and unlock the next one."""
-    current_app.db.complete_lesson(g.uid, lesson_id)
-    return jsonify({"success": True})
+    current_app.db.upsert_user_profile(g.uid, g.display_name)
+    new_badges = current_app.db.complete_lesson(g.uid, lesson_id)
+    return jsonify({"success": True, "newBadges": new_badges})
