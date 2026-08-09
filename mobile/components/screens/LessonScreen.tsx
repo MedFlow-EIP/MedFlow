@@ -1,9 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { FlashCard } from '../../components/FlashCard';
 import { Button } from '../ui/button';
 import { ProgressBar } from '../ui/progress';
 import { Card } from '../ui/card';
+import { Ionicons } from '@expo/vector-icons';
+import { auth } from '../../firebaseConfig';
+import { API_URL } from '@/services/api';
+import { getAuthHeaders } from '../../utils/authHeaders';
 import { Path, Lesson, FlashCardData } from '../../types';
 import { ExplanationStep } from "../../components/steps/ExplanationStep";
 import { SwipeCardsStep } from "../../components/steps/SwipeCardsStep";
@@ -72,7 +76,34 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [index, setIndex] = useState(0);
-  const xp = lesson?.xp ?? 10
+  const xp = lesson?.xp ?? 10;
+
+  const [streak, setStreak] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showResults) return;
+    const user = auth.currentUser;
+    if (!user) {
+      setStreak(-1);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/account`, {
+          headers: await getAuthHeaders(user),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        setStreak(data?.stats?.streak ?? -1);
+      } catch (err) {
+        console.error('Erreur chargement streak:', err);
+        setStreak(-1);
+      }
+    })();
+  }, [showResults]);
 
   const steps: LessonStep[] = [
   {
@@ -212,22 +243,33 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
             Vous avez terminé cette leçon !
           </Text>
 
-          {/* <Card style={styles.statsCard}>
+          <Card style={styles.statsCard}>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={styles.statEmoji}>⭐</Text>
+                <Ionicons name="star" size={28} color={colors.primary} />
                 <Text style={styles.statValue}>+{xp} XP</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statEmoji}>🔥</Text>
-                <Text style={styles.statValue}>Série: 7j</Text>
+                {streak === null ? (
+                  <ActivityIndicator size="small" color={colors.warning} />
+                ) : streak === -1 ? (
+                  <>
+                    <Ionicons name="flame-outline" size={28} color={colors.muted} />
+                    <Text style={styles.statValue}>Série : —</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="flame" size={28} color={colors.warning} />
+                    <Text style={styles.statValue}>Série : {streak}j</Text>
+                  </>
+                )}
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statEmoji}>✅</Text>
+                <Ionicons name="checkmark-circle" size={28} color={colors.success} />
                 <Text style={styles.statValue}>100%</Text>
               </View>
             </View>
-          </Card> */}
+          </Card>
 
           <Button
             title="Continuer"
