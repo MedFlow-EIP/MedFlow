@@ -8,11 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { getAuthHeaders } from '../../utils/authHeaders';
 
 interface PathScreenProps {
   route: any;
   navigation: any;
 }
+
+type Stats = {
+  xp: number;
+  streak: number;
+};
 
 export function PathScreen({ route, navigation }: PathScreenProps) {
   const { colors } = useTheme();
@@ -21,16 +27,31 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
   const { path }: { path: Path } = route.params;
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const user = getAuth().currentUser;
+
+  const loadStats = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_URL}/api/account`, {
+        headers: await getAuthHeaders(user),
+      });
+      const data = await res.json();
+      setStats({
+        xp: data?.stats?.xp ?? 0,
+        streak: data?.stats?.streak ?? 0,
+      });
+    } catch (err) {
+      console.error('Erreur chargement stats:', err);
+    }
+  };
 
   useEffect(() => {
     const loadLessons = async () => {
       if (!user) return;
       try {
         const res = await fetch(`${API_URL}/api/lessons/${path.id}`, {
-          headers: {
-            "X-User-UID": user.uid,
-          },
+          headers: await getAuthHeaders(user),
         });
         const data = await res.json();
         setLessons(data.lessons);
@@ -39,6 +60,7 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
       }
     };
     loadLessons();
+    loadStats();
   }, [path, user]);
 
   const handleLessonPress = (lesson: Lesson) => {
@@ -50,22 +72,25 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
   const handleLessonComplete = async (lesson: Lesson) => {
     if (!user) return;
     try {
+      const headers = await getAuthHeaders(user);
       await fetch(`${API_URL}/api/lessons/${path.id}/${lesson.id}/complete`, {
         method: "POST",
-        headers: { "X-User-UID": user.uid },
+        headers,
       });
 
       const res = await fetch(`${API_URL}/api/lessons/${path.id}`, {
-        headers: { "X-User-UID": user.uid },
+        headers,
       });
       const data = await res.json();
       setLessons(data.lessons);
 
       const homeRes = await fetch(`${API_URL}/api/paths`, {
-        headers: { "X-User-UID": user.uid },
+        headers,
       });
       const homeData = await homeRes.json();
       navigation.getParent()?.setParams({ updatedPaths: homeData.paths });
+
+      await loadStats();
     } catch (err) {
       console.error(err);
     }
@@ -79,6 +104,19 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
+
+        {stats && (
+          <View style={styles.statsRow}>
+            <View style={styles.statBadge}>
+              <Ionicons name="star" size={14} color={colors.primary} />
+              <Text style={styles.statBadgeText}>{stats.xp} XP</Text>
+            </View>
+            <View style={styles.statBadge}>
+              <Ionicons name="flame" size={14} color={colors.warning} />
+              <Text style={styles.statBadgeText}>{stats.streak}j</Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.headerContent}>
           <Text style={styles.levelText}>Niveau {path.completedLessons + 1}</Text>
@@ -168,6 +206,33 @@ function makeStyles(colors: ThemeColors) {
       left: 20,
       top: 60,
       zIndex: 2,
+    },
+    statsRow: {
+      position: 'absolute',
+      right: 20,
+      top: 58,
+      zIndex: 2,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    statBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 1,
+    },
+    statBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textPrimary,
     },
   });
 }
