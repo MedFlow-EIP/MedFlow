@@ -23,10 +23,11 @@ def get_account():
 
         with db.connection() as conn:
             row = conn.execute(
-                "SELECT xp FROM user_stats WHERE uid=?", (uid,)
+                "SELECT xp, streak FROM user_stats WHERE uid=?", (uid,)
             ).fetchone()
 
         xp = row["xp"] if row else 0
+        streak = row["streak"] if row else 0
 
         return jsonify({
             "user": build_user_response(),
@@ -39,6 +40,7 @@ def get_account():
                 "flashcard_sessions": session_stats["flashcard_sessions"],
                 "quiz_sessions": session_stats["quiz_sessions"],
                 "xp": xp,
+                "streak": streak,
             },
         })
 
