@@ -14,6 +14,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import date
 from typing import Dict, Iterator, List, Optional, Tuple
 
 
@@ -422,6 +423,41 @@ class Database:
                 WHERE uid=?
                 """,
                 (xp, uid)
+            )
+
+            today = date.today()
+            stats_row = conn.execute(
+                "SELECT streak, last_activity FROM user_stats WHERE uid=?",
+                (uid,)
+            ).fetchone()
+
+            last_activity_str = stats_row["last_activity"] if stats_row else None
+            current_streak = stats_row["streak"] if stats_row else 0
+
+            if last_activity_str:
+                last_activity = date.fromisoformat(last_activity_str)
+                delta_days = (today - last_activity).days
+
+                if delta_days == 0:
+                    # Déjà actif aujourd'hui : le streak ne bouge pas.
+                    new_streak = current_streak
+                elif delta_days == 1:
+                    # Actif hier : la série continue.
+                    new_streak = current_streak + 1
+                else:
+                    # Au moins un jour sauté : la série repart de 1.
+                    new_streak = 1
+            else:
+                # Toute première activité de cet utilisateur.
+                new_streak = 1
+
+            conn.execute(
+                """
+                UPDATE user_stats
+                SET streak = ?, last_activity = ?
+                WHERE uid = ?
+                """,
+                (new_streak, today.isoformat(), uid)
             )
 
             path_id_row = conn.execute(

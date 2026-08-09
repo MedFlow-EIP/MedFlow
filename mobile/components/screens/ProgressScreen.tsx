@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth } from '../../firebaseConfig';
@@ -15,16 +15,19 @@ import { API_URL } from '@/services/api';
 import { ProgressDashboard } from '../../components/ProgressDashboard';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { getAuthHeaders } from '../../utils/authHeaders';
 
 type ProgressData = {
   totalLessons: number;
   completedLessons: number;
   totalXP: number;
+  currentStreak: number;
 };
 
 export function ProgressScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation();
 
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,11 +42,7 @@ export function ProgressScreen() {
 
     setError(false);
     try {
-      const headers = {
-        'X-User-UID': user.uid,
-        'X-User-Name': user.displayName ?? '',
-        'X-User-Avatar': user.photoURL ?? '',
-      };
+      const headers = await getAuthHeaders(user);
 
       const [accountRes, pathsRes] = await Promise.all([
         fetch(`${API_URL}/api/account`, { headers }),
@@ -69,6 +68,7 @@ export function ProgressScreen() {
         totalLessons,
         completedLessons,
         totalXP: account?.stats?.xp ?? 0,
+        currentStreak: account?.stats?.streak ?? 0,
       });
     } catch (e) {
       console.error('Erreur chargement progression:', e);
@@ -88,8 +88,19 @@ export function ProgressScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Votre progression</Text>
-        <Text style={styles.subtitle}>Suivi de tes leçons et de ton XP</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            hitSlop={8}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Votre progression</Text>
+            <Text style={styles.subtitle}>Suivi de tes leçons et de ton XP</Text>
+          </View>
+        </View>
       </View>
 
       {loading && (
@@ -143,6 +154,7 @@ export function ProgressScreen() {
             totalLessons={data.totalLessons}
             completedLessons={data.completedLessons}
             totalXP={data.totalXP}
+            currentStreak={data.currentStreak}
           />
         </View>
       )}
@@ -163,6 +175,19 @@ function makeStyles(colors: ThemeColors) {
       paddingBottom: 20,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceAlt,
     },
     title: {
       fontSize: 24,

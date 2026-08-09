@@ -96,3 +96,43 @@ class TestCompleteLesson:
     def test_requires_auth(self, client):
         resp = client.post("/api/lessons/anatomy/1/complete")
         assert resp.status_code == 400
+
+    def test_complete_lesson_awards_xp(self, client, auth_headers, db, uid):
+        """L'XP doit augmenter du montant exact de la leçon complétée
+        (celle qu'affiche LessonNode côté mobile)."""
+        client.get("/api/paths", headers=auth_headers)
+        lessons = db.fetch_path_lessons(uid, "anatomy")
+        first = lessons[0]
+
+        xp_before = client.get("/api/account", headers=auth_headers).get_json()["stats"]["xp"]
+
+        client.post(f"/api/lessons/anatomy/{first['id']}/complete", headers=auth_headers)
+
+        xp_after = client.get("/api/account", headers=auth_headers).get_json()["stats"]["xp"]
+        assert xp_after == xp_before + first["xp"]
+
+    def test_complete_lesson_starts_streak_at_one(self, client, auth_headers, db, uid):
+        """Première leçon jamais complétée par cet utilisateur : le streak
+        affiché sur ProgressScreen doit démarrer à 1, pas rester à 0."""
+        client.get("/api/paths", headers=auth_headers)
+        lessons = db.fetch_path_lessons(uid, "anatomy")
+
+        client.post(f"/api/lessons/anatomy/{lessons[0]['id']}/complete", headers=auth_headers)
+
+        account = client.get("/api/account", headers=auth_headers).get_json()
+        assert account["stats"]["streak"] == 1
+
+    def test_complete_two_lessons_same_day_keeps_streak_at_one(
+        self, client, auth_headers, db, uid
+    ):
+        """Deux leçons complétées le même jour (cas réaliste : un utilisateur
+        qui enchaîne plusieurs LessonNode d'affilée) ne doivent compter que
+        pour un seul jour de streak, pas deux."""
+        client.get("/api/paths", headers=auth_headers)
+        lessons = db.fetch_path_lessons(uid, "anatomy")
+
+        client.post(f"/api/lessons/anatomy/{lessons[0]['id']}/complete", headers=auth_headers)
+        client.post(f"/api/lessons/anatomy/{lessons[1]['id']}/complete", headers=auth_headers)
+
+        account = client.get("/api/account", headers=auth_headers).get_json()
+        assert account["stats"]["streak"] == 1

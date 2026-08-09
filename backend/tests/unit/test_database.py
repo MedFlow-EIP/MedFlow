@@ -1,4 +1,6 @@
 """Unit tests for the Database class."""
+from datetime import date, timedelta
+
 import pytest
 from database import Database, Course
 
@@ -156,3 +158,78 @@ def test_complete_lesson_unlocks_next(tmp_path):
     lessons_after = db.fetch_path_lessons("u1", "anatomy")
     second_after = next(l for l in lessons_after if l["id"] == second_id)
     assert second_after["status"] == "available"
+
+
+# ---------------------------------------------------------------------------
+# Streak calculation
+# ---------------------------------------------------------------------------
+
+def _get_stats(db, uid):
+    with db.connection() as conn:
+        return conn.execute(
+            "SELECT xp, streak, last_activity FROM user_stats WHERE uid=?", (uid,)
+        ).fetchone()
+
+
+def test_complete_lesson_sets_streak_to_one_on_first_activity(tmp_path):
+    db = _make_db(tmp_path)
+    db.ensure_user_lessons("u1")
+    first_id = db.fetch_path_lessons("u1", "anatomy")[0]["id"]
+
+    db.complete_lesson("u1", first_id)
+
+    stats = _get_stats(db, "u1")
+    assert stats["streak"] == 1
+    assert stats["last_activity"] == date.today().isoformat()
+
+
+def test_complete_lesson_streak_unchanged_same_day(tmp_path):
+    db = _make_db(tmp_path)
+    db.ensure_user_lessons("u1")
+    lessons = db.fetch_path_lessons("u1", "anatomy")
+
+    db.complete_lesson("u1", lessons[0]["id"])
+    db.complete_lesson("u1", lessons[1]["id"])
+
+    stats = _get_stats(db, "u1")
+    assert stats["streak"] == 1
+
+
+def test_complete_lesson_streak_increments_on_consecutive_day(tmp_path):
+    db = _make_db(tmp_path)
+    db.ensure_user_lessons("u1")
+    lessons = db.fetch_path_lessons("u1", "anatomy")
+
+    db.complete_lesson("u1", lessons[0]["id"])
+
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    with db.transaction() as conn:
+        conn.execute(
+            "UPDATE user_stats SET last_activity=? WHERE uid=?", (yesterday, "u1")
+        )
+
+    db.complete_lesson("u1", lessons[1]["id"])
+
+    stats = _get_stats(db, "u1")
+    assert stats["streak"] == 2
+    assert stats["last_activity"] == date.today().isoformat()
+
+
+def test_complete_lesson_streak_resets_after_gap(tmp_path):
+    db = _make_db(tmp_path)
+    db.ensure_user_lessons("u1")
+    lessons = db.fetch_path_lessons("u1", "anatomy")
+
+    db.complete_lesson("u1", lessons[0]["id"])
+
+    three_days_ago = (date.today() - timedelta(days=3)).isoformat()
+    with db.transaction() as conn:
+        conn.execute(
+            "UPDATE user_stats SET streak=5, last_activity=? WHERE uid=?",
+            (three_days_ago, "u1"),
+        )
+
+    db.complete_lesson("u1", lessons[1]["id"])
+
+    stats = _get_stats(db, "u1")
+    assert stats["streak"] == 1
