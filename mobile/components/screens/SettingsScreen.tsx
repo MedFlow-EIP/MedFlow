@@ -9,6 +9,7 @@ import {
   Switch,
   Alert,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -23,6 +24,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
 import { resetTutorial } from "../../utils/firstTime";
+import { getAuthHeaders } from "../../utils/authHeaders";
+import { API_URL } from "@/services/api";
 import { useTutorial } from "../../context/TutorialContext";
 import { navigationRef } from "../../navigationRef";
 
@@ -35,6 +38,7 @@ export function SettingsScreen() {
 
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,14 +70,54 @@ export function SettingsScreen() {
 
   // ---------------- IMAGE PICKER ----------------
   const pickImage = async () => {
+    if (!user) return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 1,
+      aspect: [1, 1],
+      quality: 0.7,
     });
 
-    if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    // Aperçu instantané avec l'URI locale, le temps que l'upload se termine.
+    setPhoto(asset.uri);
+
+    try {
+      setUploadingPhoto(true);
+
+      const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType =
+        ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: asset.uri,
+        name: `avatar.${ext}`,
+        type: mimeType,
+      } as any);
+
+      const response = await fetch(`${API_URL}/api/account/avatar`, {
+        method: 'POST',
+        headers: await getAuthHeaders(user),
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Erreur serveur (${response.status})`);
+      }
+
+      // Remplace l'aperçu local par la vraie URL du backend — c'est celle-là
+      // qui sera persistée sur le profil Firebase (photoURL).
+      setPhoto(data.avatarUrl);
+    } catch (e: any) {
+      Alert.alert("Erreur", "Impossible d'uploader la photo : " + e.message);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -200,26 +244,34 @@ export function SettingsScreen() {
 
       {/* PROFILE CARD */}
       <View style={styles.profileCenter}>
-        {photo ? (
-          <Image source={{ uri: photo }} style={styles.avatar} />
-        ) : (
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            style={styles.avatar}
-          >
-            <Text style={styles.avatarText}>
-              {user?.displayName
-                ? user.displayName.charAt(0).toUpperCase()
-                : "U"}
-            </Text>
-          </LinearGradient>
-        )}
+        <View style={styles.avatarWrapper}>
+          {photo ? (
+            <Image source={{ uri: photo }} style={styles.avatar} />
+          ) : (
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarText}>
+                {user?.displayName
+                  ? user.displayName.charAt(0).toUpperCase()
+                  : "U"}
+              </Text>
+            </LinearGradient>
+          )}
 
-        {/* <TouchableOpacity onPress={pickImage}>
-          <Text style={styles.link}>
-            Changer la photo
-          </Text>
-        </TouchableOpacity> */}
+          <TouchableOpacity
+            onPress={pickImage}
+            disabled={uploadingPhoto}
+            style={styles.editAvatarButton}
+          >
+            {uploadingPhoto ? (
+              <ActivityIndicator size="small" color={colors.textInverse} />
+            ) : (
+              <Ionicons name="camera" size={16} color={colors.textInverse} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.formSection}>
@@ -450,6 +502,24 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 34,
       fontWeight: "700",
       color: colors.textInverse,
+    },
+
+    avatarWrapper: {
+      position: "relative",
+    },
+
+    editAvatarButton: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: colors.background,
     },
 
     formSection: {
