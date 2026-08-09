@@ -23,33 +23,50 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { getAuthHeaders } from "../../utils/authHeaders";
 
 const { width, height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
 
-type Achievement = {
-  id: number;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  progress?: number;
-};
-
 type Badge = {
-  id: number;
-  name: string;
+  id: string;
+  title: string;
+  description: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
 };
 
-type RecentActivity = {
-  id: number;
+type ActivityItem = {
+  type: "lesson_completed" | "badge_unlocked" | string;
   title: string;
-  time: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  xp?: number;
+  detail: string;
+  xpGained: number;
+  createdAt: string;
 };
+
+function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "À l'instant";
+  if (diffMin < 60) return `Il y a ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Il y a ${diffH}h`;
+  const diffDays = Math.floor(diffH / 24);
+  if (diffDays === 1) return "Hier";
+  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+function getActivityIcon(type: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
+  if (type === "badge_unlocked") return { icon: "trophy", color: "#f59e0b" };
+  if (type === "lesson_completed") return { icon: "book", color: "#3b82f6" };
+  return { icon: "checkmark-circle", color: "#10b981" };
+}
 
 export function AccountScreen() {
   const { colors, isDark } = useTheme();
@@ -60,32 +77,30 @@ export function AccountScreen() {
   const user = auth.currentUser;
 
   const [stats, setStats] = useState({
-    streak: 7,
-    xp: 420,
-    league: "Silver League",
-    rank: "#1,234",
-    level: 12,
-    nextLevelXp: 500,
+    streak: 0,
+    xp: 0,
+    rank: 1,
   });
 
-  const [badges, setBadges] = useState<Badge[]>([
-    { id: 1, name: "January Hero", icon: "trophy", color: "#f59e0b" },
-    { id: 2, name: "Study Master", icon: "flame", color: "#ef4444" },
-    { id: 3, name: "Early Bird", icon: "sunny", color: "#fbbf24" },
-    { id: 4, name: "Quiz King", icon: "school", color: "#8b5cf6" },
-  ]);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
 
-  const [achievements, setAchievements] = useState<Achievement[]>([
-    { id: 1, title: "Premier cours", icon: "school", color: "#3b82f6", progress: 100 },
-    { id: 2, title: "10 sessions", icon: "flash", color: "#10b981", progress: 70 },
-    { id: 3, title: "Série de 7 jours", icon: "flame", color: "#f59e0b", progress: 45 },
-  ]);
-
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([
-    { id: 1, title: "Quiz Anatomie", time: "Il y a 2 heures", icon: "help-circle", color: "#3b82f6", xp: 50 },
-    { id: 2, title: "Leçon de cardiologie", time: "Hier", icon: "heart", color: "#ef4444", xp: 30 },
-    { id: 3, title: "Flashcards pharmacologie", time: "Hier", icon: "document-text", color: "#8b5cf6", xp: 25 },
-  ]);
+  const loadBadgesAndActivity = async () => {
+    if (!user) return;
+    try {
+      const headers = await getAuthHeaders(user);
+      const [badgesRes, activityRes] = await Promise.all([
+        fetch(`${API_URL}/api/badges`, { headers }),
+        fetch(`${API_URL}/api/activity?limit=10`, { headers }),
+      ]);
+      const badgesData = await badgesRes.json();
+      const activityData = await activityRes.json();
+      setBadges(Array.isArray(badgesData.badges) ? badgesData.badges : []);
+      setActivity(Array.isArray(activityData.activity) ? activityData.activity : []);
+    } catch (err) {
+      console.error("Erreur chargement badges/activité:", err);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -140,11 +155,7 @@ export function AccountScreen() {
       const loadAccount = async () => {
         try {
           const res = await fetch(`${API_URL}/api/account`, {
-            headers: {
-              "X-User-UID": user.uid,
-              "X-User-Name": user.displayName ?? "",
-              "X-User-Avatar": user.photoURL ?? "",
-            },
+            headers: await getAuthHeaders(user),
           });
 
           const data = await res.json();
@@ -152,10 +163,7 @@ export function AccountScreen() {
           setStats({
             xp: data.stats.xp,
             streak: data.stats.streak,
-            league: "Silver League",
-            rank: "#1,234",
-            level: 12,
-            nextLevelXp: 500,
+            rank: data.stats.rank,
           });
         } catch (err) {
           console.error("Erreur chargement compte", err);
@@ -163,6 +171,7 @@ export function AccountScreen() {
       };
 
       loadAccount();
+      loadBadgesAndActivity();
 
     }, [user])
   );
@@ -180,8 +189,6 @@ export function AccountScreen() {
     month: "long",
     day: "numeric",
   });
-
-  const progressToNextLevel = (stats.xp / stats.nextLevelXp) * 100;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -238,34 +245,28 @@ export function AccountScreen() {
         </View>
 
         {/* Stats Cards */}
-        {/* <View style={styles.statsGrid}>
-          <LinearGradient
-            colors={['#eff6ff', '#dbeafe']}
-            style={styles.statCard}
-          >
-            <Ionicons name="flame" size={28} color="#3b82f6" />
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, { backgroundColor: colors.tintWarning }]}>
+            <Ionicons name="flame" size={28} color={colors.warning} />
             <Text style={styles.statNumber}>{stats.streak}</Text>
             <Text style={styles.statLabel}>Jours de série</Text>
-          </LinearGradient>
+          </View>
 
-          <LinearGradient
-            colors={['#fef3c7', '#fde68a']}
-            style={styles.statCard}
-          >
-            <Ionicons name="star" size={28} color="#f59e0b" />
+          <View style={[styles.statCard, { backgroundColor: colors.tintPrimary }]}>
+            <Ionicons name="star" size={28} color={colors.primary} />
             <Text style={styles.statNumber}>{stats.xp}</Text>
             <Text style={styles.statLabel}>XP totaux</Text>
-          </LinearGradient>
+          </View>
 
-          <LinearGradient
-            colors={['#f0fdf4', '#dcfce7']}
-            style={styles.statCard}
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: colors.tintSuccess }]}
+            onPress={() => navigation.navigate("Leaderboard")}
           >
-            <Ionicons name="trophy" size={28} color="#10b981" />
-            <Text style={styles.statNumber}>{stats.rank}</Text>
+            <Ionicons name="trophy" size={28} color={colors.success} />
+            <Text style={styles.statNumber}>#{stats.rank}</Text>
             <Text style={styles.statLabel}>Classement</Text>
-          </LinearGradient>
-        </View> */}
+          </TouchableOpacity>
+        </View>
 
         {/* Level Progress */}
         {/* <BlurView intensity={60} tint="light" style={styles.levelCard}>
@@ -286,101 +287,84 @@ export function AccountScreen() {
           </View>
         </BlurView> */}
 
-        {/* Badges Section */}
-        {/* <View style={styles.section}>
+        {/* Badges */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Badges</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
+          <View style={styles.badgesGrid}>
             {badges.map((badge) => (
-              <View key={badge.id} style={styles.badgeItem}>
-                <LinearGradient
-                  colors={[badge.color + '20', badge.color + '10']}
-                  style={styles.badgeIcon}
+              <View
+                key={badge.id}
+                style={[styles.badgeGridItem, !badge.unlocked && styles.badgeGridItemLocked]}
+              >
+                <View
+                  style={[
+                    styles.badgeIcon,
+                    {
+                      backgroundColor: badge.unlocked
+                        ? badge.color + "20"
+                        : colors.surfaceAlt,
+                    },
+                  ]}
                 >
-                  <Ionicons name={badge.icon} size={32} color={badge.color} />
-                </LinearGradient>
-                <Text style={styles.badgeName}>{badge.name}</Text>
+                  <Ionicons
+                    name={badge.unlocked ? badge.icon : "lock-closed"}
+                    size={26}
+                    color={badge.unlocked ? badge.color : colors.muted}
+                  />
+                </View>
+                <Text
+                  style={[styles.badgeName, !badge.unlocked && styles.badgeNameLocked]}
+                  numberOfLines={1}
+                >
+                  {badge.title}
+                </Text>
+                <Text style={styles.badgeDescription} numberOfLines={2}>
+                  {badge.description}
+                </Text>
               </View>
             ))}
-          </ScrollView>
-        </View> */}
-
-        {/* Achievements Section */}
-        {/* <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Succès</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
           </View>
+        </View>
 
-          {achievements.map((achievement) => (
-            <BlurView key={achievement.id} intensity={60} tint="light" style={styles.achievementCard}>
-              <LinearGradient
-                colors={[achievement.color + '20', achievement.color + '10']}
-                style={styles.achievementIcon}
-              >
-                <Ionicons name={achievement.icon} size={24} color={achievement.color} />
-              </LinearGradient>
-              <View style={styles.achievementContent}>
-                <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                <View style={styles.achievementProgress}>
-                  <View style={styles.achievementProgressBar}>
-                    <LinearGradient
-                      colors={[achievement.color, achievement.color + '80']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[
-                        styles.achievementProgressFill, 
-                        { width: achievement.progress ? `${achievement.progress}%` : '0%' }
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.achievementProgressText}>{achievement.progress}%</Text>
-                </View>
-              </View>
-            </BlurView>
-          ))}
-        </View> */}
-
-        {/* Recent Activity */}
-        {/* <View style={styles.section}>
+        {/* Activité récente */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Activité récente</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
           </View>
 
-          {recentActivities.map((activity) => (
-            <BlurView key={activity.id} intensity={60} tint="light" style={styles.activityCard}>
-              <LinearGradient
-                colors={[activity.color + '20', activity.color + '10']}
-                style={styles.activityIcon}
-              >
-                <Ionicons name={activity.icon} size={22} color={activity.color} />
-              </LinearGradient>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-              {activity.xp && (
-                <LinearGradient
-                  colors={['#fef3c7', '#fde68a']}
-                  style={styles.activityXp}
-                >
-                  <Ionicons name="star" size={16} color="#f59e0b" />
-                  <Text style={styles.activityXpText}>+{activity.xp} XP</Text>
-                </LinearGradient>
-              )}
-            </BlurView>
-          ))}
-        </View> */}
+          {activity.length === 0 ? (
+            <Text style={styles.emptyActivityText}>
+              Termine une leçon pour voir ton activité ici.
+            </Text>
+          ) : (
+            activity.map((item, index) => {
+              const { icon, color } = getActivityIcon(item.type);
+              return (
+                <View key={index} style={styles.activityCard}>
+                  <View style={[styles.activityIcon, { backgroundColor: color + "20" }]}>
+                    <Ionicons name={icon} size={22} color={color} />
+                  </View>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{item.title}</Text>
+                    <Text style={styles.activityTime}>
+                      {item.detail ? `${item.detail} · ` : ""}
+                      {formatRelativeTime(item.createdAt)}
+                    </Text>
+                  </View>
+                  {item.xpGained > 0 && (
+                    <View style={styles.activityXp}>
+                      <Ionicons name="star" size={16} color={colors.warning} />
+                      <Text style={styles.activityXpText}>+{item.xpGained} XP</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </View>
 
         {/* Quick Actions */}
         {/* <View style={styles.quickActions}>
@@ -752,30 +736,61 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: "500",
     },
 
-    badgesScroll: {
-      marginHorizontal: -20,
-      paddingHorizontal: 20,
+    badgesGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
     },
 
-    badgeItem: {
+    badgeGridItem: {
+      width: "47%",
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 14,
       alignItems: "center",
-      marginRight: 16,
-      width: 80,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 1,
+    },
+
+    badgeGridItemLocked: {
+      opacity: 0.55,
     },
 
     badgeIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 8,
     },
 
     badgeName: {
-      fontSize: 12,
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+
+    badgeNameLocked: {
+      color: colors.textSecondary,
+    },
+
+    badgeDescription: {
+      fontSize: 11,
       color: colors.textSecondary,
       textAlign: "center",
+      marginTop: 2,
+    },
+
+    emptyActivityText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      paddingVertical: 20,
     },
 
     achievementCard: {
@@ -839,6 +854,7 @@ function makeStyles(colors: ThemeColors) {
       padding: 12,
       marginBottom: 8,
       overflow: 'hidden',
+      backgroundColor: colors.surface,
     },
 
     activityIcon: {
@@ -873,6 +889,7 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 4,
       borderRadius: 12,
       gap: 4,
+      backgroundColor: colors.tintWarning,
     },
 
     activityXpText: {
