@@ -132,6 +132,7 @@ def upload_avatar():
                 os.remove(stale_path)
 
         avatar_url = f"{request.host_url.rstrip('/')}/avatars/{filename}"
+        current_app.db.set_avatar_url(g.uid, avatar_url)
         return jsonify({"avatarUrl": avatar_url})
 
     except Exception as e:
