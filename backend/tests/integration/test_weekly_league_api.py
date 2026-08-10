@@ -103,3 +103,17 @@ class TestLeagueTiers:
         league = resp.get_json()["stats"]["league"]
         assert league["id"] == "diamond"
         assert league["nextLeagueName"] is None
+
+
+class TestLastActivityField:
+    def test_null_for_new_user(self, client, auth_headers):
+        resp = client.get("/api/account", headers=auth_headers)
+        assert resp.get_json()["stats"]["lastActivity"] is None
+
+    def test_set_after_completing_a_lesson(self, client, auth_headers, db, uid):
+        from datetime import date
+
+        _complete_lesson(client, auth_headers, db, uid, index=0)
+
+        resp = client.get("/api/account", headers=auth_headers)
+        assert resp.get_json()["stats"]["lastActivity"] == date.today().isoformat()
