@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { getAuthHeaders } from '@/utils/authHeaders';
 
 interface HomeScreenProps {
   navigation: any;
@@ -52,7 +53,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         if (!user) return;
         try {
           const res = await fetch(`${API_URL}/api/paths`, {
-            headers: { "X-User-UID": user.uid },
+            headers: await getAuthHeaders(user),
           });
           const data = await res.json();
           setPaths(data.paths);
