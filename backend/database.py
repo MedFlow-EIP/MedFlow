@@ -14,7 +14,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
 
@@ -519,6 +519,56 @@ class Database:
                 (uid, activity_type, title, detail, xp_gained, datetime.now(timezone.utc).isoformat()),
             )
 
+    WEEKLY_GOAL_DEFAULT = 5  # leçons/semaine, fixe pour l'instant (pas encore configurable par utilisateur)
+
+    # Paliers de ligue par XP cumulé — purement dérivé, aucune donnée à
+    # tracker en plus. Rendre le classement plus lisible qu'un simple rang.
+    LEAGUE_TIERS = [
+        {"id": "bronze", "name": "Bronze", "minXp": 0, "color": "#cd7f32"},
+        {"id": "silver", "name": "Argent", "minXp": 100, "color": "#c0c0c0"},
+        {"id": "gold", "name": "Or", "minXp": 500, "color": "#f59e0b"},
+        {"id": "platinum", "name": "Platine", "minXp": 1500, "color": "#60a5fa"},
+        {"id": "diamond", "name": "Diamant", "minXp": 3000, "color": "#8b5cf6"},
+    ]
+
+    def get_league_for_xp(self, xp: int) -> Dict:
+        current = self.LEAGUE_TIERS[0]
+        next_tier = None
+        for i, tier in enumerate(self.LEAGUE_TIERS):
+            if xp >= tier["minXp"]:
+                current = tier
+                next_tier = self.LEAGUE_TIERS[i + 1] if i + 1 < len(self.LEAGUE_TIERS) else None
+
+        return {
+            "id": current["id"],
+            "name": current["name"],
+            "color": current["color"],
+            "nextLeagueName": next_tier["name"] if next_tier else None,
+            "xpToNextLeague": (next_tier["minXp"] - xp) if next_tier else 0,
+        }
+
+    def get_weekly_progress(self, uid: str) -> Dict:
+        """Nombre de leçons complétées depuis le début de la semaine courante
+        (lundi 00:00 UTC), vs l'objectif hebdomadaire."""
+        today = date.today()
+        monday = today - timedelta(days=today.weekday())
+        monday_start_iso = monday.isoformat()
+
+        with self.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM activity_log
+                WHERE uid = ? AND type = 'lesson_completed' AND created_at >= ?
+                """,
+                (uid, monday_start_iso),
+            ).fetchone()
+
+        return {
+            "weeklyGoal": self.WEEKLY_GOAL_DEFAULT,
+            "weeklyProgress": row["c"] if row else 0,
+        }
+
     def get_recent_activity(self, uid: str, limit: int = 20) -> List[Dict]:
         with self.connection() as conn:
             rows = conn.execute(
@@ -796,6 +846,25 @@ class Database:
         )
 
         return self.check_and_unlock_badges(uid)
+
+    def reset_user_progress(self, uid: str) -> None:
+        """Remet à zéro toute la progression/gamification de cet utilisateur
+        (XP, streak, leçons, badges, activité) — outil de debug/test pour
+        pouvoir retester le parcours depuis un état neuf. N'affecte que
+        l'utilisateur appelant (uid vient du token vérifié), aucun risque
+        de reset le compte de quelqu'un d'autre."""
+        with self.transaction() as conn:
+            conn.execute("DELETE FROM user_lessons WHERE uid=?", (uid,))
+            conn.execute(
+                "UPDATE user_stats SET xp=0, streak=0, last_activity=NULL WHERE uid=?",
+                (uid,),
+            )
+            conn.execute("DELETE FROM user_badges WHERE uid=?", (uid,))
+            conn.execute("DELETE FROM activity_log WHERE uid=?", (uid,))
+
+        # Recrée les leçons dans leur état initial (1ère leçon de chaque
+        # parcours disponible, le reste verrouillé).
+        self.ensure_user_lessons(uid)
 
     def ensure_user_lessons(self, uid: str):
         """Initialise les leçons pour un nouvel utilisateur si elles n'existent pas encore."""

@@ -35,6 +35,8 @@ def get_account():
         xp = row["xp"] if row else 0
         streak = row["streak"] if row else 0
         rank = db.get_user_rank(uid)
+        league = db.get_league_for_xp(xp)
+        weekly = db.get_weekly_progress(uid)
 
         return jsonify({
             "user": build_user_response(),
@@ -49,6 +51,9 @@ def get_account():
                 "xp": xp,
                 "streak": streak,
                 "rank": rank,
+                "league": league,
+                "weeklyGoal": weekly["weeklyGoal"],
+                "weeklyProgress": weekly["weeklyProgress"],
             },
         })
 
@@ -167,4 +172,17 @@ def get_activity():
         return jsonify({"activity": activity})
     except Exception as e:
         logger.exception("Erreur activity")
+        return jsonify({"error": str(e)}), 500
+
+
+@account_bp.route("/api/account/reset-progress", methods=["POST"])
+@require_auth
+def reset_progress():
+    """Outil de debug/test : remet à zéro XP, streak, leçons, badges et
+    activité de l'utilisateur courant. N'affecte que son propre compte."""
+    try:
+        current_app.db.reset_user_progress(g.uid)
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.exception("Erreur reset progress")
         return jsonify({"error": str(e)}), 500
