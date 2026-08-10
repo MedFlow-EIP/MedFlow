@@ -24,6 +24,7 @@ import { RootStackParamList } from "../navigation/AppNavigator";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
 import { getAuthHeaders } from "../../utils/authHeaders";
+import { scheduleReminderIfNeeded } from "../../utils/streakNotifications";
 
 const { width, height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
@@ -167,6 +168,7 @@ export function AccountScreen() {
             rank: data.stats.rank,
             league: data.stats.league,
           });
+          scheduleReminderIfNeeded(data?.stats?.lastActivity ?? null);
         } catch (err) {
           console.error("Erreur chargement compte", err);
         }
