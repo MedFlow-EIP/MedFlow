@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LessonNode } from '../../components/LessonNode';
 import { Lesson, Path } from '../../types';
 import { getAuth } from 'firebase/auth';
@@ -46,53 +47,51 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
     }
   };
 
-  useEffect(() => {
-    const loadLessons = async () => {
-      if (!user) return;
-      try {
-        const res = await fetch(`${API_URL}/api/lessons/${path.id}`, {
-          headers: await getAuthHeaders(user),
-        });
-        const data = await res.json();
-        setLessons(data.lessons);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    loadLessons();
-    loadStats();
-  }, [path, user]);
-
-  const handleLessonPress = (lesson: Lesson) => {
-    if (lesson.status !== 'locked') {
-      navigation.navigate('Lesson', { path, lesson, });
-    }
-  };
-
-  const handleLessonComplete = async (lesson: Lesson) => {
+  const loadLessons = async () => {
     if (!user) return;
     try {
-      const headers = await getAuthHeaders(user);
-      await fetch(`${API_URL}/api/lessons/${path.id}/${lesson.id}/complete`, {
-        method: "POST",
-        headers,
-      });
-
       const res = await fetch(`${API_URL}/api/lessons/${path.id}`, {
-        headers,
+        headers: await getAuthHeaders(user),
       });
       const data = await res.json();
       setLessons(data.lessons);
-
-      const homeRes = await fetch(`${API_URL}/api/paths`, {
-        headers,
-      });
-      const homeData = await homeRes.json();
-      navigation.getParent()?.setParams({ updatedPaths: homeData.paths });
-
-      await loadStats();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const loadPathsForHome = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_URL}/api/paths`, {
+        headers: await getAuthHeaders(user),
+      });
+      const data = await res.json();
+      navigation.getParent()?.setParams({ updatedPaths: data.paths });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Se rafraîchit à chaque fois qu'on revient sur cet écran — notamment au
+  // retour de LessonScreen une fois une leçon réellement terminée (la
+  // complétion ne se fait plus au tap, mais à la fin de la leçon).
+  useFocusEffect(
+    useCallback(() => {
+      loadLessons();
+      loadStats();
+      loadPathsForHome();
+    }, [path, user])
+  );
+
+  // Dérivé de `lessons` (rafraîchi à chaque focus), pas de `path` qui vient
+  // de route.params et reste figé à l'état du moment où on est arrivé sur
+  // cet écran — sinon le niveau affiché ne bouge jamais après une leçon.
+  const completedCount = lessons.filter((l) => l.status === 'completed').length;
+
+  const handleLessonPress = (lesson: Lesson) => {
+    if (lesson.status !== 'locked') {
+      navigation.navigate('Lesson', { path, lesson });
     }
   };
 
@@ -119,7 +118,7 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
         )}
 
         <View style={styles.headerContent}>
-          <Text style={styles.levelText}>Niveau {path.completedLessons + 1}</Text>
+          <Text style={styles.levelText}>Niveau {completedCount + 1}</Text>
           <Text style={styles.pathTitle}>{path.title}</Text>
         </View>
       </View>
@@ -131,16 +130,13 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
       >
         <View style={styles.pathContainer}>
           <View style={styles.connectingLine} />
-          
+
           {lessons.map((lesson) => (
             <View key={lesson.id} style={styles.lessonWrapper}>
               <LessonNode
                 {...lesson}
                 color={path.color}
-                onPress={async () => {
-                  handleLessonPress(lesson);
-                  await handleLessonComplete(lesson);
-                }}
+                onPress={() => handleLessonPress(lesson)}
               />
             </View>
           ))}

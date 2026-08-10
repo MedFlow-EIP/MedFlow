@@ -14,7 +14,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
 
@@ -45,7 +45,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "Terminer votre première leçon",
         "icon": "school",
         "color": "#3b82f6",
-        "condition": lambda s: s["lessons_completed"] >= 1,
+        "metric": "lessons_completed",
+        "threshold": 1,
     },
     {
         "id": "streak_3",
@@ -53,7 +54,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "3 jours de série consécutifs",
         "icon": "flame",
         "color": "#f59e0b",
-        "condition": lambda s: s["streak"] >= 3,
+        "metric": "streak",
+        "threshold": 3,
     },
     {
         "id": "streak_7",
@@ -61,7 +63,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "7 jours de série consécutifs",
         "icon": "flame",
         "color": "#f97316",
-        "condition": lambda s: s["streak"] >= 7,
+        "metric": "streak",
+        "threshold": 7,
     },
     {
         "id": "streak_30",
@@ -69,7 +72,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "30 jours de série consécutifs",
         "icon": "flame",
         "color": "#dc2626",
-        "condition": lambda s: s["streak"] >= 30,
+        "metric": "streak",
+        "threshold": 30,
     },
     {
         "id": "xp_100",
@@ -77,7 +81,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "100 XP cumulés",
         "icon": "star",
         "color": "#8b5cf6",
-        "condition": lambda s: s["xp"] >= 100,
+        "metric": "xp",
+        "threshold": 100,
     },
     {
         "id": "xp_500",
@@ -85,7 +90,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "500 XP cumulés",
         "icon": "star",
         "color": "#7c3aed",
-        "condition": lambda s: s["xp"] >= 500,
+        "metric": "xp",
+        "threshold": 500,
     },
     {
         "id": "xp_1000",
@@ -93,7 +99,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "1000 XP cumulés",
         "icon": "trophy",
         "color": "#f59e0b",
-        "condition": lambda s: s["xp"] >= 1000,
+        "metric": "xp",
+        "threshold": 1000,
     },
     {
         "id": "lessons_10",
@@ -101,7 +108,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "10 leçons complétées",
         "icon": "checkmark-done",
         "color": "#10b981",
-        "condition": lambda s: s["lessons_completed"] >= 10,
+        "metric": "lessons_completed",
+        "threshold": 10,
     },
     {
         "id": "lessons_50",
@@ -109,7 +117,8 @@ BADGE_CATALOG: List[Dict] = [
         "description": "50 leçons complétées",
         "icon": "checkmark-done-circle",
         "color": "#059669",
-        "condition": lambda s: s["lessons_completed"] >= 50,
+        "metric": "lessons_completed",
+        "threshold": 50,
     },
 ]
 
@@ -231,6 +240,11 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN avatar_url TEXT")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_badges (
@@ -253,6 +267,33 @@ class Database:
                     xp_gained INTEGER DEFAULT 0,
                     created_at TEXT NOT NULL
                 )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS friendships (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    requester_uid TEXT NOT NULL,
+                    addressee_uid TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK(status IN ('pending','accepted')),
+                    created_at TEXT NOT NULL,
+                    UNIQUE(requester_uid, addressee_uid)
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_friendships_requester
+                ON friendships(requester_uid)
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_friendships_addressee
+                ON friendships(addressee_uid)
                 """
             )
 
@@ -519,6 +560,56 @@ class Database:
                 (uid, activity_type, title, detail, xp_gained, datetime.now(timezone.utc).isoformat()),
             )
 
+    WEEKLY_GOAL_DEFAULT = 5  # leçons/semaine, fixe pour l'instant (pas encore configurable par utilisateur)
+
+    # Paliers de ligue par XP cumulé — purement dérivé, aucune donnée à
+    # tracker en plus. Rendre le classement plus lisible qu'un simple rang.
+    LEAGUE_TIERS = [
+        {"id": "bronze", "name": "Bronze", "minXp": 0, "color": "#cd7f32"},
+        {"id": "silver", "name": "Argent", "minXp": 100, "color": "#c0c0c0"},
+        {"id": "gold", "name": "Or", "minXp": 500, "color": "#f59e0b"},
+        {"id": "platinum", "name": "Platine", "minXp": 1500, "color": "#60a5fa"},
+        {"id": "diamond", "name": "Diamant", "minXp": 3000, "color": "#8b5cf6"},
+    ]
+
+    def get_league_for_xp(self, xp: int) -> Dict:
+        current = self.LEAGUE_TIERS[0]
+        next_tier = None
+        for i, tier in enumerate(self.LEAGUE_TIERS):
+            if xp >= tier["minXp"]:
+                current = tier
+                next_tier = self.LEAGUE_TIERS[i + 1] if i + 1 < len(self.LEAGUE_TIERS) else None
+
+        return {
+            "id": current["id"],
+            "name": current["name"],
+            "color": current["color"],
+            "nextLeagueName": next_tier["name"] if next_tier else None,
+            "xpToNextLeague": (next_tier["minXp"] - xp) if next_tier else 0,
+        }
+
+    def get_weekly_progress(self, uid: str) -> Dict:
+        """Nombre de leçons complétées depuis le début de la semaine courante
+        (lundi 00:00 UTC), vs l'objectif hebdomadaire."""
+        today = date.today()
+        monday = today - timedelta(days=today.weekday())
+        monday_start_iso = monday.isoformat()
+
+        with self.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM activity_log
+                WHERE uid = ? AND type = 'lesson_completed' AND created_at >= ?
+                """,
+                (uid, monday_start_iso),
+            ).fetchone()
+
+        return {
+            "weeklyGoal": self.WEEKLY_GOAL_DEFAULT,
+            "weeklyProgress": row["c"] if row else 0,
+        }
+
     def get_recent_activity(self, uid: str, limit: int = 20) -> List[Dict]:
         with self.connection() as conn:
             rows = conn.execute(
@@ -563,16 +654,22 @@ class Database:
         }
 
     def get_user_badges(self, uid: str) -> List[Dict]:
-        """Catalogue complet des badges, avec l'état débloqué/verrouillé
-        de chacun pour cet utilisateur."""
+        """Catalogue complet des badges, avec l'état débloqué/verrouillé et
+        la progression actuelle vers le seuil (pour une barre "4/7 jours"
+        côté mobile, même sur un badge encore verrouillé)."""
         with self.connection() as conn:
             unlocked_rows = conn.execute(
                 "SELECT badge_id, unlocked_at FROM user_badges WHERE uid=?", (uid,)
             ).fetchall()
         unlocked = {row["badge_id"]: row["unlocked_at"] for row in unlocked_rows}
 
-        return [
-            {
+        stats = self._current_badge_stats(uid)
+
+        result = []
+        for badge in BADGE_CATALOG:
+            current_value = stats[badge["metric"]]
+            threshold = badge["threshold"]
+            result.append({
                 "id": badge["id"],
                 "title": badge["title"],
                 "description": badge["description"],
@@ -580,9 +677,11 @@ class Database:
                 "color": badge["color"],
                 "unlocked": badge["id"] in unlocked,
                 "unlockedAt": unlocked.get(badge["id"]),
-            }
-            for badge in BADGE_CATALOG
-        ]
+                "currentValue": min(current_value, threshold),
+                "threshold": threshold,
+                "progress": round(min(current_value / threshold, 1.0), 3) if threshold else 1.0,
+            })
+        return result
 
     def check_and_unlock_badges(self, uid: str) -> List[Dict]:
         """Vérifie les conditions de chaque badge et débloque les nouveaux
@@ -601,7 +700,8 @@ class Database:
         newly_unlocked = [
             badge
             for badge in BADGE_CATALOG
-            if badge["id"] not in already_unlocked and badge["condition"](stats)
+            if badge["id"] not in already_unlocked
+            and stats[badge["metric"]] >= badge["threshold"]
         ]
 
         if newly_unlocked:
@@ -624,10 +724,8 @@ class Database:
                     xp_gained=0,
                 )
 
-        # Retire "condition" (une lambda) avant de renvoyer — non
-        # sérialisable en JSON, et inutile côté appelant de toute façon.
         return [
-            {k: v for k, v in badge.items() if k != "condition"}
+            {k: v for k, v in badge.items()}
             for badge in newly_unlocked
         ]
 
@@ -648,12 +746,27 @@ class Database:
                 (uid, display_name),
             )
 
+    def set_avatar_url(self, uid: str, avatar_url: str) -> None:
+        """Mémorise l'URL de l'avatar uploadé, pour pouvoir l'afficher dans
+        le classement/liste d'amis sans requêter Firebase Admin à chaque
+        fois (l'avatar réel reste stocké côté disque + Firebase photoURL,
+        ceci n'est qu'une référence pour l'affichage aux autres)."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_stats (uid, xp, streak, avatar_url)
+                VALUES (?, 0, 0, ?)
+                ON CONFLICT(uid) DO UPDATE SET avatar_url = excluded.avatar_url
+                """,
+                (uid, avatar_url),
+            )
+
     def get_leaderboard(self, limit: int = 20) -> List[Dict]:
         """Classement des utilisateurs par XP décroissant."""
         with self.connection() as conn:
             rows = conn.execute(
                 """
-                SELECT uid, display_name, xp, streak
+                SELECT uid, display_name, avatar_url, xp, streak
                 FROM user_stats
                 ORDER BY xp DESC, uid ASC
                 LIMIT ?
@@ -665,6 +778,7 @@ class Database:
             {
                 "uid": row["uid"],
                 "displayName": row["display_name"] or "Utilisateur",
+                "avatarUrl": row["avatar_url"],
                 "xp": row["xp"],
                 "streak": row["streak"],
             }
@@ -685,6 +799,222 @@ class Database:
             ).fetchone()["c"]
 
         return higher_count + 1
+
+    # -----------------------------------------------------------------
+    # Amis
+    # -----------------------------------------------------------------
+
+    def search_users(self, query: str, exclude_uid: str, limit: int = 20) -> List[Dict]:
+        """Recherche des utilisateurs par nom affiché, avec leur statut
+        d'amitié actuel vis-à-vis de exclude_uid (pour savoir quoi
+        afficher : Ajouter / Demande envoyée / Ami / Accepter)."""
+        if not query or not query.strip():
+            return []
+
+        with self.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT uid, display_name, avatar_url
+                FROM user_stats
+                WHERE display_name LIKE ? AND uid != ? AND display_name IS NOT NULL
+                ORDER BY display_name ASC
+                LIMIT ?
+                """,
+                (f"%{query.strip()}%", exclude_uid, limit),
+            ).fetchall()
+
+        results = []
+        for row in rows:
+            status = self.get_friendship_status(exclude_uid, row["uid"])
+            results.append({
+                "uid": row["uid"],
+                "displayName": row["display_name"] or "Utilisateur",
+                "avatarUrl": row["avatar_url"],
+                "friendshipStatus": status,
+            })
+        return results
+
+    def get_friendship_status(self, uid: str, other_uid: str) -> str:
+        """'none' | 'friends' | 'request_sent' | 'request_received'."""
+        with self.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT requester_uid, status FROM friendships
+                WHERE (requester_uid=? AND addressee_uid=?)
+                   OR (requester_uid=? AND addressee_uid=?)
+                """,
+                (uid, other_uid, other_uid, uid),
+            ).fetchone()
+
+        if not row:
+            return "none"
+        if row["status"] == "accepted":
+            return "friends"
+        # status == 'pending'
+        if row["requester_uid"] == uid:
+            return "request_sent"
+        return "request_received"
+
+    def send_friend_request(self, requester_uid: str, addressee_uid: str) -> str:
+        """Envoie une demande d'ami. Si l'autre avait déjà envoyé une
+        demande en attente vers requester_uid, elle est auto-acceptée
+        (les deux se voulaient déjà comme amis). Renvoie le statut final
+        ('pending' ou 'accepted')."""
+        if requester_uid == addressee_uid:
+            raise ValueError("Impossible de s'ajouter soi-même")
+
+        with self.transaction() as conn:
+            reverse_pending = conn.execute(
+                """
+                SELECT id FROM friendships
+                WHERE requester_uid=? AND addressee_uid=? AND status='pending'
+                """,
+                (addressee_uid, requester_uid),
+            ).fetchone()
+
+            if reverse_pending:
+                conn.execute(
+                    "UPDATE friendships SET status='accepted' WHERE id=?",
+                    (reverse_pending["id"],),
+                )
+                return "accepted"
+
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO friendships (requester_uid, addressee_uid, status, created_at)
+                VALUES (?, ?, 'pending', ?)
+                """,
+                (requester_uid, addressee_uid, datetime.now(timezone.utc).isoformat()),
+            )
+            return "pending"
+
+    def respond_to_friend_request(self, uid: str, requester_uid: str, accept: bool) -> None:
+        """uid répond à une demande reçue de requester_uid."""
+        with self.transaction() as conn:
+            if accept:
+                conn.execute(
+                    """
+                    UPDATE friendships SET status='accepted'
+                    WHERE requester_uid=? AND addressee_uid=? AND status='pending'
+                    """,
+                    (requester_uid, uid),
+                )
+            else:
+                conn.execute(
+                    """
+                    DELETE FROM friendships
+                    WHERE requester_uid=? AND addressee_uid=? AND status='pending'
+                    """,
+                    (requester_uid, uid),
+                )
+
+    def remove_friend(self, uid: str, other_uid: str) -> None:
+        """Retire un ami, ou annule/refuse une demande — peu importe qui
+        avait envoyé la demande à l'origine."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                DELETE FROM friendships
+                WHERE (requester_uid=? AND addressee_uid=?)
+                   OR (requester_uid=? AND addressee_uid=?)
+                """,
+                (uid, other_uid, other_uid, uid),
+            )
+
+    def get_friends(self, uid: str) -> List[Dict]:
+        """Liste des amis confirmés, avec leurs stats."""
+        with self.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    CASE WHEN requester_uid = ? THEN addressee_uid ELSE requester_uid END AS friend_uid
+                FROM friendships
+                WHERE (requester_uid=? OR addressee_uid=?) AND status='accepted'
+                """,
+                (uid, uid, uid),
+            ).fetchall()
+
+            friends = []
+            for row in rows:
+                friend_uid = row["friend_uid"]
+                stats_row = conn.execute(
+                    "SELECT display_name, avatar_url, xp, streak FROM user_stats WHERE uid=?",
+                    (friend_uid,),
+                ).fetchone()
+                friends.append({
+                    "uid": friend_uid,
+                    "displayName": (stats_row["display_name"] if stats_row else None) or "Utilisateur",
+                    "avatarUrl": stats_row["avatar_url"] if stats_row else None,
+                    "xp": stats_row["xp"] if stats_row else 0,
+                    "streak": stats_row["streak"] if stats_row else 0,
+                })
+
+        return friends
+
+    def get_pending_requests(self, uid: str) -> Dict[str, List[Dict]]:
+        """Demandes reçues (à accepter/refuser) et envoyées (en attente)."""
+        with self.connection() as conn:
+            received_rows = conn.execute(
+                """
+                SELECT f.requester_uid AS other_uid, f.created_at, s.display_name, s.avatar_url
+                FROM friendships f
+                LEFT JOIN user_stats s ON s.uid = f.requester_uid
+                WHERE f.addressee_uid=? AND f.status='pending'
+                ORDER BY f.created_at DESC
+                """,
+                (uid,),
+            ).fetchall()
+
+            sent_rows = conn.execute(
+                """
+                SELECT f.addressee_uid AS other_uid, f.created_at, s.display_name, s.avatar_url
+                FROM friendships f
+                LEFT JOIN user_stats s ON s.uid = f.addressee_uid
+                WHERE f.requester_uid=? AND f.status='pending'
+                ORDER BY f.created_at DESC
+                """,
+                (uid,),
+            ).fetchall()
+
+        return {
+            "received": [
+                {
+                    "uid": r["other_uid"],
+                    "displayName": r["display_name"] or "Utilisateur",
+                    "avatarUrl": r["avatar_url"],
+                }
+                for r in received_rows
+            ],
+            "sent": [
+                {
+                    "uid": r["other_uid"],
+                    "displayName": r["display_name"] or "Utilisateur",
+                    "avatarUrl": r["avatar_url"],
+                }
+                for r in sent_rows
+            ],
+        }
+
+    def get_friends_leaderboard(self, uid: str) -> List[Dict]:
+        """Classement XP limité à soi + ses amis confirmés."""
+        friends = self.get_friends(uid)
+        with self.connection() as conn:
+            self_row = conn.execute(
+                "SELECT display_name, avatar_url, xp, streak FROM user_stats WHERE uid=?", (uid,)
+            ).fetchone()
+
+        entries = [
+            {
+                "uid": uid,
+                "displayName": (self_row["display_name"] if self_row else None) or "Utilisateur",
+                "avatarUrl": self_row["avatar_url"] if self_row else None,
+                "xp": self_row["xp"] if self_row else 0,
+                "streak": self_row["streak"] if self_row else 0,
+            }
+        ] + friends
+
+        entries.sort(key=lambda e: e["xp"], reverse=True)
+        return entries
 
     def complete_lesson(self, uid: str, lesson_id: str) -> List[Dict]:
         """Marque une leçon comme complétée, met à jour XP/streak, journalise
@@ -796,6 +1126,25 @@ class Database:
         )
 
         return self.check_and_unlock_badges(uid)
+
+    def reset_user_progress(self, uid: str) -> None:
+        """Remet à zéro toute la progression/gamification de cet utilisateur
+        (XP, streak, leçons, badges, activité) — outil de debug/test pour
+        pouvoir retester le parcours depuis un état neuf. N'affecte que
+        l'utilisateur appelant (uid vient du token vérifié), aucun risque
+        de reset le compte de quelqu'un d'autre."""
+        with self.transaction() as conn:
+            conn.execute("DELETE FROM user_lessons WHERE uid=?", (uid,))
+            conn.execute(
+                "UPDATE user_stats SET xp=0, streak=0, last_activity=NULL WHERE uid=?",
+                (uid,),
+            )
+            conn.execute("DELETE FROM user_badges WHERE uid=?", (uid,))
+            conn.execute("DELETE FROM activity_log WHERE uid=?", (uid,))
+
+        # Recrée les leçons dans leur état initial (1ère leçon de chaque
+        # parcours disponible, le reste verrouillé).
+        self.ensure_user_lessons(uid)
 
     def ensure_user_lessons(self, uid: str):
         """Initialise les leçons pour un nouvel utilisateur si elles n'existent pas encore."""

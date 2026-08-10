@@ -29,12 +29,15 @@ def get_account():
 
         with db.connection() as conn:
             row = conn.execute(
-                "SELECT xp, streak FROM user_stats WHERE uid=?", (uid,)
+                "SELECT xp, streak, last_activity FROM user_stats WHERE uid=?", (uid,)
             ).fetchone()
 
         xp = row["xp"] if row else 0
         streak = row["streak"] if row else 0
+        last_activity = row["last_activity"] if row else None
         rank = db.get_user_rank(uid)
+        league = db.get_league_for_xp(xp)
+        weekly = db.get_weekly_progress(uid)
 
         return jsonify({
             "user": build_user_response(),
@@ -48,7 +51,11 @@ def get_account():
                 "quiz_sessions": session_stats["quiz_sessions"],
                 "xp": xp,
                 "streak": streak,
+                "lastActivity": last_activity,
                 "rank": rank,
+                "league": league,
+                "weeklyGoal": weekly["weeklyGoal"],
+                "weeklyProgress": weekly["weeklyProgress"],
             },
         })
 
@@ -125,6 +132,7 @@ def upload_avatar():
                 os.remove(stale_path)
 
         avatar_url = f"{request.host_url.rstrip('/')}/avatars/{filename}"
+        current_app.db.set_avatar_url(g.uid, avatar_url)
         return jsonify({"avatarUrl": avatar_url})
 
     except Exception as e:
@@ -167,4 +175,17 @@ def get_activity():
         return jsonify({"activity": activity})
     except Exception as e:
         logger.exception("Erreur activity")
+        return jsonify({"error": str(e)}), 500
+
+
+@account_bp.route("/api/account/reset-progress", methods=["POST"])
+@require_auth
+def reset_progress():
+    """Outil de debug/test : remet à zéro XP, streak, leçons, badges et
+    activité de l'utilisateur courant. N'affecte que son propre compte."""
+    try:
+        current_app.db.reset_user_progress(g.uid)
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.exception("Erreur reset progress")
         return jsonify({"error": str(e)}), 500

@@ -41,6 +41,20 @@ class TestUploadAvatar:
         assert "avatarUrl" in body
         assert body["avatarUrl"].endswith("/avatars/test-user-123.jpg")
 
+    def test_avatar_url_persisted_and_shown_in_leaderboard(self, client, auth_headers, uid):
+        data = {"file": (io.BytesIO(b"\xff\xd8\xff fake jpeg"), "avatar.jpg")}
+        upload_resp = client.post(
+            "/api/account/avatar",
+            headers=auth_headers,
+            data=data,
+            content_type="multipart/form-data",
+        )
+        avatar_url = upload_resp.get_json()["avatarUrl"]
+
+        entries = client.get("/api/leaderboard", headers=auth_headers).get_json()["entries"]
+        me = next(e for e in entries if e["uid"] == uid)
+        assert me["avatarUrl"] == avatar_url
+
     def test_uploaded_avatar_is_servable(self, client, auth_headers):
         content = b"\xff\xd8\xff real-ish jpeg content"
         data = {"file": (io.BytesIO(content), "avatar.jpg")}

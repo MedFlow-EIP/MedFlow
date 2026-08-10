@@ -15,26 +15,31 @@ import { API_URL } from '@/services/api';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { AvatarBubble } from '../../components/AvatarBubble';
 
 type LeaderboardEntry = {
   uid: string;
   displayName: string;
+  avatarUrl: string | null;
   xp: number;
   streak: number;
 };
+
+type Mode = 'global' | 'friends';
 
 export function LeaderboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
 
+  const [mode, setMode] = useState<Mode>('global');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [yourUid, setYourUid] = useState<string | null>(null);
   const [yourRank, setYourRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (currentMode: Mode) => {
     const user = auth.currentUser;
     if (!user) {
       setLoading(false);
@@ -43,15 +48,25 @@ export function LeaderboardScreen() {
 
     setError(false);
     try {
-      const res = await fetch(`${API_URL}/api/leaderboard?limit=50`, {
-        headers: await getAuthHeaders(user),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const headers = await getAuthHeaders(user);
 
-      const data = await res.json();
-      setEntries(Array.isArray(data.entries) ? data.entries : []);
-      setYourUid(data.yourUid ?? null);
-      setYourRank(data.yourRank ?? null);
+      if (currentMode === 'global') {
+        const res = await fetch(`${API_URL}/api/leaderboard?limit=50`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setEntries(Array.isArray(data.entries) ? data.entries : []);
+        setYourUid(data.yourUid ?? null);
+        setYourRank(data.yourRank ?? null);
+      } else {
+        const res = await fetch(`${API_URL}/api/friends/leaderboard`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const list: LeaderboardEntry[] = Array.isArray(data.entries) ? data.entries : [];
+        setEntries(list);
+        setYourUid(data.yourUid ?? null);
+        const position = list.findIndex((e) => e.uid === data.yourUid);
+        setYourRank(position >= 0 ? position + 1 : null);
+      }
     } catch (err) {
       console.error('Erreur chargement classement:', err);
       setError(true);
@@ -63,8 +78,8 @@ export function LeaderboardScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      load();
-    }, [load])
+      load(mode);
+    }, [load, mode])
   );
 
   const youAreInTopList = entries.some((e) => e.uid === yourUid);
@@ -89,6 +104,8 @@ export function LeaderboardScreen() {
             <Text style={styles.rankText}>#{position}</Text>
           )}
         </View>
+
+        <AvatarBubble uri={item.avatarUrl} displayName={item.displayName} size={36} />
 
         <View style={styles.nameContainer}>
           <Text style={[styles.name, isYou && styles.nameYou]} numberOfLines={1}>
@@ -119,8 +136,46 @@ export function LeaderboardScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Classement</Text>
-          <Text style={styles.subtitle}>Les meilleurs par XP</Text>
+          <Text style={styles.subtitle}>
+            {mode === 'global' ? 'Les meilleurs par XP' : 'Toi et tes amis'}
+          </Text>
         </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Friends' as never)}
+          style={styles.backButton}
+          hitSlop={8}
+        >
+          <Ionicons name="people-outline" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleOption, mode === 'global' && styles.toggleOptionActive]}
+          onPress={() => setMode('global')}
+        >
+          <Ionicons
+            name="earth"
+            size={16}
+            color={mode === 'global' ? colors.primary : colors.textSecondary}
+          />
+          <Text style={[styles.toggleText, mode === 'global' && styles.toggleTextActive]}>
+            Global
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleOption, mode === 'friends' && styles.toggleOptionActive]}
+          onPress={() => setMode('friends')}
+        >
+          <Ionicons
+            name="people"
+            size={16}
+            color={mode === 'friends' ? colors.primary : colors.textSecondary}
+          />
+          <Text style={[styles.toggleText, mode === 'friends' && styles.toggleTextActive]}>
+            Amis
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {loading && (
@@ -133,13 +188,13 @@ export function LeaderboardScreen() {
         <View style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.warning} />
           <Text style={styles.stateTitle}>Impossible de charger le classement</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={load}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => load(mode)}>
             <Text style={styles.retryText}>Réessayer</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {!loading && !error && entries.length === 0 && (
+      {!loading && !error && entries.length === 0 && mode === 'global' && (
         <View style={styles.centered}>
           <Ionicons name="trophy-outline" size={48} color={colors.muted} />
           <Text style={styles.stateTitle}>Personne au classement pour l'instant</Text>
@@ -149,7 +204,23 @@ export function LeaderboardScreen() {
         </View>
       )}
 
-      {!loading && !error && entries.length > 0 && (
+      {!loading && !error && mode === 'friends' && entries.length <= 1 && (
+        <View style={styles.centered}>
+          <Ionicons name="people-outline" size={48} color={colors.muted} />
+          <Text style={styles.stateTitle}>Pas encore d'amis ajoutés</Text>
+          <Text style={styles.stateText}>
+            Ajoute des amis pour te comparer à eux plutôt qu'à des inconnus.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => navigation.navigate('Friends' as never)}
+          >
+            <Text style={styles.retryText}>Ajouter des amis</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!loading && !error && entries.length > 0 && !(mode === 'friends' && entries.length <= 1) && (
         <>
           <FlatList
             data={entries}
@@ -206,6 +277,36 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
       color: colors.textSecondary,
       marginTop: 4,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      margin: 16,
+      marginBottom: 8,
+      padding: 4,
+      gap: 4,
+    },
+    toggleOption: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 9,
+    },
+    toggleOptionActive: {
+      backgroundColor: colors.surface,
+    },
+    toggleText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    toggleTextActive: {
+      fontWeight: '700',
+      color: colors.textPrimary,
     },
     centered: {
       flex: 1,

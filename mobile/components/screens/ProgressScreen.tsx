@@ -22,6 +22,8 @@ type ProgressData = {
   completedLessons: number;
   totalXP: number;
   currentStreak: number;
+  weeklyGoal: number;
+  weeklyProgress: number;
 };
 
 export function ProgressScreen() {
@@ -69,6 +71,8 @@ export function ProgressScreen() {
         completedLessons,
         totalXP: account?.stats?.xp ?? 0,
         currentStreak: account?.stats?.streak ?? 0,
+        weeklyGoal: account?.stats?.weeklyGoal ?? 0,
+        weeklyProgress: account?.stats?.weeklyProgress ?? 0,
       });
     } catch (e) {
       console.error('Erreur chargement progression:', e);
@@ -155,6 +159,8 @@ export function ProgressScreen() {
             completedLessons={data.completedLessons}
             totalXP={data.totalXP}
             currentStreak={data.currentStreak}
+            weeklyGoal={data.weeklyGoal}
+            weeklyProgress={data.weeklyProgress}
           />
         </View>
       )}

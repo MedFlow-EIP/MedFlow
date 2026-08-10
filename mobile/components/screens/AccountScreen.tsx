@@ -24,6 +24,7 @@ import { RootStackParamList } from "../navigation/AppNavigator";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
 import { getAuthHeaders } from "../../utils/authHeaders";
+import { scheduleReminderIfNeeded } from "../../utils/streakNotifications";
 
 const { width, height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
@@ -36,6 +37,9 @@ type Badge = {
   color: string;
   unlocked: boolean;
   unlockedAt: string | null;
+  currentValue: number;
+  threshold: number;
+  progress: number;
 };
 
 type ActivityItem = {
@@ -80,23 +84,34 @@ export function AccountScreen() {
     streak: 0,
     xp: 0,
     rank: 1,
+    league: { id: "bronze", name: "Bronze", color: "#cd7f32", nextLeagueName: null as string | null, xpToNextLeague: 0 },
   });
 
   const [badges, setBadges] = useState<Badge[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
 
   const loadBadgesAndActivity = async () => {
     if (!user) return;
     try {
       const headers = await getAuthHeaders(user);
-      const [badgesRes, activityRes] = await Promise.all([
+      const [badgesRes, activityRes, friendsRes, requestsRes] = await Promise.all([
         fetch(`${API_URL}/api/badges`, { headers }),
         fetch(`${API_URL}/api/activity?limit=10`, { headers }),
+        fetch(`${API_URL}/api/friends`, { headers }),
+        fetch(`${API_URL}/api/friends/requests`, { headers }),
       ]);
       const badgesData = await badgesRes.json();
       const activityData = await activityRes.json();
+      const friendsData = await friendsRes.json();
+      const requestsData = await requestsRes.json();
       setBadges(Array.isArray(badgesData.badges) ? badgesData.badges : []);
       setActivity(Array.isArray(activityData.activity) ? activityData.activity : []);
+      setFriendsCount(Array.isArray(friendsData.friends) ? friendsData.friends.length : 0);
+      setPendingFriendRequests(
+        Array.isArray(requestsData.received) ? requestsData.received.length : 0
+      );
     } catch (err) {
       console.error("Erreur chargement badges/activité:", err);
     }
@@ -164,7 +179,9 @@ export function AccountScreen() {
             xp: data.stats.xp,
             streak: data.stats.streak,
             rank: data.stats.rank,
+            league: data.stats.league,
           });
+          scheduleReminderIfNeeded(data?.stats?.lastActivity ?? null);
         } catch (err) {
           console.error("Erreur chargement compte", err);
         }
@@ -237,11 +254,23 @@ export function AccountScreen() {
           <Text style={styles.email}>{user.email}</Text>
           
           <View style={styles.badgeContainer}>
+            <View style={[styles.leagueBadge, { backgroundColor: stats.league.color + '25' }]}>
+              <Ionicons name="ribbon" size={14} color={stats.league.color} />
+              <Text style={[styles.leagueBadgeText, { color: stats.league.color }]}>
+                Ligue {stats.league.name}
+              </Text>
+            </View>
             <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={styles.badge}>
               <Ionicons name="calendar" size={14} color={colors.primary} />
               <Text style={styles.badgeText}>Membre depuis le {joinedDate}</Text>
             </BlurView>
           </View>
+
+          {stats.league.nextLeagueName && (
+            <Text style={styles.nextLeagueHint}>
+              Plus que {stats.league.xpToNextLeague} XP pour la ligue {stats.league.nextLeagueName}
+            </Text>
+          )}
         </View>
 
         {/* Stats Cards */}
@@ -265,6 +294,20 @@ export function AccountScreen() {
             <Ionicons name="trophy" size={28} color={colors.success} />
             <Text style={styles.statNumber}>#{stats.rank}</Text>
             <Text style={styles.statLabel}>Classement</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}
+            onPress={() => navigation.navigate("Friends" as never)}
+          >
+            {pendingFriendRequests > 0 && (
+              <View style={styles.friendsBadge}>
+                <Text style={styles.friendsBadgeText}>{pendingFriendRequests}</Text>
+              </View>
+            )}
+            <Ionicons name="people" size={28} color={colors.textPrimary} />
+            <Text style={styles.statNumber}>{friendsCount}</Text>
+            <Text style={styles.statLabel}>Amis</Text>
           </TouchableOpacity>
         </View>
 
@@ -324,6 +367,21 @@ export function AccountScreen() {
                 <Text style={styles.badgeDescription} numberOfLines={2}>
                   {badge.description}
                 </Text>
+                {!badge.unlocked && (
+                  <View style={styles.badgeProgressRow}>
+                    <View style={styles.badgeProgressTrack}>
+                      <View
+                        style={[
+                          styles.badgeProgressFill,
+                          { width: `${badge.progress * 100}%`, backgroundColor: badge.color },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.badgeProgressText}>
+                      {badge.currentValue}/{badge.threshold}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -635,6 +693,26 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textSecondary,
     },
 
+    leagueBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 6,
+    },
+
+    leagueBadgeText: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
+
+    nextLeagueHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+
     statsGrid: {
       flexDirection: "row",
       paddingHorizontal: 20,
@@ -647,6 +725,27 @@ function makeStyles(colors: ThemeColors) {
       padding: 16,
       borderRadius: 16,
       alignItems: "center",
+      position: "relative",
+    },
+
+    friendsBadge: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: colors.danger,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+      zIndex: 1,
+    },
+
+    friendsBadgeText: {
+      color: "#ffffff",
+      fontSize: 11,
+      fontWeight: "700",
     },
 
     statNumber: {
@@ -784,6 +883,32 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textSecondary,
       textAlign: "center",
       marginTop: 2,
+    },
+
+    badgeProgressRow: {
+      width: "100%",
+      marginTop: 10,
+      alignItems: "center",
+    },
+
+    badgeProgressTrack: {
+      width: "100%",
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.surfaceAlt,
+      overflow: "hidden",
+    },
+
+    badgeProgressFill: {
+      height: "100%",
+      borderRadius: 3,
+    },
+
+    badgeProgressText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginTop: 4,
     },
 
     emptyActivityText: {

@@ -9,6 +9,14 @@ import { auth } from '../../firebaseConfig';
 import { API_URL } from '@/services/api';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { Path, Lesson, FlashCardData } from '../../types';
+import { BadgeUnlockModal, UnlockedBadge } from '../../components/BadgeUnlockModal';
+import { NotificationOptInModal } from '../../components/NotificationOptInModal';
+import {
+  scheduleReminderIfNeeded,
+  enableStreakReminders,
+  hasSeenNotificationPrompt,
+  markNotificationPromptSeen,
+} from '../../utils/streakNotifications';
 import { ExplanationStep } from "../../components/steps/ExplanationStep";
 import { SwipeCardsStep } from "../../components/steps/SwipeCardsStep";
 import { SpeedChallengeStep } from "../../components/steps/SpeedChallengeStep";
@@ -79,6 +87,9 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   const xp = lesson?.xp ?? 10;
 
   const [streak, setStreak] = useState<number | null>(null);
+  const [newBadges, setNewBadges] = useState<UnlockedBadge[]>([]);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [lastActivityForPrompt, setLastActivityForPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showResults) return;
@@ -90,16 +101,30 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/account`, {
-          headers: await getAuthHeaders(user),
-        });
+        const headers = await getAuthHeaders(user);
+
+        // C'est ICI, une fois la leçon réellement terminée (pas au tap sur
+        // le node dans PathScreen), que la complétion est envoyée au
+        // backend — XP, streak et badges sont calculés à ce moment précis.
+        const completeRes = await fetch(
+          `${API_URL}/api/lessons/${path.id}/${lesson.id}/complete`,
+          { method: 'POST', headers }
+        );
+        const completeData = await completeRes.json();
+        if (Array.isArray(completeData.newBadges) && completeData.newBadges.length > 0) {
+          setNewBadges(completeData.newBadges);
+        }
+
+        const res = await fetch(`${API_URL}/api/account`, { headers });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
         const data = await res.json();
+        setLastActivityForPrompt(data?.stats?.lastActivity ?? null);
         setStreak(data?.stats?.streak ?? -1);
+        scheduleReminderIfNeeded(data?.stats?.lastActivity ?? null);
       } catch (err) {
-        console.error('Erreur chargement streak:', err);
+        console.error('Erreur complétion leçon:', err);
         setStreak(-1);
       }
     })();
@@ -233,6 +258,29 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   if (showResults) {
     return (
       <SafeAreaView style={styles.container}>
+        <BadgeUnlockModal
+          badges={newBadges}
+          onDismiss={async () => {
+            const hadFirstLessonBadge = newBadges.some((b) => b.id === 'first_lesson');
+            setNewBadges([]);
+
+            if (hadFirstLessonBadge && !(await hasSeenNotificationPrompt())) {
+              setShowNotifPrompt(true);
+            }
+          }}
+        />
+        <NotificationOptInModal
+          visible={showNotifPrompt}
+          onAccept={async () => {
+            setShowNotifPrompt(false);
+            await markNotificationPromptSeen();
+            await enableStreakReminders(lastActivityForPrompt);
+          }}
+          onDecline={async () => {
+            setShowNotifPrompt(false);
+            await markNotificationPromptSeen();
+          }}
+        />
         <View style={styles.resultsContainer}>
           <View style={styles.successIcon}>
             <Text style={styles.successEmoji}>✅</Text>
