@@ -9,6 +9,7 @@ import { auth } from '../../firebaseConfig';
 import { API_URL } from '@/services/api';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { Path, Lesson, FlashCardData } from '../../types';
+import { BadgeUnlockModal, UnlockedBadge } from '../../components/BadgeUnlockModal';
 import { ExplanationStep } from "../../components/steps/ExplanationStep";
 import { SwipeCardsStep } from "../../components/steps/SwipeCardsStep";
 import { SpeedChallengeStep } from "../../components/steps/SpeedChallengeStep";
@@ -79,6 +80,7 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   const xp = lesson?.xp ?? 10;
 
   const [streak, setStreak] = useState<number | null>(null);
+  const [newBadges, setNewBadges] = useState<UnlockedBadge[]>([]);
 
   useEffect(() => {
     if (!showResults) return;
@@ -90,16 +92,25 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/account`, {
-          headers: await getAuthHeaders(user),
-        });
+        const headers = await getAuthHeaders(user);
+
+        const completeRes = await fetch(
+          `${API_URL}/api/lessons/${path.id}/${lesson.id}/complete`,
+          { method: 'POST', headers }
+        );
+        const completeData = await completeRes.json();
+        if (Array.isArray(completeData.newBadges) && completeData.newBadges.length > 0) {
+          setNewBadges(completeData.newBadges);
+        }
+
+        const res = await fetch(`${API_URL}/api/account`, { headers });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
         const data = await res.json();
         setStreak(data?.stats?.streak ?? -1);
       } catch (err) {
-        console.error('Erreur chargement streak:', err);
+        console.error('Erreur complétion leçon:', err);
         setStreak(-1);
       }
     })();
@@ -233,6 +244,7 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   if (showResults) {
     return (
       <SafeAreaView style={styles.container}>
+        <BadgeUnlockModal badges={newBadges} onDismiss={() => setNewBadges([])} />
         <View style={styles.resultsContainer}>
           <View style={styles.successIcon}>
             <Text style={styles.successEmoji}>✅</Text>
