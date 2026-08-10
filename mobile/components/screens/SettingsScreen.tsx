@@ -180,6 +180,33 @@ export function SettingsScreen() {
     showTutorial();
   };
 
+  const handleResetProgress = () => {
+    Alert.alert(
+      "Réinitialiser la progression",
+      "XP, streak, leçons, badges et activité seront remis à zéro. Cette action est irréversible.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Réinitialiser",
+          style: "destructive",
+          onPress: async () => {
+            if (!user) return;
+            try {
+              const res = await fetch(`${API_URL}/api/account/reset-progress`, {
+                method: "POST",
+                headers: await getAuthHeaders(user),
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              Alert.alert("C'est fait", "Ta progression a été réinitialisée.");
+            } catch (e: any) {
+              Alert.alert("Erreur", "Impossible de réinitialiser : " + e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -239,6 +266,15 @@ export function SettingsScreen() {
         <TouchableOpacity onPress={handleReplayTutorial} style={styles.replayButton}>
           <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
           <Text style={styles.replayButtonText}>Revoir le tutoriel</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* DEBUG */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Debug</Text>
+        <TouchableOpacity onPress={handleResetProgress} style={styles.debugButton}>
+          <Ionicons name="refresh-circle-outline" size={20} color={colors.danger} />
+          <Text style={styles.debugButtonText}>Réinitialiser XP / progression</Text>
         </TouchableOpacity>
       </View>
 
@@ -483,6 +519,21 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 15,
       fontWeight: '600',
       color: colors.textPrimary,
+    },
+
+    debugButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.tintDanger,
+      borderRadius: 12,
+      padding: 14,
+    },
+
+    debugButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.danger,
     },
 
     profileCenter: {
