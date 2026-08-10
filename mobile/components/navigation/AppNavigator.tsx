@@ -42,6 +42,7 @@ import { PathScreen } from '../screens/PathScreen';
 import { LessonScreen } from '../screens/LessonScreen';
 import { CourseDetailScreen } from '../screens/CourseDetail';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { TutorialScreen } from '../screens/TutorialScreen';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
@@ -66,6 +67,7 @@ export type RootStackParamList = {
   Lesson: { path: any; lesson: any };
   Settings: undefined;
   Progress: undefined;
+  Leaderboard: undefined;
   Auth: undefined;
 };
 
@@ -353,6 +355,7 @@ export function AppNavigator() {
             <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="Progress" component={ProgressScreen} />
+            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

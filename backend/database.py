@@ -14,7 +14,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
 
@@ -33,6 +33,85 @@ class Course:
     sessions: int
     created_at: str
     updated_at: str
+
+
+# Catalogue des badges — chaque condition est évaluée contre un dict de
+# stats courantes de l'utilisateur (xp, streak, lessons_completed).
+# Ajouter un badge ici suffit à l'activer, aucune migration nécessaire.
+BADGE_CATALOG: List[Dict] = [
+    {
+        "id": "first_lesson",
+        "title": "Premiers pas",
+        "description": "Terminer votre première leçon",
+        "icon": "school",
+        "color": "#3b82f6",
+        "condition": lambda s: s["lessons_completed"] >= 1,
+    },
+    {
+        "id": "streak_3",
+        "title": "Sur la lancée",
+        "description": "3 jours de série consécutifs",
+        "icon": "flame",
+        "color": "#f59e0b",
+        "condition": lambda s: s["streak"] >= 3,
+    },
+    {
+        "id": "streak_7",
+        "title": "Semaine parfaite",
+        "description": "7 jours de série consécutifs",
+        "icon": "flame",
+        "color": "#f97316",
+        "condition": lambda s: s["streak"] >= 7,
+    },
+    {
+        "id": "streak_30",
+        "title": "Habitude ancrée",
+        "description": "30 jours de série consécutifs",
+        "icon": "flame",
+        "color": "#dc2626",
+        "condition": lambda s: s["streak"] >= 30,
+    },
+    {
+        "id": "xp_100",
+        "title": "Apprenti",
+        "description": "100 XP cumulés",
+        "icon": "star",
+        "color": "#8b5cf6",
+        "condition": lambda s: s["xp"] >= 100,
+    },
+    {
+        "id": "xp_500",
+        "title": "Étudiant assidu",
+        "description": "500 XP cumulés",
+        "icon": "star",
+        "color": "#7c3aed",
+        "condition": lambda s: s["xp"] >= 500,
+    },
+    {
+        "id": "xp_1000",
+        "title": "Expert",
+        "description": "1000 XP cumulés",
+        "icon": "trophy",
+        "color": "#f59e0b",
+        "condition": lambda s: s["xp"] >= 1000,
+    },
+    {
+        "id": "lessons_10",
+        "title": "Sur la bonne voie",
+        "description": "10 leçons complétées",
+        "icon": "checkmark-done",
+        "color": "#10b981",
+        "condition": lambda s: s["lessons_completed"] >= 10,
+    },
+    {
+        "id": "lessons_50",
+        "title": "Marathonien",
+        "description": "50 leçons complétées",
+        "icon": "checkmark-done-circle",
+        "color": "#059669",
+        "condition": lambda s: s["lessons_completed"] >= 50,
+    },
+]
 
 
 class Database:
@@ -140,6 +219,39 @@ class Database:
                     xp INTEGER DEFAULT 0,
                     streak INTEGER DEFAULT 0,
                     last_activity DATE
+                )
+                """
+            )
+
+            # Migration légère : ajoute display_name si absent (bases déjà
+            # existantes créées avant cette colonne). Ignore l'erreur si la
+            # colonne existe déjà — SQLite n'a pas de ADD COLUMN IF NOT EXISTS.
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN display_name TEXT")
+            except sqlite3.OperationalError:
+                pass
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_badges (
+                    uid TEXT NOT NULL,
+                    badge_id TEXT NOT NULL,
+                    unlocked_at TEXT NOT NULL,
+                    PRIMARY KEY (uid, badge_id)
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS activity_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    detail TEXT,
+                    xp_gained INTEGER DEFAULT 0,
+                    created_at TEXT NOT NULL
                 )
                 """
             )
@@ -392,7 +504,192 @@ class Database:
                 for row in rows
             ]
 
-    def complete_lesson(self, uid: str, lesson_id: str):
+    def log_activity(
+        self, uid: str, activity_type: str, title: str, detail: str = "", xp_gained: int = 0
+    ) -> None:
+        """Ajoute un événement au journal d'activité (utilisé pour la section
+        'Actions récentes'). ``activity_type`` détermine l'icône/couleur
+        côté mobile (ex: 'lesson_completed', 'badge_unlocked')."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO activity_log (uid, type, title, detail, xp_gained, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (uid, activity_type, title, detail, xp_gained, datetime.now(timezone.utc).isoformat()),
+            )
+
+    def get_recent_activity(self, uid: str, limit: int = 20) -> List[Dict]:
+        with self.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT type, title, detail, xp_gained, created_at
+                FROM activity_log
+                WHERE uid = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (uid, limit),
+            ).fetchall()
+
+        return [
+            {
+                "type": row["type"],
+                "title": row["title"],
+                "detail": row["detail"] or "",
+                "xpGained": row["xp_gained"],
+                "createdAt": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def get_lessons_completed_count(self, uid: str) -> int:
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM user_lessons WHERE uid=? AND status='completed'",
+                (uid,),
+            ).fetchone()
+        return row["c"] if row else 0
+
+    def _current_badge_stats(self, uid: str) -> Dict:
+        with self.connection() as conn:
+            stats_row = conn.execute(
+                "SELECT xp, streak FROM user_stats WHERE uid=?", (uid,)
+            ).fetchone()
+        return {
+            "xp": stats_row["xp"] if stats_row else 0,
+            "streak": stats_row["streak"] if stats_row else 0,
+            "lessons_completed": self.get_lessons_completed_count(uid),
+        }
+
+    def get_user_badges(self, uid: str) -> List[Dict]:
+        """Catalogue complet des badges, avec l'état débloqué/verrouillé
+        de chacun pour cet utilisateur."""
+        with self.connection() as conn:
+            unlocked_rows = conn.execute(
+                "SELECT badge_id, unlocked_at FROM user_badges WHERE uid=?", (uid,)
+            ).fetchall()
+        unlocked = {row["badge_id"]: row["unlocked_at"] for row in unlocked_rows}
+
+        return [
+            {
+                "id": badge["id"],
+                "title": badge["title"],
+                "description": badge["description"],
+                "icon": badge["icon"],
+                "color": badge["color"],
+                "unlocked": badge["id"] in unlocked,
+                "unlockedAt": unlocked.get(badge["id"]),
+            }
+            for badge in BADGE_CATALOG
+        ]
+
+    def check_and_unlock_badges(self, uid: str) -> List[Dict]:
+        """Vérifie les conditions de chaque badge et débloque les nouveaux
+        (journalise aussi l'événement). Renvoie uniquement les badges
+        nouvellement débloqués à CET appel, pour affichage immédiat."""
+        with self.connection() as conn:
+            already_unlocked = {
+                row["badge_id"]
+                for row in conn.execute(
+                    "SELECT badge_id FROM user_badges WHERE uid=?", (uid,)
+                ).fetchall()
+            }
+
+        stats = self._current_badge_stats(uid)
+
+        newly_unlocked = [
+            badge
+            for badge in BADGE_CATALOG
+            if badge["id"] not in already_unlocked and badge["condition"](stats)
+        ]
+
+        if newly_unlocked:
+            now = datetime.now(timezone.utc).isoformat()
+            with self.transaction() as conn:
+                for badge in newly_unlocked:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO user_badges (uid, badge_id, unlocked_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (uid, badge["id"], now),
+                    )
+            for badge in newly_unlocked:
+                self.log_activity(
+                    uid,
+                    "badge_unlocked",
+                    badge["title"],
+                    badge["description"],
+                    xp_gained=0,
+                )
+
+        # Retire "condition" (une lambda) avant de renvoyer — non
+        # sérialisable en JSON, et inutile côté appelant de toute façon.
+        return [
+            {k: v for k, v in badge.items() if k != "condition"}
+            for badge in newly_unlocked
+        ]
+
+    def upsert_user_profile(self, uid: str, display_name: str | None) -> None:
+        """Mémorise/actualise le nom affiché pour cet utilisateur, à partir
+        du header X-User-Name déjà envoyé sur chaque requête authentifiée
+        (require_auth). Nécessaire pour pouvoir afficher de vrais noms dans
+        le classement, sans appel Firebase Admin par utilisateur."""
+        if not display_name:
+            return
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_stats (uid, xp, streak, display_name)
+                VALUES (?, 0, 0, ?)
+                ON CONFLICT(uid) DO UPDATE SET display_name = excluded.display_name
+                """,
+                (uid, display_name),
+            )
+
+    def get_leaderboard(self, limit: int = 20) -> List[Dict]:
+        """Classement des utilisateurs par XP décroissant."""
+        with self.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT uid, display_name, xp, streak
+                FROM user_stats
+                ORDER BY xp DESC, uid ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+        return [
+            {
+                "uid": row["uid"],
+                "displayName": row["display_name"] or "Utilisateur",
+                "xp": row["xp"],
+                "streak": row["streak"],
+            }
+            for row in rows
+        ]
+
+    def get_user_rank(self, uid: str) -> int:
+        """Position de cet utilisateur dans le classement global (1 = premier).
+        Renvoie 1 si l'utilisateur n'a pas encore de ligne user_stats."""
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT xp FROM user_stats WHERE uid=?", (uid,)
+            ).fetchone()
+            user_xp = row["xp"] if row else 0
+
+            higher_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM user_stats WHERE xp > ?", (user_xp,)
+            ).fetchone()["c"]
+
+        return higher_count + 1
+
+    def complete_lesson(self, uid: str, lesson_id: str) -> List[Dict]:
+        """Marque une leçon comme complétée, met à jour XP/streak, journalise
+        l'activité et débloque les badges éligibles. Renvoie les badges
+        nouvellement débloqués (liste vide si aucun)."""
 
         with self.transaction() as conn:
 
@@ -402,6 +699,7 @@ class Database:
             ).fetchone()
 
             xp = lesson["xp"] if lesson else 10
+            lesson_title = lesson["title"] if lesson else "Leçon"
 
             conn.execute(
                 "UPDATE user_lessons SET status='completed' WHERE uid=? AND lesson_id=?",
@@ -425,6 +723,8 @@ class Database:
                 (xp, uid)
             )
 
+            # Calcul du streak (jours consécutifs d'activité). La colonne
+            # existait déjà dans le schéma mais n'était jamais mise à jour.
             today = date.today()
             stats_row = conn.execute(
                 "SELECT streak, last_activity FROM user_stats WHERE uid=?",
@@ -465,27 +765,37 @@ class Database:
                 (uid, lesson_id)
             ).fetchone()
 
-            if not path_id_row:
-                return
+            if path_id_row:
+                path_id = path_id_row["path_id"]
 
-            path_id = path_id_row["path_id"]
+                next_lesson = conn.execute(
+                    """
+                    SELECT lesson_id
+                    FROM user_lessons
+                    WHERE uid=? AND path_id=? AND status='locked'
+                    ORDER BY CAST(lesson_id AS INTEGER) ASC
+                    LIMIT 1
+                    """,
+                    (uid, path_id)
+                ).fetchone()
 
-            next_lesson = conn.execute(
-                """
-                SELECT lesson_id
-                FROM user_lessons
-                WHERE uid=? AND path_id=? AND status='locked'
-                ORDER BY CAST(lesson_id AS INTEGER) ASC
-                LIMIT 1
-                """,
-                (uid, path_id)
-            ).fetchone()
+                if next_lesson:
+                    conn.execute(
+                        "UPDATE user_lessons SET status='available' WHERE uid=? AND lesson_id=?",
+                        (uid, next_lesson["lesson_id"])
+                    )
 
-            if next_lesson:
-                conn.execute(
-                    "UPDATE user_lessons SET status='available' WHERE uid=? AND lesson_id=?",
-                    (uid, next_lesson["lesson_id"])
-                )
+        # Hors de la transaction ci-dessus : ces deux appels ont besoin de
+        # relire les stats (xp/streak) fraîchement commitées.
+        self.log_activity(
+            uid,
+            "lesson_completed",
+            lesson_title,
+            f"+{xp} XP",
+            xp_gained=xp,
+        )
+
+        return self.check_and_unlock_badges(uid)
 
     def ensure_user_lessons(self, uid: str):
         """Initialise les leçons pour un nouvel utilisateur si elles n'existent pas encore."""
