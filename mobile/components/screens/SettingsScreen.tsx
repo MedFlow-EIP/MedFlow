@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
 import { resetTutorial } from "../../utils/firstTime";
+import {
+  isStreakReminderEnabled,
+  enableStreakReminders,
+  disableStreakReminders,
+  sendTestNotification,
+} from "../../utils/streakNotifications";
 import { getAuthHeaders } from "../../utils/authHeaders";
 import { API_URL } from "@/services/api";
 import { useTutorial } from "../../context/TutorialContext";
@@ -39,6 +45,54 @@ export function SettingsScreen() {
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [streakRemindersOn, setStreakRemindersOn] = useState(false);
+
+  useEffect(() => {
+    isStreakReminderEnabled().then(setStreakRemindersOn);
+  }, []);
+
+  const handleToggleStreakReminders = async (value: boolean) => {
+    if (value) {
+      const user = auth.currentUser;
+      let lastActivity: string | null = null;
+      if (user) {
+        try {
+          const res = await fetch(`${API_URL}/api/account`, {
+            headers: await getAuthHeaders(user),
+          });
+          const data = await res.json();
+          lastActivity = data?.stats?.lastActivity ?? null;
+        } catch {
+          // Pas grave si ça échoue : on planifie quand même, juste sans
+          // savoir si l'utilisateur a déjà été actif aujourd'hui.
+        }
+      }
+      const granted = await enableStreakReminders(lastActivity);
+      if (!granted) {
+        Alert.alert(
+          "Permission refusée",
+          "Active les notifications pour MedFlow dans les réglages de ton téléphone pour utiliser cette fonctionnalité."
+        );
+        return;
+      }
+      setStreakRemindersOn(true);
+    } else {
+      await disableStreakReminders();
+      setStreakRemindersOn(false);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    const sent = await sendTestNotification();
+    if (sent) {
+      Alert.alert("C'est parti", "Tu devrais recevoir une notification dans 5 secondes.");
+    } else {
+      Alert.alert(
+        "Permission refusée",
+        "Active les notifications pour MedFlow dans les réglages de ton téléphone."
+      );
+    }
+  };
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -269,12 +323,40 @@ export function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* NOTIFICATIONS */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Notifications</Text>
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifTitle}>Rappels de streak</Text>
+            <Text style={styles.notifSubtitle}>
+              Un rappel le soir si tu n'as pas encore révisé
+            </Text>
+          </View>
+          <Switch
+            value={streakRemindersOn}
+            onValueChange={handleToggleStreakReminders}
+            trackColor={{ false: colors.border, true: colors.primary }}
+          />
+        </View>
+      </View>
+
       {/* DEBUG */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Debug</Text>
         <TouchableOpacity onPress={handleResetProgress} style={styles.debugButton}>
           <Ionicons name="refresh-circle-outline" size={20} color={colors.danger} />
           <Text style={styles.debugButtonText}>Réinitialiser XP / progression</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleTestNotification}
+          style={[styles.debugButton, { marginTop: 10, backgroundColor: colors.tintPrimary }]}
+        >
+          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          <Text style={[styles.debugButtonText, { color: colors.primary }]}>
+            Tester une notification (5s)
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -534,6 +616,29 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 15,
       fontWeight: '600',
       color: colors.danger,
+    },
+
+    notifRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 14,
+      gap: 12,
+    },
+
+    notifTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+
+    notifSubtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
 
     profileCenter: {
