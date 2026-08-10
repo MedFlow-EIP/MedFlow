@@ -80,6 +80,7 @@ export function AccountScreen() {
     streak: 0,
     xp: 0,
     rank: 1,
+    league: { id: "bronze", name: "Bronze", color: "#cd7f32", nextLeagueName: null as string | null, xpToNextLeague: 0 },
   });
 
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -164,6 +165,7 @@ export function AccountScreen() {
             xp: data.stats.xp,
             streak: data.stats.streak,
             rank: data.stats.rank,
+            league: data.stats.league,
           });
         } catch (err) {
           console.error("Erreur chargement compte", err);
@@ -237,11 +239,23 @@ export function AccountScreen() {
           <Text style={styles.email}>{user.email}</Text>
           
           <View style={styles.badgeContainer}>
+            <View style={[styles.leagueBadge, { backgroundColor: stats.league.color + '25' }]}>
+              <Ionicons name="ribbon" size={14} color={stats.league.color} />
+              <Text style={[styles.leagueBadgeText, { color: stats.league.color }]}>
+                Ligue {stats.league.name}
+              </Text>
+            </View>
             <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={styles.badge}>
               <Ionicons name="calendar" size={14} color={colors.primary} />
               <Text style={styles.badgeText}>Membre depuis le {joinedDate}</Text>
             </BlurView>
           </View>
+
+          {stats.league.nextLeagueName && (
+            <Text style={styles.nextLeagueHint}>
+              Plus que {stats.league.xpToNextLeague} XP pour la ligue {stats.league.nextLeagueName}
+            </Text>
+          )}
         </View>
 
         {/* Stats Cards */}
@@ -633,6 +647,26 @@ function makeStyles(colors: ThemeColors) {
     badgeText: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+
+    leagueBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 6,
+    },
+
+    leagueBadgeText: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
+
+    nextLeagueHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 8,
     },
 
     statsGrid: {
