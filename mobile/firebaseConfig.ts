@@ -1,4 +1,8 @@
 import { initializeApp } from 'firebase/app';
+// @ts-ignore -- getReactNativePersistence existe bien au runtime dans le SDK
+// Firebase JS pour React Native, mais n'est pas inclus dans les définitions
+// de types de 'firebase/auth' sur cette version du SDK (limitation connue,
+// sans impact sur le comportement réel — le code fonctionne normalement).
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
