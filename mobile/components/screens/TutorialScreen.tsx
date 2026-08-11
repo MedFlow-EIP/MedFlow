@@ -23,12 +23,12 @@ import type { ThemeColors } from '../../theme/colors';
 const { width, height } = Dimensions.get('window');
 
 // Doit correspondre exactement a AppNavigator.tsx (styles.bottomNav.height)
-const TAB_BAR_HEIGHT = 70;
+export const TAB_BAR_HEIGHT = 70;
 
 // Ordre reel des 5 items dans CustomTabBar (AppNavigator.tsx), chacun flex:1
 // sur la largeur totale de l'ecran.
-const TAB_ORDER = ['home-tab', 'aichat-tab', 'add-tab', 'dashboard-tab', 'account-tab'] as const;
-type TabKey = (typeof TAB_ORDER)[number];
+export const TAB_ORDER = ['home-tab', 'aichat-tab', 'add-tab', 'dashboard-tab', 'account-tab'] as const;
+export type TabKey = (typeof TAB_ORDER)[number];
 
 type TutorialStep = {
   id: string;
@@ -117,13 +117,13 @@ interface TutorialScreenProps {
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-function getTabPosition(tabKey: TabKey): Rect {
+export function getTabPosition(tabKey: TabKey): Rect {
   const idx = TAB_ORDER.indexOf(tabKey);
   const tabWidth = width / TAB_ORDER.length;
   return { x: idx * tabWidth, y: height - TAB_BAR_HEIGHT, width: tabWidth, height: TAB_BAR_HEIGHT };
 }
 
-function getElementPosition(elementName: string): Rect {
+export function getElementPosition(elementName: string): Rect {
   switch (elementName) {
     case 'paths-section':
       return { x: 20, y: 170, width: width - 40, height: 400 };
@@ -132,7 +132,7 @@ function getElementPosition(elementName: string): Rect {
   }
 }
 
-function getHighlightRect(step: TutorialStep): Rect | null {
+export function getHighlightRect(step: TutorialStep): Rect | null {
   if (step.highlightTab) return getTabPosition(step.highlightTab);
   if (step.highlightElement) return getElementPosition(step.highlightElement);
   return null;
