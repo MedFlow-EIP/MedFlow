@@ -42,7 +42,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   // }, []);
 
   useEffect(() => {
-    if (route.params?.updatedPaths) {
+    if (Array.isArray(route.params?.updatedPaths)) {
       setPaths(route.params.updatedPaths);
     }
   }, [route.params?.updatedPaths]);
@@ -56,7 +56,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             headers: await getAuthHeaders(user),
           });
           const data = await res.json();
-          setPaths(data.paths);
+          setPaths(Array.isArray(data.paths) ? data.paths : []);
         } catch (err) {
           console.error(err);
         }
