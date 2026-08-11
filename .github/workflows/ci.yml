@@ -78,6 +78,7 @@ jobs:
       - name: Create credentials.json
         run: |
           echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > backend/credentials.json
+          echo '${{ secrets.FIREBASE_CREDENTIALS_JSON }}' > backend/firebase-credentials.json
 
       - name: Create backend/.env file for Docker
         run: |
@@ -88,6 +89,7 @@ jobs:
       - name: Create root .env file (interpolation docker-compose.yml)
         run: |
           PRIVATE_KEY_ESCAPED=$(jq -r '.private_key' backend/credentials.json | sed ':a;N;$!ba;s/\n/\\n/g')
+          FIREBASE_PRIVATE_KEY_ESCAPED=$(jq -r '.private_key' backend/firebase-credentials.json | sed ':a;N;$!ba;s/\n/\\n/g')
           {
             echo "GCP_TYPE=$(jq -r '.type' backend/credentials.json)"
             echo "GCP_PROJECT_ID=$(jq -r '.project_id' backend/credentials.json)"
@@ -100,7 +102,19 @@ jobs:
             echo "GCP_AUTH_PROVIDER_X509_CERT_URL=$(jq -r '.auth_provider_x509_cert_url' backend/credentials.json)"
             echo "GCP_CLIENT_X509_CERT_URL=$(jq -r '.client_x509_cert_url' backend/credentials.json)"
             echo "GCP_UNIVERSE_DOMAIN=$(jq -r '.universe_domain' backend/credentials.json)"
+            echo "FIREBASE_TYPE=$(jq -r '.type' backend/firebase-credentials.json)"
+            echo "FIREBASE_PROJECT_ID=$(jq -r '.project_id' backend/firebase-credentials.json)"
+            echo "FIREBASE_PRIVATE_KEY_ID=$(jq -r '.private_key_id' backend/firebase-credentials.json)"
+            echo "FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY_ESCAPED}"
+            echo "FIREBASE_CLIENT_EMAIL=$(jq -r '.client_email' backend/firebase-credentials.json)"
+            echo "FIREBASE_CLIENT_ID=$(jq -r '.client_id' backend/firebase-credentials.json)"
+            echo "FIREBASE_AUTH_URI=$(jq -r '.auth_uri' backend/firebase-credentials.json)"
+            echo "FIREBASE_TOKEN_URI=$(jq -r '.token_uri' backend/firebase-credentials.json)"
+            echo "FIREBASE_AUTH_PROVIDER_X509_CERT_URL=$(jq -r '.auth_provider_x509_cert_url' backend/firebase-credentials.json)"
+            echo "FIREBASE_CLIENT_X509_CERT_URL=$(jq -r '.client_x509_cert_url' backend/firebase-credentials.json)"
+            echo "FIREBASE_UNIVERSE_DOMAIN=$(jq -r '.universe_domain' backend/firebase-credentials.json)"
           } > .env
+          grep "^FIREBASE_\|^GCP_" .env >> backend/.env
 
       - name: Build Docker images
         run: |
