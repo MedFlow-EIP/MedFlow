@@ -55,6 +55,8 @@ export function ForgotPasswordScreen({ navigation }: any) {
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
+        accessibilityLabel="Retour"
+        accessibilityRole="button"
       >
         <Ionicons name="arrow-back" size={24} color={colors.primary} />
       </TouchableOpacity>

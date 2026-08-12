@@ -114,6 +114,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => navigation.navigate('Home')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: isFocused('Home') }}
+          accessibilityLabel="Accueil"
         >
           <View style={[
             styles.navIconContainer,
@@ -137,6 +140,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => navigation.navigate('AIChat')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: isFocused('AIChat') }}
+          accessibilityLabel="Assistant IA"
         >
           <View style={[
             styles.navIconContainer,
@@ -161,6 +167,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           style={styles.navItem}
           onPress={openAddModal}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Ajouter du contenu"
         >
           <View style={styles.addButtonContainer}>
             <LinearGradient
@@ -179,6 +187,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => navigation.navigate('Dashboard')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: isFocused('Dashboard') }}
+          accessibilityLabel="Dashboard"
         >
           <View style={[
             styles.navIconContainer,
@@ -202,6 +213,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => navigation.navigate('Account')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: isFocused('Account') }}
+          accessibilityLabel="Compte"
         >
           <View style={[
             styles.navIconContainer,
@@ -237,7 +251,12 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.modalBlur}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Ajouter du contenu</Text>
-                <TouchableOpacity onPress={closeAddModal} style={styles.modalClose}>
+                <TouchableOpacity
+                  onPress={closeAddModal}
+                  style={styles.modalClose}
+                  accessibilityLabel="Fermer"
+                  accessibilityRole="button"
+                >
                   <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>

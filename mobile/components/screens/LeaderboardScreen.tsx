@@ -131,6 +131,8 @@ export function LeaderboardScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           hitSlop={8}
+          accessibilityLabel="Retour"
+          accessibilityRole="button"
         >
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>

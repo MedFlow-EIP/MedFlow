@@ -99,7 +99,11 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: path.color + '15' }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Retour"
+            accessibilityRole="button"
+          >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>

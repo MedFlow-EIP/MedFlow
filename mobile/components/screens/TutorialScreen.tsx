@@ -429,7 +429,12 @@ export function TutorialScreen({ visible, onComplete, navigation }: TutorialScre
 
           <View style={styles.buttonContainer}>
             {currentStep > 0 && (
-              <TouchableOpacity onPress={() => goToStep(currentStep - 1)} style={styles.backButton}>
+              <TouchableOpacity
+                onPress={() => goToStep(currentStep - 1)}
+                style={styles.backButton}
+                accessibilityLabel="Étape précédente"
+                accessibilityRole="button"
+              >
                 <Ionicons name="arrow-back" size={16} color={colors.primary} />
                 <Text style={styles.backButtonText}>Retour</Text>
               </TouchableOpacity>
