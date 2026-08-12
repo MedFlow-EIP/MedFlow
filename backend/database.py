@@ -272,6 +272,20 @@ class Database:
 
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    path_id TEXT,
+                    lesson_id TEXT,
+                    screen TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS friendships (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     requester_uid TEXT NOT NULL,
@@ -544,6 +558,30 @@ class Database:
                 }
                 for row in rows
             ]
+
+    def log_analytics_event(
+        self,
+        uid: str,
+        event_type: str,
+        path_id: str | None = None,
+        lesson_id: str | None = None,
+        screen: str | None = None,
+    ) -> None:
+        """Journal d'événements purement analytique, distinct de
+        activity_log (qui alimente 'Actions récentes' côté utilisateur —
+        on ne veut PAS y mélanger des événements internes comme
+        'lesson_started' ou 'screen_view', ça polluerait ce feed).
+        Sert au diagnostic de frictions (objectif 2 du track EIP) :
+        combien commencent une leçon vs la terminent, quels écrans sont
+        vus sans action derrière."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO analytics_events (uid, event_type, path_id, lesson_id, screen, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (uid, event_type, path_id, lesson_id, screen, datetime.now(timezone.utc).isoformat()),
+            )
 
     def log_activity(
         self, uid: str, activity_type: str, title: str, detail: str = "", xp_gained: int = 0
@@ -1094,10 +1132,9 @@ class Database:
                 "SELECT path_id FROM user_lessons WHERE uid=? AND lesson_id=?",
                 (uid, lesson_id)
             ).fetchone()
+            path_id = path_id_row["path_id"] if path_id_row else None
 
             if path_id_row:
-                path_id = path_id_row["path_id"]
-
                 next_lesson = conn.execute(
                     """
                     SELECT lesson_id
@@ -1124,6 +1161,9 @@ class Database:
             f"+{xp} XP",
             xp_gained=xp,
         )
+        # Copie analytique (distincte du feed "Actions récentes" ci-dessus) —
+        # sert à calculer le taux d'abandon commencé/terminé par leçon.
+        self.log_analytics_event(uid, "lesson_completed", path_id=path_id, lesson_id=lesson_id)
 
         return self.check_and_unlock_badges(uid)
 
@@ -1141,6 +1181,9 @@ class Database:
             )
             conn.execute("DELETE FROM user_badges WHERE uid=?", (uid,))
             conn.execute("DELETE FROM activity_log WHERE uid=?", (uid,))
+            # Évite que les tests répétés d'un dev polluent les données
+            # d'usage réelles utilisées pour le diagnostic de frictions.
+            conn.execute("DELETE FROM analytics_events WHERE uid=?", (uid,))
 
         # Recrée les leçons dans leur état initial (1ère leçon de chaque
         # parcours disponible, le reste verrouillé).

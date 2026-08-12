@@ -44,6 +44,7 @@ import RenderHTML from 'react-native-render-html';
 import { useWindowDimensions } from "react-native";
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { logScreenView } from '../../utils/analytics';
 
 const TAB_BAR_HEIGHT = 70;
 
@@ -78,6 +79,10 @@ const STORAGE_KEY = "@ai_conversations";
 export function AIChatScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  useEffect(() => {
+    logScreenView('AIChatScreen');
+  }, []);
 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 

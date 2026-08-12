@@ -88,6 +88,25 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
 
   const [streak, setStreak] = useState<number | null>(null);
   const [newBadges, setNewBadges] = useState<UnlockedBadge[]>([]);
+
+  // Signal purement analytique (jamais affiché à l'utilisateur) — sert à
+  // calculer le taux d'abandon commencé/terminé pour le diagnostic de
+  // frictions. Fire-and-forget : un échec ici ne doit jamais bloquer la leçon.
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders(user);
+        await fetch(`${API_URL}/api/lessons/${path.id}/${lesson.id}/start`, {
+          method: 'POST',
+          headers,
+        });
+      } catch (err) {
+        console.error('Erreur tracking lesson_started:', err);
+      }
+    })();
+  }, []);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [lastActivityForPrompt, setLastActivityForPrompt] = useState<string | null>(null);
 

@@ -58,6 +58,18 @@ def get_lessons(path_id):
     return jsonify({"lessons": lessons_response})
 
 
+@paths_bp.route("/api/lessons/<path_id>/<lesson_id>/start", methods=["POST"])
+@require_auth
+def start_lesson(path_id, lesson_id):
+    """Journalise le début d'une leçon — signal purement analytique, pour
+    calculer le taux d'abandon (commencées vs terminées) dans le cadre du
+    diagnostic de frictions (objectif 2 du track EIP)."""
+    current_app.db.log_analytics_event(
+        g.uid, "lesson_started", path_id=path_id, lesson_id=lesson_id
+    )
+    return jsonify({"success": True})
+
+
 @paths_bp.route("/api/lessons/<path_id>/<lesson_id>/complete", methods=["POST"])
 @require_auth
 def complete_lesson(path_id, lesson_id):

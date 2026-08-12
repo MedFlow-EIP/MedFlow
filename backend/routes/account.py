@@ -189,3 +189,23 @@ def reset_progress():
     except Exception as e:
         logger.exception("Erreur reset progress")
         return jsonify({"error": str(e)}), 500
+
+
+@account_bp.route("/api/analytics/screen-view", methods=["POST"])
+@require_auth
+def log_screen_view():
+    """Journalise qu'un écran a été vu — signal purement analytique pour
+    repérer les écrans où les utilisateurs arrivent sans jamais agir
+    derrière (ex: UploadCourseScreen sans upload, AIChatScreen sans
+    message envoyé). Body: {"screen": "UploadCourseScreen"}."""
+    try:
+        data = request.get_json(silent=True) or {}
+        screen = data.get("screen")
+        if not screen:
+            return jsonify({"error": "screen requis"}), 400
+
+        current_app.db.log_analytics_event(g.uid, "screen_view", screen=screen)
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.exception("Erreur screen-view")
+        return jsonify({"error": str(e)}), 500
