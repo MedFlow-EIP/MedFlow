@@ -50,6 +50,9 @@ export function FlashCard({ question, answer, color }: FlashCardProps) {
       onPress={handleFlip}
       activeOpacity={0.9}
       style={styles.container}
+      accessibilityRole="button"
+      accessibilityLabel={`Carte mémo : ${question}`}
+      accessibilityHint="Appuyer pour voir la réponse"
     >
       <View style={styles.cardWrapper}>
         <Animated.View

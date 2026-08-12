@@ -116,7 +116,11 @@ export function LoginScreen({ navigation }: any) {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
@@ -129,6 +133,8 @@ export function LoginScreen({ navigation }: any) {
           <TouchableOpacity 
             style={styles.forgotPasswordButton} 
             onPress={() => navigation.navigate('ForgotPassword')}
+            accessibilityRole="button"
+            accessibilityLabel="Mot de passe oublié ?"
           >
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
@@ -139,6 +145,9 @@ export function LoginScreen({ navigation }: any) {
             onPress={handleLogin} 
             disabled={loading}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Connexion en cours' : 'Se connecter'}
+            accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
@@ -161,6 +170,8 @@ export function LoginScreen({ navigation }: any) {
           <TouchableOpacity 
             style={styles.linkButton} 
             onPress={() => navigation.navigate('Register')}
+            accessibilityRole="button"
+            accessibilityLabel="Pas de compte ? S'inscrire"
           >
             <Text style={styles.linkText}>
               Pas de compte ? <Text style={styles.linkTextBold}>S'inscrire</Text>

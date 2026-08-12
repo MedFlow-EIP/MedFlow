@@ -29,13 +29,19 @@ export function ExplanationStep({
             source={{ uri: image }}
             style={styles.image}
             resizeMode="contain"
+            accessibilityLabel={`Illustration : ${title}`}
           />
         )}
 
         <Text style={styles.text}>{explanation}</Text>
       </View>
 
-      <Pressable style={styles.button} onPress={onContinue}>
+      <Pressable
+        style={styles.button}
+        onPress={onContinue}
+        accessibilityRole="button"
+        accessibilityLabel="Continuer"
+      >
         <Text style={styles.buttonText}>Continuer</Text>
       </Pressable>
     </View>

@@ -93,9 +93,11 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={() => navigation.navigate('Account')}
+            accessibilityRole="button"
+            accessibilityLabel="Mon profil"
           >
             {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.headerAvatar} />
+              <Image source={{ uri: user.photoURL }} style={styles.headerAvatar} accessible={false} />
             ) : (
               <View style={styles.headerAvatarPlaceholder}>
                 <Text style={styles.headerAvatarText}>

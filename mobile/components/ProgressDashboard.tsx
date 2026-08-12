@@ -39,7 +39,11 @@ export function ProgressDashboard({
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.statsGrid} testID="stats-section">
-        <View style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}>
+        <View
+          style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}
+          accessible={true}
+          accessibilityLabel={`${totalXP} points XP`}
+        >
           <View style={[styles.statIconBadge, { backgroundColor: colors.tintPrimary }]}>
             <Ionicons name="star-outline" size={24} color={colors.primary} />
           </View>
@@ -47,7 +51,11 @@ export function ProgressDashboard({
           <Text style={styles.statLabel}>Points XP</Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}>
+        <View
+          style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}
+          accessible={true}
+          accessibilityLabel={`${completedLessons} leçons complétées`}
+        >
           <View style={[styles.statIconBadge, { backgroundColor: colors.tintSuccess }]}>
             <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
           </View>
@@ -56,7 +64,11 @@ export function ProgressDashboard({
         </View>
 
         {hasStreak && (
-          <View style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}>
+          <View
+            style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}
+            accessible={true}
+            accessibilityLabel={`${currentStreak} jours de série`}
+          >
             <View style={[styles.statIconBadge, { backgroundColor: colors.tintWarning }]}>
               <Ionicons name="flame-outline" size={24} color={colors.warning} />
             </View>
@@ -66,7 +78,12 @@ export function ProgressDashboard({
         )}
       </View>
 
-      <Card style={styles.progressCard} testID="progress-card">
+      <Card
+        style={styles.progressCard}
+        testID="progress-card"
+        accessible={true}
+        accessibilityLabel={`Progression globale, ${completionPercentage}%, ${completedLessons} leçons complétées sur ${totalLessons}`}
+      >
         <View style={styles.progressHeader}>
           <Text style={styles.progressTitle}>Progression globale</Text>
           <Text style={styles.progressPercentage}>{completionPercentage}%</Text>
@@ -78,7 +95,11 @@ export function ProgressDashboard({
       </Card>
 
       {hasWeeklyGoal && (
-        <Card style={styles.progressCard}>
+        <Card
+          style={styles.progressCard}
+          accessible={true}
+          accessibilityLabel={`Objectif hebdomadaire, ${weeklyPercentage}%, ${weeklyProgress} sur ${weeklyGoal} leçons cette semaine`}
+        >
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Objectif hebdomadaire</Text>
             <Text style={styles.progressPercentage}>{weeklyPercentage}%</Text>

@@ -368,7 +368,11 @@ export function SettingsScreen() {
       <View style={styles.profileCenter}>
         <View style={styles.avatarWrapper}>
           {photo ? (
-            <Image source={{ uri: photo }} style={styles.avatar} />
+            <Image
+              source={{ uri: photo }}
+              style={styles.avatar}
+              accessibilityLabel="Photo de profil actuelle"
+            />
           ) : (
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
@@ -401,6 +405,7 @@ export function SettingsScreen() {
         <TextInput
           value={fullName}
           onChangeText={setFullName}
+          accessibilityLabel="Nom"
           style={styles.input}
           placeholderTextColor={colors.muted}
         />
@@ -409,6 +414,7 @@ export function SettingsScreen() {
         <TextInput
           value={user?.email || ""}
           editable={false}
+          accessibilityLabel="Email (non modifiable)"
           style={styles.inputDisabled}
         />
 
@@ -425,6 +431,7 @@ export function SettingsScreen() {
           <TextInput
             placeholder="Nouveau mot de passe"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Nouveau mot de passe"
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
@@ -434,6 +441,7 @@ export function SettingsScreen() {
           <TextInput
             placeholder="Confirmer le mot de passe"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Confirmer le nouveau mot de passe"
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}

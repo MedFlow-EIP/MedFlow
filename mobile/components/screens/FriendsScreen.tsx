@@ -208,6 +208,7 @@ export function FriendsScreen() {
           onChangeText={runSearch}
           placeholder="Rechercher un nom..."
           placeholderTextColor={colors.muted}
+          accessibilityLabel="Rechercher un ami par nom"
           style={styles.searchInput}
         />
         {searching && <ActivityIndicator size="small" color={colors.primary} />}

@@ -79,6 +79,8 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={toggleMenu}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer le menu"
         >
           <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill}>
             <View style={styles.modalContent}>
@@ -97,6 +99,8 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
                     toggleMenu();
                     onVoiceChat();
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Parler à l'IA"
                 >
                   <Ionicons name="mic-outline" size={24} color="#ffffff" />
                   <Text style={styles.optionText}>Parler à l'IA</Text>
@@ -118,6 +122,8 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
                     toggleMenu();
                     onUploadPDF();
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Uploader un PDF"
                 >
                   <Ionicons name="document-outline" size={24} color="#ffffff" />
                   <Text style={styles.optionText}>Upload PDF</Text>
@@ -132,6 +138,8 @@ export function FloatingActionButton({ onUploadPDF, onVoiceChat }: FloatingActio
         style={styles.fab}
         onPress={toggleMenu}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={isOpen ? 'Fermer le menu' : 'Ouvrir le menu des actions rapides'}
       >
         <Animated.View
           style={[

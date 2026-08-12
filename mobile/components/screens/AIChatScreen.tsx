@@ -340,6 +340,8 @@ export function AIChatScreen() {
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => setIsHistoryVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Historique des conversations"
         >
           <Ionicons name="menu" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -361,6 +363,8 @@ export function AIChatScreen() {
         <TouchableOpacity 
           style={styles.headerButton}
           onPress={createNewConversation}
+          accessibilityRole="button"
+          accessibilityLabel="Nouvelle conversation"
         >
           <Ionicons name="create-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -386,6 +390,8 @@ export function AIChatScreen() {
                 <TouchableOpacity 
                   style={styles.modalClose}
                   onPress={() => setIsHistoryVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fermer"
                 >
                   <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -402,6 +408,9 @@ export function AIChatScreen() {
                       item.id === currentConvId && styles.historyItemActive
                     ]}
                     onPress={() => selectConversation(item.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.title}
+                    accessibilityState={{ selected: item.id === currentConvId }}
                   >
                     <View style={styles.historyItemLeft}>
                       <View style={[
@@ -433,6 +442,8 @@ export function AIChatScreen() {
                     <TouchableOpacity
                       onPress={() => deleteConversation(item.id)}
                       style={styles.historyDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel="Supprimer la conversation"
                     >
                       <Ionicons 
                         name="trash-outline" 
@@ -447,6 +458,8 @@ export function AIChatScreen() {
               <TouchableOpacity 
                 style={styles.newConversationButton}
                 onPress={createNewConversation}
+                accessibilityRole="button"
+                accessibilityLabel="Nouvelle conversation"
               >
                 <LinearGradient
                   colors={[colors.primary, colors.primaryDark]}
@@ -514,7 +527,11 @@ export function AIChatScreen() {
                   {message.attachments?.map((att, idx) => (
                     <View key={idx} style={styles.attachmentPreview}>
                       {att.type === 'image' ? (
-                        <Image source={{ uri: att.uri }} style={styles.attachmentImage} />
+                        <Image
+                          source={{ uri: att.uri }}
+                          style={styles.attachmentImage}
+                          accessibilityLabel={`Image jointe : ${att.name}`}
+                        />
                       ) : (
                         <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentFile}>
                           <Ionicons name="document-text" size={24} color={colors.primary} />
@@ -609,7 +626,11 @@ export function AIChatScreen() {
             {attachments.map((att, index) => (
               <BlurView key={index} intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentItem}>
                 {att.type === 'image' ? (
-                  <Image source={{ uri: att.uri }} style={styles.attachmentThumb} />
+                  <Image
+                    source={{ uri: att.uri }}
+                    style={styles.attachmentThumb}
+                    accessibilityLabel={`Image à envoyer : ${att.name}`}
+                  />
                 ) : (
                   <View style={styles.attachmentThumbFile}>
                     <Ionicons name="document-text" size={30} color={colors.primary} />
@@ -618,6 +639,8 @@ export function AIChatScreen() {
                 <TouchableOpacity 
                   style={styles.removeAttachment}
                   onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retirer la pièce jointe"
                 >
                   <Ionicons name="close-circle" size={22} color={colors.danger} />
                 </TouchableOpacity>
@@ -649,6 +672,7 @@ export function AIChatScreen() {
               value={input}
               onChangeText={setInput}
               placeholder="Écrivez votre message..."
+              accessibilityLabel="Message à l'assistant IA"
               style={styles.input}
               multiline
               placeholderTextColor={colors.muted}
@@ -689,6 +713,9 @@ export function AIChatScreen() {
                 style={styles.sendButton}
                 onPress={sendMessage}
                 disabled={!input.trim() && attachments.length === 0}
+                accessibilityRole="button"
+                accessibilityLabel="Envoyer"
+                accessibilityState={{ disabled: !input.trim() && attachments.length === 0 }}
               >
                 <LinearGradient
                   colors={[colors.primary, colors.primaryDark]}
@@ -708,6 +735,8 @@ export function AIChatScreen() {
               <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.attachmentMenuBlur}>
                 <TouchableOpacity 
                   style={styles.attachmentMenuItem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajouter une image"
                   onPress={async () => {
                     const result = await ImagePicker.launchImageLibraryAsync({
                       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -730,6 +759,8 @@ export function AIChatScreen() {
                 
                 <TouchableOpacity 
                   style={styles.attachmentMenuItem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajouter un document"
                   onPress={async () => {
                     const result = await DocumentPicker.getDocumentAsync({
                       type: "*/*",

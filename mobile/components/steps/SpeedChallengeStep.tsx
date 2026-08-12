@@ -117,6 +117,9 @@ export function SpeedChallengeStep({
               ]}
               onPress={() => select(o.id)}
               disabled={answered}
+              accessibilityRole="button"
+              accessibilityLabel={o.text}
+              accessibilityState={{ disabled: answered, selected: isSelected }}
             >
               <View style={styles.optionContent}>
                 <Text style={[styles.optionText, { color: textColor }]}>

@@ -107,7 +107,13 @@ export function BadgeUnlockModal({ badges, onDismiss }: BadgeUnlockModalProps) {
           <Text style={styles.title}>{badge.title}</Text>
           <Text style={styles.description}>{badge.description}</Text>
 
-          <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleNext}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={isLast ? 'Super !' : 'Suivant'}
+          >
             <Text style={styles.buttonText}>{isLast ? 'Super !' : 'Suivant'}</Text>
           </TouchableOpacity>
         </View>

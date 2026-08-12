@@ -167,7 +167,11 @@ export function RegisterScreen({ navigation }: any) {
               onChangeText={setPassword} 
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
@@ -187,7 +191,11 @@ export function RegisterScreen({ navigation }: any) {
               onChangeText={setConfirmPassword} 
               secureTextEntry={!showConfirmPassword}
             />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
               <Ionicons 
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
@@ -202,6 +210,9 @@ export function RegisterScreen({ navigation }: any) {
             onPress={handleRegister} 
             disabled={loading}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Inscription en cours' : "S'inscrire"}
+            accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
@@ -224,6 +235,8 @@ export function RegisterScreen({ navigation }: any) {
           <TouchableOpacity 
             style={styles.linkButton} 
             onPress={() => navigation.navigate('Login')}
+            accessibilityRole="button"
+            accessibilityLabel="Déjà un compte ? Se connecter"
           >
             <Text style={styles.linkText}>
               Déjà un compte ? <Text style={styles.linkTextBold}>Se connecter</Text>

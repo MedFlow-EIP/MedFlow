@@ -50,11 +50,15 @@ export function Button({
 
   const label = title ?? children;
   const bgOverride = color ? { backgroundColor: color } : null;
+  const accessibleLabel = typeof label === "string" ? label : title;
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibleLabel}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       style={({ pressed }) => [
         styles.base,
         s.container,

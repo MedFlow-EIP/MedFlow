@@ -43,7 +43,12 @@ export function FeatureTooltip({ title, description, visible, onClose }: Feature
           <Text style={styles.tooltipSubtitle}>{title}</Text>
           <Text style={styles.tooltipDescription}>{description}</Text>
           
-          <TouchableOpacity onPress={onClose} style={styles.gotItButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.gotItButton}
+            accessibilityRole="button"
+            accessibilityLabel="J'ai compris"
+          >
             <Text style={styles.gotItText}>J'ai compris</Text>
           </TouchableOpacity>
         </View>
