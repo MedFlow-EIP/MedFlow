@@ -68,8 +68,7 @@ def get_due_revision():
     """Questions de quiz à réviser aujourd'hui, calculées par l'algorithme
     SM-2 de répétition espacée (voir spaced_repetition.py). ``?course_id=``
     limite à un seul cours, sinon toutes les questions dues sont renvoyées.
-    La bonne réponse est incluse (voir database.get_due_quiz_items pour le
-    raisonnement) — permet un feedback instantané côté mobile."""
+    La bonne réponse n'est jamais incluse dans la réponse."""
     try:
         db = current_app.db
         uid = g.uid

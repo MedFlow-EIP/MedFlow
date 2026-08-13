@@ -10,13 +10,17 @@ import { getAuthHeaders } from '../../utils/authHeaders';
 import { ProgressBar } from '../ui/progress';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
-type DueCard = {
+type DueItem = {
   course_id: string;
   course_nom: string;
-  card_index: number;
+  item_index: number;
   question: string;
-  answer: string;
-  overdue_days?: number;
+  options: Record<string, string>;
+};
+
+type AnswerResult = {
+  correct: boolean;
+  correct_answer: string;
 };
 
 type RevisionRoute = RouteProp<RootStackParamList, 'Revision'>;
@@ -29,14 +33,16 @@ export function RevisionScreen() {
   const courseId = route.params?.courseId;
 
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<'scheduled' | 'practice'>('scheduled');
   const [error, setError] = useState(false);
-  const [cards, setCards] = useState<DueCard[]>([]);
+  const [items, setItems] = useState<DueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
-  const [goodAnswers, setGoodAnswers] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
+  const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (loadMode: 'scheduled' | 'practice' = mode) => {
     const user = auth.currentUser;
     if (!user) {
       setLoading(false);
@@ -44,18 +50,21 @@ export function RevisionScreen() {
     }
     setLoading(true);
     setError(false);
+    setMode(loadMode);
     try {
       const headers = await getAuthHeaders(user);
+      const endpoint = loadMode === 'practice' ? '/api/revision/practice' : '/api/revision/due';
       const url = courseId
-        ? `${API_URL}/api/revision/due?course_id=${encodeURIComponent(courseId)}`
-        : `${API_URL}/api/revision/due`;
+        ? `${API_URL}${endpoint}?course_id=${encodeURIComponent(courseId)}`
+        : `${API_URL}${endpoint}`;
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error('Erreur serveur');
       const data = await res.json();
-      setCards(Array.isArray(data.cards) ? data.cards : []);
+      setItems(Array.isArray(data.items) ? data.items : []);
       setCurrentIndex(0);
-      setRevealed(false);
-      setGoodAnswers(0);
+      setSelectedOption(null);
+      setAnswerResult(null);
+      setCorrectCount(0);
       setFinished(false);
     } catch (err) {
       console.error('Erreur chargement révision:', err);
@@ -63,20 +72,20 @@ export function RevisionScreen() {
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, mode]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      load('scheduled');
+    }, [courseId])
   );
 
-  const finishSession = async (finalGoodAnswers: number, totalReviewed: number) => {
+  const finishSession = async (finalCorrectCount: number, totalReviewed: number) => {
     const user = auth.currentUser;
     if (!user || totalReviewed === 0) return;
     try {
       const headers = await getAuthHeaders(user);
-      const scorePercent = Math.round((finalGoodAnswers / totalReviewed) * 100);
+      const scorePercent = Math.round((finalCorrectCount / totalReviewed) * 100);
       await fetch(`${API_URL}/api/session-done`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -93,37 +102,48 @@ export function RevisionScreen() {
     }
   };
 
-  const answerCard = async (quality: number) => {
-    const card = cards[currentIndex];
+  const selectOption = async (option: string) => {
+    if (selectedOption) return; // déjà répondu, on attend "Continuer"
+    const item = items[currentIndex];
     const user = auth.currentUser;
-    if (!card || !user) return;
+    if (!item || !user) return;
 
-    const isGood = quality >= 4;
-    const newGoodAnswers = goodAnswers + (isGood ? 1 : 0);
+    setSelectedOption(option);
 
     try {
       const headers = await getAuthHeaders(user);
-      await fetch(`${API_URL}/api/revision/answer`, {
+      const endpoint = mode === 'practice' ? '/api/revision/check' : '/api/revision/answer';
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          course_id: card.course_id,
-          card_index: card.card_index,
-          quality,
+          course_id: item.course_id,
+          item_index: item.item_index,
+          selected_option: option,
         }),
       });
+      const data = await res.json();
+      setAnswerResult(data);
     } catch (err) {
       console.error('Erreur enregistrement réponse:', err);
+      // Repli honnête : on ne sait pas si c'était correct, on ne compte
+      // pas la question comme réussie, mais on laisse continuer la session.
+      setAnswerResult({ correct: false, correct_answer: '' });
     }
+  };
 
-    setGoodAnswers(newGoodAnswers);
+  const goToNext = () => {
+    const wasCorrect = answerResult?.correct === true;
+    const newCorrectCount = correctCount + (wasCorrect ? 1 : 0);
+    setCorrectCount(newCorrectCount);
 
-    if (currentIndex + 1 >= cards.length) {
+    if (currentIndex + 1 >= items.length) {
       setFinished(true);
-      finishSession(newGoodAnswers, cards.length);
+      finishSession(newCorrectCount, items.length);
     } else {
       setCurrentIndex(currentIndex + 1);
-      setRevealed(false);
+      setSelectedOption(null);
+      setAnswerResult(null);
     }
   };
 
@@ -143,7 +163,7 @@ export function RevisionScreen() {
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.muted} />
           <Text style={styles.emptyTitle}>Impossible de charger la révision</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={load} accessibilityRole="button" accessibilityLabel="Réessayer">
+          <TouchableOpacity style={styles.primaryButton} onPress={() => load()} accessibilityRole="button" accessibilityLabel="Réessayer">
             <Text style={styles.primaryButtonText}>Réessayer</Text>
           </TouchableOpacity>
         </View>
@@ -151,7 +171,7 @@ export function RevisionScreen() {
     );
   }
 
-  if (cards.length === 0) {
+  if (items.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -161,39 +181,79 @@ export function RevisionScreen() {
         </View>
         <View style={styles.centered}>
           <Ionicons name="checkmark-circle-outline" size={64} color={colors.success} />
-          <Text style={styles.emptyTitle} accessibilityRole="header">Rien à réviser aujourd'hui</Text>
-          <Text style={styles.emptySubtitle}>
-            Reviens plus tard — les cartes réapparaîtront selon leur planning de révision.
+          <Text style={styles.emptyTitle} accessibilityRole="header">
+            {mode === 'practice' ? "Aucune question dans ce cours" : "Rien à réviser aujourd'hui"}
           </Text>
+          <Text style={styles.emptySubtitle}>
+            {mode === 'practice'
+              ? "Ce cours n'a pas encore de quiz généré."
+              : "Le planning te propose ce qui est vraiment utile à revoir maintenant."}
+          </Text>
+          {mode === 'scheduled' && (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => load('practice')}
+              accessibilityRole="button"
+              accessibilityLabel="Réviser quand même en mode libre"
+            >
+              <Text style={styles.secondaryButtonText}>Réviser quand même (mode libre)</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     );
   }
 
   if (finished) {
-    const scorePercent = Math.round((goodAnswers / cards.length) * 100);
+    const scorePercent = Math.round((correctCount / items.length) * 100);
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <Ionicons name="ribbon-outline" size={64} color={colors.warning} />
           <Text style={styles.emptyTitle} accessibilityRole="header">Session terminée !</Text>
           <Text style={styles.emptySubtitle}>
-            {goodAnswers} / {cards.length} cartes bien sues ({scorePercent}%)
+            {correctCount} / {items.length} bonnes réponses ({scorePercent}%)
           </Text>
+          {mode === 'practice' && (
+            <Text style={styles.practiceHint}>
+              Mode libre — ce résultat n'affecte pas ton planning de révision.
+            </Text>
+          )}
           <TouchableOpacity
             style={styles.primaryButton}
+            onPress={() => load('practice')}
+            accessibilityRole="button"
+            accessibilityLabel="Recommencer"
+          >
+            <Text style={styles.primaryButtonText}>Recommencer</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
             accessibilityLabel="Terminer"
           >
-            <Text style={styles.primaryButtonText}>Terminer</Text>
+            <Text style={styles.secondaryButtonText}>Terminer</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  const card = cards[currentIndex];
+  const item = items[currentIndex];
+  const optionEntries = Object.entries(item.options || {});
+
+  const optionStyle = (key: string) => {
+    if (!selectedOption) return styles.option;
+    if (!answerResult) {
+      // Réponse envoyée, en attente de la confirmation serveur — état
+      // neutre, surtout ne pas afficher rouge/vert avant de savoir.
+      return key === selectedOption ? [styles.option, styles.optionPending] : [styles.option, styles.optionDisabled];
+    }
+    if (key === answerResult.correct_answer) return [styles.option, styles.optionCorrect];
+    if (key === selectedOption) return [styles.option, styles.optionIncorrect];
+    return [styles.option, styles.optionDisabled];
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -202,70 +262,50 @@ export function RevisionScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} accessibilityRole="header">Révision</Text>
-        <Text style={styles.headerCount}>{currentIndex + 1} / {cards.length}</Text>
+        <Text style={styles.headerCount}>{currentIndex + 1} / {items.length}</Text>
       </View>
 
-      <ProgressBar progress={((currentIndex) / cards.length) * 100} height={6} />
+      <ProgressBar progress={(currentIndex / items.length) * 100} height={6} />
 
       <View style={styles.cardArea}>
-        <Text style={styles.courseLabel}>{card.course_nom}</Text>
-        <View style={styles.card}>
-          <Text style={styles.questionLabel}>Question</Text>
-          <Text style={styles.questionText}>{card.question}</Text>
+        <Text style={styles.courseLabel}>{item.course_nom}</Text>
+        <Text style={styles.questionText}>{item.question}</Text>
 
-          {revealed && (
-            <>
-              <View style={styles.divider} />
-              <Text style={styles.answerLabel}>Réponse</Text>
-              <Text style={styles.answerText}>{card.answer}</Text>
-            </>
-          )}
+        <View style={styles.optionsList}>
+          {optionEntries.map(([key, text]) => (
+            <TouchableOpacity
+              key={key}
+              style={optionStyle(key) as any}
+              onPress={() => selectOption(key)}
+              disabled={!!selectedOption}
+              accessibilityRole="button"
+              accessibilityLabel={`${key} : ${text}`}
+              accessibilityState={{ disabled: !!selectedOption, selected: key === selectedOption }}
+            >
+              <Text style={styles.optionLetter}>{key}</Text>
+              <Text style={styles.optionText}>{text}</Text>
+              {selectedOption && key === selectedOption && !answerResult && (
+                <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Vérification en cours" />
+              )}
+              {answerResult && key === answerResult.correct_answer && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              )}
+              {answerResult && key === selectedOption && !answerResult.correct && (
+                <Ionicons name="close-circle" size={20} color={colors.danger} />
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {!revealed ? (
+        {selectedOption && (
           <TouchableOpacity
-            style={styles.revealButton}
-            onPress={() => setRevealed(true)}
+            style={styles.continueButton}
+            onPress={goToNext}
             accessibilityRole="button"
-            accessibilityLabel="Voir la réponse"
+            accessibilityLabel="Continuer"
           >
-            <Text style={styles.revealButtonText}>Voir la réponse</Text>
+            <Text style={styles.continueButtonText}>Continuer</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.qualityRow}>
-            <TouchableOpacity
-              style={[styles.qualityButton, { backgroundColor: colors.danger }]}
-              onPress={() => answerCard(1)}
-              accessibilityRole="button"
-              accessibilityLabel="Encore — je ne savais pas"
-            >
-              <Text style={styles.qualityButtonText}>Encore</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.qualityButton, { backgroundColor: colors.warning }]}
-              onPress={() => answerCard(3)}
-              accessibilityRole="button"
-              accessibilityLabel="Difficile — j'ai eu du mal"
-            >
-              <Text style={styles.qualityButtonText}>Difficile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.qualityButton, { backgroundColor: colors.primary }]}
-              onPress={() => answerCard(4)}
-              accessibilityRole="button"
-              accessibilityLabel="Bien — j'ai su avec un effort"
-            >
-              <Text style={styles.qualityButtonText}>Bien</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.qualityButton, { backgroundColor: colors.success }]}
-              onPress={() => answerCard(5)}
-              accessibilityRole="button"
-              accessibilityLabel="Facile — je savais immédiatement"
-            >
-              <Text style={styles.qualityButtonText}>Facile</Text>
-            </TouchableOpacity>
-          </View>
         )}
       </View>
     </SafeAreaView>
@@ -324,84 +364,98 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       fontSize: 15,
     },
+    secondaryButton: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 8,
+    },
+    secondaryButtonText: {
+      color: colors.primary,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    practiceHint: {
+      fontSize: 12,
+      color: colors.muted,
+      textAlign: 'center',
+      marginTop: 4,
+    },
     cardArea: {
       flex: 1,
       padding: 20,
-      justifyContent: 'center',
     },
     courseLabel: {
       fontSize: 13,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginBottom: 12,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 24,
-      minHeight: 220,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    questionLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.primary,
-      textTransform: 'uppercase',
+      marginTop: 12,
       marginBottom: 8,
     },
     questionText: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 19,
+      fontWeight: '700',
       color: colors.textPrimary,
       lineHeight: 26,
+      textAlign: 'center',
+      marginBottom: 28,
     },
-    divider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginVertical: 16,
+    optionsList: {
+      gap: 10,
     },
-    answerLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.success,
-      textTransform: 'uppercase',
-      marginBottom: 8,
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
     },
-    answerText: {
-      fontSize: 16,
+    optionCorrect: {
+      borderColor: colors.success,
+      backgroundColor: colors.tintSuccess,
+    },
+    optionIncorrect: {
+      borderColor: colors.danger,
+      backgroundColor: colors.tintDanger,
+    },
+    optionPending: {
+      borderColor: colors.primary,
+    },
+    optionDisabled: {
+      opacity: 0.5,
+    },
+    optionLetter: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceAlt,
+      textAlign: 'center',
+      textAlignVertical: 'center',
+      lineHeight: 28,
+      fontSize: 13,
+      fontWeight: '700',
       color: colors.textPrimary,
-      lineHeight: 24,
     },
-    revealButton: {
+    optionText: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    continueButton: {
       backgroundColor: colors.primary,
       borderRadius: 14,
       paddingVertical: 16,
       alignItems: 'center',
       marginTop: 24,
     },
-    revealButtonText: {
+    continueButtonText: {
       color: colors.onAccent,
       fontSize: 16,
-      fontWeight: '600',
-    },
-    qualityRow: {
-      flexDirection: 'row',
-      gap: 8,
-      marginTop: 24,
-    },
-    qualityButton: {
-      flex: 1,
-      borderRadius: 12,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    qualityButtonText: {
-      color: colors.onAccent,
-      fontSize: 13,
       fontWeight: '600',
     },
   });

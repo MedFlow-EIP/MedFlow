@@ -30,10 +30,24 @@ function mockJsonResponse(body: any, ok = true, status = 200) {
   return { ok, status, json: async () => body } as any;
 }
 
-const twoCards = {
-  cards: [
-    { course_id: 'anatomy', course_nom: 'Anatomie', card_index: 0, question: 'Q1', answer: 'R1' },
-    { course_id: 'anatomy', course_nom: 'Anatomie', card_index: 1, question: 'Q2', answer: 'R2' },
+// La bonne réponse n'est PAS incluse ici — elle vient de la réponse du
+// serveur à /api/revision/answer ou /check, pas de l'item lui-même.
+const twoItems = {
+  items: [
+    {
+      course_id: 'anatomy',
+      course_nom: 'Anatomie',
+      item_index: 0,
+      question: 'Combien y a-t-il d\'os dans le corps humain adulte ?',
+      options: { A: '186', B: '206', C: '226', D: '246' },
+    },
+    {
+      course_id: 'anatomy',
+      course_nom: 'Anatomie',
+      item_index: 1,
+      question: 'Quel est le plus grand organe du corps humain ?',
+      options: { A: 'Le foie', B: 'Le cœur', C: 'La peau', D: 'Le poumon' },
+    },
   ],
   count: 2,
 };
@@ -51,7 +65,7 @@ afterEach(() => {
 });
 
 describe('RevisionScreen — chargement', () => {
-  it('affiche un loader pendant la récupération des cartes dues', () => {
+  it('affiche un loader pendant la récupération des questions dues', () => {
     (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
     render(<RevisionScreen />);
     expect(screen.UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
@@ -59,8 +73,8 @@ describe('RevisionScreen — chargement', () => {
 });
 
 describe('RevisionScreen — état vide', () => {
-  it('affiche "Rien à réviser" quand aucune carte n\'est due', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ cards: [], count: 0 }));
+  it('affiche "Rien à réviser" quand aucune question n\'est due', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
 
     render(<RevisionScreen />);
 
@@ -80,7 +94,7 @@ describe('RevisionScreen — erreur réseau', () => {
       expect(screen.getByText('Impossible de charger la révision')).toBeTruthy();
     });
 
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ cards: [], count: 0 }));
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
     fireEvent.press(screen.getByText('Réessayer'));
 
     await waitFor(() => {
@@ -89,74 +103,41 @@ describe('RevisionScreen — erreur réseau', () => {
   });
 });
 
-describe('RevisionScreen — session de révision', () => {
-  it('affiche la question de la première carte', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoCards));
+describe('RevisionScreen — session de révision (quiz)', () => {
+  it('affiche la question et les 4 options de la première question due', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoItems));
 
     render(<RevisionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('Q1')).toBeTruthy();
+      expect(screen.getByText("Combien y a-t-il d'os dans le corps humain adulte ?")).toBeTruthy();
     });
+    expect(screen.getByText('186')).toBeTruthy();
+    expect(screen.getByText('206')).toBeTruthy();
+    expect(screen.getByText('226')).toBeTruthy();
+    expect(screen.getByText('246')).toBeTruthy();
     expect(screen.getByText('1 / 2')).toBeTruthy();
   });
 
-  it('ne montre pas la réponse avant d\'avoir cliqué sur "Voir la réponse"', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoCards));
+  it('ne montre pas de bouton "Continuer" avant d\'avoir répondu', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoItems));
 
     render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
 
-    expect(screen.queryByText('R1')).toBeNull();
+    expect(screen.queryByText('Continuer')).toBeNull();
   });
 
-  it('révèle la réponse et affiche les 4 boutons de qualité', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoCards));
-
-    render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
-
-    fireEvent.press(screen.getByText('Voir la réponse'));
-
-    expect(screen.getByText('R1')).toBeTruthy();
-    expect(screen.getByText('Encore')).toBeTruthy();
-    expect(screen.getByText('Difficile')).toBeTruthy();
-    expect(screen.getByText('Bien')).toBeTruthy();
-    expect(screen.getByText('Facile')).toBeTruthy();
-  });
-
-  it('passe à la carte suivante après avoir noté la réponse', async () => {
+  it('envoie course_id, item_index et selected_option corrects à /api/revision/answer', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoCards));
-      if (url.includes('/api/revision/answer')) {
-        return Promise.resolve(mockJsonResponse({ interval_days: 1, repetitions: 1, ease_factor: 2.5, next_review_date: '2026-01-01' }));
-      }
-      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
     });
 
     render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
 
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Bien'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Q2')).toBeTruthy();
-    });
-    expect(screen.getByText('2 / 2')).toBeTruthy();
-  });
-
-  it('envoie course_id et card_index corrects à /api/revision/answer', async () => {
-    (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoCards));
-      return Promise.resolve(mockJsonResponse({ interval_days: 1, repetitions: 1 }));
-    });
-
-    render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
-
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Facile'));
+    fireEvent.press(screen.getByText('206'));
 
     await waitFor(() => {
       const answerCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
@@ -164,45 +145,133 @@ describe('RevisionScreen — session de révision', () => {
       );
       expect(answerCall).toBeTruthy();
       const body = JSON.parse(answerCall[1].body);
-      expect(body).toEqual({ course_id: 'anatomy', card_index: 0, quality: 5 });
+      expect(body).toEqual({ course_id: 'anatomy', item_index: 0, selected_option: 'B' });
     });
   });
 
-  it('affiche l\'écran de fin après la dernière carte, avec le score', async () => {
+  it('affiche le bouton "Continuer" après avoir répondu', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoCards));
-      return Promise.resolve(mockJsonResponse({ interval_days: 1, repetitions: 1, status: 'ok' }));
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
     });
 
     render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Facile'));
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
 
-    await waitFor(() => expect(screen.getByText('Q2')).toBeTruthy());
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Facile'));
+    await waitFor(() => {
+      expect(screen.getByText('Continuer')).toBeTruthy();
+    });
+  });
+
+  it('empêche de changer de réponse une fois qu\'une option est choisie', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
+    fireEvent.press(screen.getByText('186')); // tente de changer de réponse
+
+    expect((global.fetch as jest.Mock).mock.calls.length).toBe(callsBefore);
+  });
+
+  it('passe à la question suivante au clic sur "Continuer"', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Quel est le plus grand organe du corps humain ?')).toBeTruthy();
+    });
+    expect(screen.getByText('2 / 2')).toBeTruthy();
+  });
+
+  it('affiche l\'écran de fin avec le score après la dernière question', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => expect(screen.getByText('Le foie')).toBeTruthy());
+    fireEvent.press(screen.getByText('Le foie'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => {
       expect(screen.getByText('Session terminée !')).toBeTruthy();
     });
-    expect(screen.getByText('2 / 2 cartes bien sues (100%)')).toBeTruthy();
+    expect(screen.getByText('2 / 2 bonnes réponses (100%)')).toBeTruthy();
+  });
+
+  it('compte correctement un mélange de bonnes et mauvaises réponses', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string, opts: any) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        const body = JSON.parse(opts.body);
+        const correct = body.item_index === 0 ? body.selected_option === 'B' : body.selected_option === 'A';
+        return Promise.resolve(mockJsonResponse({ correct, correct_answer: body.item_index === 0 ? 'B' : 'A' }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('186')); // mauvaise réponse (correcte = B)
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => expect(screen.getByText('Le foie')).toBeTruthy());
+    fireEvent.press(screen.getByText('Le foie')); // bonne réponse
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2 bonnes réponses (50%)')).toBeTruthy();
+    });
   });
 
   it('envoie /api/session-done avec le bon score en fin de session', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoCards));
-      return Promise.resolve(mockJsonResponse({ interval_days: 1, repetitions: 1, status: 'ok' }));
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
     });
 
     render(<RevisionScreen />);
-    await waitFor(() => expect(screen.getByText('Q1')).toBeTruthy());
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Encore')); // mauvaise réponse
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
 
-    await waitFor(() => expect(screen.getByText('Q2')).toBeTruthy());
-    fireEvent.press(screen.getByText('Voir la réponse'));
-    fireEvent.press(screen.getByText('Facile')); // bonne réponse
+    await waitFor(() => expect(screen.getByText('Le foie')).toBeTruthy());
+    fireEvent.press(screen.getByText('Le foie'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => {
       const doneCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
@@ -214,7 +283,7 @@ describe('RevisionScreen — session de révision', () => {
         mode: 'all',
         course_id: undefined,
         session_type: 'revision',
-        score: 50, // 1 bonne sur 2
+        score: 100,
         total_questions: 2,
       });
     });
@@ -224,7 +293,7 @@ describe('RevisionScreen — session de révision', () => {
 describe('RevisionScreen — révision ciblée sur un cours', () => {
   it('inclut course_id dans l\'appel à /api/revision/due', async () => {
     (global as any).__mockRouteParams = { courseId: 'cardiology' };
-    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ cards: [], count: 0 }));
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
 
     render(<RevisionScreen />);
 
@@ -234,5 +303,182 @@ describe('RevisionScreen — révision ciblée sur un cours', () => {
         expect.anything()
       );
     });
+  });
+});
+
+describe('RevisionScreen — mode pratique (reviser autant de fois que voulu)', () => {
+  it('propose "Réviser quand même" quand rien n\'est dû (mode programmé)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
+
+    render(<RevisionScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy();
+    });
+  });
+
+  it('bascule sur /api/revision/practice au clic sur "Réviser quand même"', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/practice')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ items: [], count: 0 }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('Réviser quand même (mode libre)'));
+
+    await waitFor(() => {
+      expect(screen.getByText("Combien y a-t-il d'os dans le corps humain adulte ?")).toBeTruthy();
+    });
+  });
+
+  it('utilise /api/revision/check (pas /answer) pour répondre en mode pratique', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/practice')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/check')) {
+        return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+      }
+      return Promise.resolve(mockJsonResponse({ items: [], count: 0 }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy());
+    fireEvent.press(screen.getByText('Réviser quand même (mode libre)'));
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('206'));
+
+    await waitFor(() => {
+      const checkCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
+        c[0].includes('/api/revision/check')
+      );
+      expect(checkCall).toBeTruthy();
+      const answerCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
+        c[0].includes('/api/revision/answer')
+      );
+      expect(answerCall).toBeUndefined();
+    });
+  });
+
+  it('affiche un rappel que le mode libre n\'affecte pas le planning, sur l\'écran de fin', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/practice')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ items: [], count: 0, status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy());
+    fireEvent.press(screen.getByText('Réviser quand même (mode libre)'));
+
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => expect(screen.getByText('Le foie')).toBeTruthy());
+    fireEvent.press(screen.getByText('Le foie'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => {
+      expect(screen.getByText("Mode libre — ce résultat n'affecte pas ton planning de révision.")).toBeTruthy();
+    });
+  });
+
+  it('"Recommencer" relance une session en mode pratique', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse({ items: [], count: 0 }));
+      if (url.includes('/api/revision/practice')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/check') || url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy());
+    fireEvent.press(screen.getByText('Réviser quand même (mode libre)'));
+
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+    await waitFor(() => expect(screen.getByText('Le foie')).toBeTruthy());
+    fireEvent.press(screen.getByText('Le foie'));
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    fireEvent.press(screen.getByText('Continuer'));
+
+    await waitFor(() => expect(screen.getByText('Session terminée !')).toBeTruthy());
+    fireEvent.press(screen.getByText('Recommencer'));
+
+    await waitFor(() => {
+      expect(screen.getByText("Combien y a-t-il d'os dans le corps humain adulte ?")).toBeTruthy();
+    });
+  });
+
+  it('n\'affiche pas de bouton "Recommencer/Reviser quand meme" en boucle sur un cours sans quiz', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('Réviser quand même (mode libre)')).toBeTruthy());
+    fireEvent.press(screen.getByText('Réviser quand même (mode libre)'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Aucune question dans ce cours')).toBeTruthy();
+    });
+    expect(screen.queryByText('Réviser quand même (mode libre)')).toBeNull();
+  });
+});
+
+describe('RevisionScreen — pas de flash "faux" avant la vraie reponse (regression)', () => {
+  it('n\'affiche aucune icone rouge tant que le serveur n\'a pas confirme', async () => {
+    let resolveAnswer: (value: any) => void = () => {};
+    const pendingAnswer = new Promise((resolve) => { resolveAnswer = resolve; });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) return pendingAnswer;
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('206')); // bonne réponse, mais le serveur n'a pas encore répondu
+
+    await waitFor(() => {
+      expect(screen.UNSAFE_queryAllByProps({ name: 'close-circle' })).toHaveLength(0);
+    });
+    expect(screen.UNSAFE_queryAllByProps({ name: 'checkmark-circle' })).toHaveLength(0);
+
+    resolveAnswer(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+
+    await waitFor(() => {
+      expect(screen.UNSAFE_getByProps({ name: 'checkmark-circle' })).toBeTruthy();
+    });
+    expect(screen.UNSAFE_queryAllByProps({ name: 'close-circle' })).toHaveLength(0);
+  });
+
+  it('n\'affiche jamais l\'icone "faux" si la reponse choisie etait la bonne', async () => {
+    let resolveAnswer: (value: any) => void = () => {};
+    const pendingAnswer = new Promise((resolve) => { resolveAnswer = resolve; });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) return pendingAnswer;
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+
+    resolveAnswer(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+
+    await waitFor(() => {
+      expect(screen.UNSAFE_getByProps({ name: 'checkmark-circle' })).toBeTruthy();
+    });
+    expect(screen.UNSAFE_queryAllByProps({ name: 'close-circle' })).toHaveLength(0);
   });
 });
