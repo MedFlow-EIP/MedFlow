@@ -123,7 +123,7 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
 
         <View style={styles.headerContent}>
           <Text style={styles.levelText}>Niveau {completedCount + 1}</Text>
-          <Text style={styles.pathTitle}>{path.title}</Text>
+          <Text style={styles.pathTitle} accessibilityRole="header">{path.title}</Text>
         </View>
       </View>
 

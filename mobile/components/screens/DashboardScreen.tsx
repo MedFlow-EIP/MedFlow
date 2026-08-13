@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
+import { getAuthHeaders } from '../../utils/authHeaders';
 import { API_URL } from '@/services/api';
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,10 +19,10 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 
 type Stats = {
-  minutesToday: number;
-  streak: number;
-  avgScore: number;
-  lessonsCompleted: number;
+  totalCourses: number;
+  totalFlashcards: number;
+  totalSessions: number;
+  avgScore: number | null;
 };
 
 type CourseSummary = {
@@ -42,10 +43,10 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [stats, setStats] = useState<Stats>({
-    minutesToday: 0,
-    streak: 0,
-    avgScore: 0,
-    lessonsCompleted: 0,
+    totalCourses: 0,
+    totalFlashcards: 0,
+    totalSessions: 0,
+    avgScore: null,
   });
 
   const loadCourses = async () => {
@@ -53,44 +54,25 @@ export function DashboardScreen() {
     if (!user) return;
     try {
       const res = await fetch(`${API_URL}/api/dashboard`, {
-        headers: {
-          'X-User-UID': user.uid,
-          'X-User-Name': user.displayName ?? '',
-          'X-User-Avatar': user.photoURL ?? '',
-        },
+        headers: await getAuthHeaders(user),
       });
 
       const data = await res.json();
       if (Array.isArray(data.cours)) {
         setCourses(data.cours);
       }
+      if (data.stats) {
+        setStats({
+          totalCourses: data.stats.cours ?? 0,
+          totalFlashcards: data.stats.flashcards ?? 0,
+          totalSessions: data.stats.sessions ?? 0,
+          avgScore: data.stats.detailed_sessions?.avg_score ?? null,
+        });
+      }
     } catch (e) {
       console.error(e);
     }
   };
-
-//   const loadStats = async () => {
-//     const user = auth.currentUser;
-//     if (!user) return;
-//     try {
-//       const res = await fetch(`${API_URL}/api/account`, {
-//         headers: {
-//           'X-User-UID': user.uid,
-//         },
-//       });
-
-//       const data = await res.json();
-
-//       setStats({
-//         minutesToday: data.stats.today_minutes || 0,
-//         streak: data.stats.sessions || 0,
-//         avgScore: data.stats.avg_score || 0,
-//         lessonsCompleted: data.stats.total_lessons || 0,
-//       });
-//     } catch (err) {
-//       console.error(err);
-//     }
-// };
 
   const handleDeleteCourse = async (courseId: string) => {
     const user = auth.currentUser;
@@ -98,9 +80,7 @@ export function DashboardScreen() {
     try {
       await fetch(`${API_URL}/api/course/${courseId}`, {
         method: 'DELETE',
-        headers: {
-          'X-User-UID': user.uid,
-        },
+        headers: await getAuthHeaders(user),
       });
 
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
@@ -141,7 +121,7 @@ export function DashboardScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Tableau de bord</Text>
+          <Text style={styles.title} accessibilityRole="header">Tableau de bord</Text>
           <Text style={styles.subtitle}>Vue d'ensemble de votre apprentissage</Text>
         </View>
         <TouchableOpacity
@@ -162,8 +142,37 @@ export function DashboardScreen() {
         </View> */}
       </View>
 
+      <View style={styles.statsStrip}>
+        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalCourses} cours`}>
+          <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+          <Text style={styles.statChipValue}>{stats.totalCourses}</Text>
+          <Text style={styles.statChipLabel}>Cours</Text>
+        </View>
+        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalFlashcards} flashcards générées`}>
+          <Ionicons name="layers-outline" size={18} color={colors.secondary} />
+          <Text style={styles.statChipValue}>{stats.totalFlashcards}</Text>
+          <Text style={styles.statChipLabel}>Flashcards</Text>
+        </View>
+        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalSessions} sessions d'étude`}>
+          <Ionicons name="school-outline" size={18} color={colors.success} />
+          <Text style={styles.statChipValue}>{stats.totalSessions}</Text>
+          <Text style={styles.statChipLabel}>Sessions</Text>
+        </View>
+        <View
+          style={styles.statChip}
+          accessible={true}
+          accessibilityLabel={stats.avgScore !== null ? `Score moyen : ${Math.round(stats.avgScore)}%` : 'Score moyen : pas encore de données'}
+        >
+          <Ionicons name="trending-up-outline" size={18} color={colors.warning} />
+          <Text style={styles.statChipValue}>
+            {stats.avgScore !== null ? `${Math.round(stats.avgScore)}%` : '—'}
+          </Text>
+          <Text style={styles.statChipLabel}>Score moyen</Text>
+        </View>
+      </View>
+
       <View style={styles.courseSection}>
-        <Text style={styles.sectionTitle}>Mes cours</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
       </View>
 
   {courses.length === 0 ? (
@@ -215,183 +224,6 @@ export function DashboardScreen() {
   ))
 )}
 
-      {/* <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistiques rapides</Text>
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: '#eff6ff' }]}>
-              <Ionicons name="time-outline" size={28} color="#3b82f6" />
-              <Text style={styles.statNumber}>{stats.minutesToday}</Text>
-              <Text style={styles.statLabel}>Minutes aujourd'hui</Text>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: '#f0fdf4' }]}>
-              <Ionicons name="flame-outline" size={28} color="#10b981" />
-              <Text style={styles.statNumber}>{stats.streak}</Text>
-              <Text style={styles.statLabel}>Jours de série</Text>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: '#fef3c7' }]}>
-              <Ionicons name="star-outline" size={28} color="#f59e0b" />
-              <Text style={styles.statNumber}>{stats.avgScore}%</Text>
-              <Text style={styles.statLabel}>Score moyen</Text>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: '#fef2f2' }]}>
-              <Ionicons name="checkmark-circle-outline" size={28} color="#ef4444" />
-              <Text style={styles.statNumber}>{stats.lessonsCompleted}</Text>
-              <Text style={styles.statLabel}>Leçons terminées</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Focus du jour</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Modifier</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.focusCard}>
-            <View style={styles.focusHeader}>
-              <View style={[styles.focusIcon, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="heart-outline" size={24} color="#3b82f6" />
-              </View>
-              <View style={styles.focusTitleContainer}>
-                <Text style={styles.focusTitle}>Cardiologie</Text>
-                <Text style={styles.focusSubtitle}>Système cardiovasculaire</Text>
-              </View>
-              <TouchableOpacity style={styles.playButton}>
-                <Ionicons name="play" size={20} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: '65%' }]} />
-              </View>
-              <Text style={styles.progressText}>65% complété</Text>
-            </View>
-            
-            <Text style={styles.focusDescription}>
-              Révision des pathologies cardiaques et médicaments associés
-            </Text>
-            
-            <View style={styles.focusActions}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="document-text-outline" size={18} color="#3b82f6" />
-                <Text style={styles.actionText}>Flashcards</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="help-circle-outline" size={18} color="#3b82f6" />
-                <Text style={styles.actionText}>Quiz</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="time-outline" size={18} color="#3b82f6" />
-                <Text style={styles.actionText}>Révision</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Activité récente</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.activityList}>
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#dcfce7' }]}>
-                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Quiz Anatomie terminé</Text>
-                <Text style={styles.activityTime}>Il y a 2 heures • Score: 85%</Text>
-              </View>
-              <Text style={styles.activityScore}>+50 XP</Text>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#fef3c7' }]}>
-                <Ionicons name="flame" size={20} color="#f59e0b" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Série de 7 jours</Text>
-                <Text style={styles.activityTime}>Continuez pour débloquer un badge</Text>
-              </View>
-              <Text style={styles.activityScore}>🔥</Text>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="book" size={20} color="#3b82f6" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Nouvelle leçon disponible</Text>
-                <Text style={styles.activityTime}>Pharmacologie - Médicaments</Text>
-              </View>
-              <TouchableOpacity style={styles.startButton}>
-                <Text style={styles.startButtonText}>Commencer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={[styles.actionIcon, { backgroundColor: '#e0f2fe' }]}>
-                <Ionicons name="add-circle" size={32} color="#0ea5e9" />
-              </View>
-              <Text style={styles.actionCardTitle}>Nouveau cours</Text>
-              <Text style={styles.actionCardDesc}>Importer un PDF</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f0fdf4' }]}>
-                <Ionicons name="refresh" size={32} color="#10b981" />
-              </View>
-              <Text style={styles.actionCardTitle}>Révision flash</Text>
-              <Text style={styles.actionCardDesc}>10 cartes aléatoires</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={[styles.actionIcon, { backgroundColor: '#fef3c7' }]}>
-                <Ionicons name="trophy" size={32} color="#f59e0b" />
-              </View>
-              <Text style={styles.actionCardTitle}>Mes badges</Text>
-              <Text style={styles.actionCardDesc}>5 nouveaux débloqués</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={[styles.actionIcon, { backgroundColor: '#fae8ff' }]}>
-                <Ionicons name="stats-chart" size={32} color="#d946ef" />
-              </View>
-              <Text style={styles.actionCardTitle}>Statistiques</Text>
-              <Text style={styles.actionCardDesc}>Voir détaillé</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.quoteCard}>
-          <Ionicons name="sparkles" size={28} color="#8b5cf6" style={styles.quoteIcon} />
-          <Text style={styles.quoteText}>
-            "La répétition est la mère de l'apprentissage."
-          </Text>
-          <Text style={styles.quoteAuthor}>— Proverbe latin</Text>
-        </View>
-
-        <View style={styles.bottomSpacing} />
-      </ScrollView> */}
     </SafeAreaView>
   );
 }
@@ -441,23 +273,9 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
 
-    scrollView: {
-      flex: 1,
-    },
-
-    scrollContent: {
-      padding: 20,
-    },
-
-    section: {
+    courseSection: {
       marginBottom: 24,
-    },
-
-    sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 16,
+      marginTop: 20,
     },
 
     sectionTitle: {
@@ -467,279 +285,37 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textPrimary,
     },
 
-    seeAllText: {
-      fontSize: 14,
-      color: colors.primary,
-      fontWeight: '500',
-    },
-
-    statsGrid: {
+    statsStrip: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
+      paddingHorizontal: 20,
+      marginTop: 16,
+      gap: 10,
     },
 
-    statCard: {
+    statChip: {
       flex: 1,
-      minWidth: '48%',
-      padding: 16,
-      borderRadius: 16,
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-
-    statNumber: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginTop: 8,
-      marginBottom: 4,
-    },
-
-    statLabel: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-
-    focusCard: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-
-    focusHeader: {
-      flexDirection: 'row',
+      borderRadius: 14,
+      paddingVertical: 12,
       alignItems: 'center',
-      marginBottom: 16,
-    },
-
-    focusIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-
-    focusTitleContainer: {
-      flex: 1,
-    },
-
-    focusTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-
-    focusSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-
-    playButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    progressContainer: {
-      marginBottom: 16,
-    },
-
-    progressBar: {
-      height: 8,
-      backgroundColor: colors.border,
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginBottom: 8,
-    },
-
-    progressFill: {
-      height: '100%',
-      backgroundColor: colors.primary,
-      borderRadius: 4,
-    },
-
-    progressText: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
-
-    focusDescription: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginBottom: 20,
-    },
-
-    focusActions: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingTop: 16,
-    },
-
-    actionButton: {
-      alignItems: 'center',
-    },
-
-    actionText: {
-      fontSize: 12,
-      color: colors.primary,
-      marginTop: 4,
-      fontWeight: '500',
-    },
-
-    activityList: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-
-    activityItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-
-    activityIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-
-    activityContent: {
-      flex: 1,
-    },
-
-    activityTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 2,
-    },
-
-    activityTime: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
-
-    activityScore: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.success,
-    },
-
-    startButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
-    },
-
-    startButtonText: {
-      color: colors.onAccent,
-      fontSize: 12,
-      fontWeight: '600',
-    },
-
-    actionsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-
-    actionCard: {
-      flex: 1,
-      minWidth: '48%',
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 16,
-      alignItems: 'center',
-      marginBottom: 12,
+      gap: 4,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
+      shadowOpacity: 0.04,
       shadowRadius: 4,
       elevation: 1,
     },
 
-    actionIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-
-    actionCardTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      textAlign: 'center',
-      marginBottom: 4,
-    },
-
-    actionCardDesc: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-
-    quoteCard: {
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: 16,
-      padding: 20,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: 24,
-    },
-
-    quoteIcon: {
-      marginBottom: 12,
-    },
-
-    quoteText: {
+    statChipValue: {
       fontSize: 16,
-      fontStyle: 'italic',
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+
+    statChipLabel: {
+      fontSize: 11,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 24,
-      marginBottom: 8,
-    },
-
-    quoteAuthor: {
-      fontSize: 14,
-      color: colors.muted,
-      fontStyle: 'italic',
-    },
-
-    bottomSpacing: {
-      height: 20,
-    },
-
-    courseSection: {
-      marginBottom: 24,
-      marginTop: 20,
     },
 
     courseCard: {

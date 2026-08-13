@@ -9,7 +9,7 @@ export function AddScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Que veux-tu faire ?</Text>
+      <Text style={styles.title} accessibilityRole="header">Que veux-tu faire ?</Text>
 
       <TouchableOpacity
         style={styles.optionButton}

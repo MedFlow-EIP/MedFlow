@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
+import { getAuthHeaders } from '../../utils/authHeaders';
 import { API_URL } from '@/services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -54,7 +55,7 @@ export function CourseDetailScreen({ route }: Props) {
       if (!user) return;
 
       const res = await fetch(`${API_URL}/api/course/${courseId}`, {
-        headers: { 'X-User-UID': user.uid },
+        headers: await getAuthHeaders(user),
       });
 
       const data = await res.json();
@@ -101,7 +102,7 @@ export function CourseDetailScreen({ route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
           {course.nom}
         </Text>
 
@@ -120,7 +121,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'resume' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Résumé</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Résumé</Text>
             <RenderHTML
               contentWidth={width}
               source={{ html: course.summary || "" }}
@@ -131,7 +132,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'flashcards' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Flashcards</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Flashcards</Text>
 
             {(course.flashcards || []).map((fc: any, i: number) => (
               <View key={i} style={styles.itemCard}>
@@ -144,7 +145,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'quiz' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Quiz</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Quiz</Text>
 
             {(course.quiz || []).map((q: any, i: number) => (
               <View key={i} style={styles.itemCard}>

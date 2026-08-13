@@ -107,7 +107,7 @@ export function RegisterScreen({ navigation }: any) {
           >
             <Ionicons name="medical" size={40} color={colors.onAccent} />
           </LinearGradient>
-          <Text style={styles.title}>Créer un compte</Text>
+          <Text style={styles.title} accessibilityRole="header">Créer un compte</Text>
           <Text style={styles.subtitle}>Rejoignez notre plateforme médicale</Text>
         </Animated.View>
 

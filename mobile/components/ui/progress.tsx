@@ -11,14 +11,21 @@ interface ProgressBarProps {
 export function ProgressBar({ progress, color, height = 8 }: ProgressBarProps) {
   const { colors } = useTheme();
   const fillColor = color ?? colors.primary;
+  const clamped = Math.min(Math.max(progress, 0), 100);
 
   return (
-    <View style={[styles.container, { height, backgroundColor: colors.border }]}>
+    <View
+      style={[styles.container, { height, backgroundColor: colors.border }]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped) }}
+      accessibilityLabel={`Progression : ${Math.round(clamped)}%`}
+    >
       <View
         style={[
           styles.fill,
           {
-            width: `${Math.min(Math.max(progress, 0), 100)}%`,
+            width: `${clamped}%`,
             backgroundColor: fillColor,
           },
         ]}

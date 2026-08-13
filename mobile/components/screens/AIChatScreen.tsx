@@ -355,7 +355,7 @@ export function AIChatScreen() {
           >
             <Ionicons name="sparkles" size={16} color={colors.onAccent} />
           </LinearGradient>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+          <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
             {currentConv?.title || "Assistant Médical"}
           </Text>
         </View>
