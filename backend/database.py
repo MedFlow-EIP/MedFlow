@@ -288,16 +288,16 @@ class Database:
 
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS flashcard_schedule (
+                CREATE TABLE IF NOT EXISTS revision_schedule (
                     uid TEXT NOT NULL,
                     course_id TEXT NOT NULL,
-                    card_index INTEGER NOT NULL,
+                    item_index INTEGER NOT NULL,
                     ease_factor REAL NOT NULL DEFAULT 2.5,
                     interval_days INTEGER NOT NULL DEFAULT 0,
                     repetitions INTEGER NOT NULL DEFAULT 0,
                     next_review_date TEXT NOT NULL,
                     last_reviewed_at TEXT,
-                    PRIMARY KEY (uid, course_id, card_index)
+                    PRIMARY KEY (uid, course_id, item_index)
                 )
                 """
             )
@@ -1231,13 +1231,60 @@ class Database:
                             """,
                             (uid, l["lesson_id"], path_id, status, 0)
                         )
-    def get_due_flashcards(
+    def get_all_quiz_items(
+        self, uid: str, course_id: Optional[str] = None
+    ) -> List[Dict]:
+        """Renvoie TOUTES les questions de quiz d'un cours (ou de tous les
+        cours), sans filtrage par date de révision — pour le mode
+        entraînement libre. Ne touche jamais à revision_schedule : à
+        l'inverse de get_due_quiz_items, aucune notion de "dû" ici."""
+        if not uid:
+            raise ValueError("UID is required")
+
+        courses = [self.fetch_course(uid, course_id)] if course_id else self.fetch_courses(uid)
+        courses = [c for c in courses if c is not None]
+
+        items: List[Dict] = []
+        for course in courses:
+            for idx, q in enumerate(course.quiz or []):
+                items.append({
+                    "course_id": course.id,
+                    "course_nom": course.nom,
+                    "item_index": idx,
+                    "question": q.get("question"),
+                    "options": q.get("options"),
+                })
+        return items
+
+    def check_quiz_answer(
+        self, uid: str, course_id: str, item_index: int, selected_option: str
+    ) -> Dict:
+        """Vérifie une réponse SANS toucher à revision_schedule — pour le
+        mode entraînement libre, où l'utilisateur peut répéter les mêmes
+        questions autant de fois qu'il veut sans perturber son vrai
+        planning de répétition espacée."""
+        if not uid or not course_id:
+            raise ValueError("UID and course_id are required")
+
+        course = self.fetch_course(uid, course_id)
+        if not course or item_index >= len(course.quiz or []):
+            raise ValueError("Question de quiz introuvable")
+
+        correct_answer = course.quiz[item_index].get("correct")
+        return {
+            "correct": selected_option == correct_answer,
+            "correct_answer": correct_answer,
+        }
+
+    def get_due_quiz_items(
         self, uid: str, course_id: Optional[str] = None, limit: int = 20
     ) -> List[Dict]:
-        """Renvoie les cartes à réviser aujourd'hui (jamais vues, ou dont la
-        date de révision SM-2 est aujourd'hui ou passée), triées en
-        priorisant les cartes les plus en retard, puis les cartes jamais
-        vues. ``course_id=None`` cherche sur tous les cours de l'utilisateur."""
+        """Renvoie les questions de quiz à réviser aujourd'hui (jamais vues,
+        ou dont la date de révision SM-2 est aujourd'hui ou passée), triées
+        en priorisant les plus en retard, puis les jamais vues.
+        ``course_id=None`` cherche sur tous les cours de l'utilisateur.
+        Le champ ``correct`` n'est jamais renvoyé — la réponse ne doit pas
+        fuiter avant que l'utilisateur n'ait répondu."""
         if not uid:
             raise ValueError("UID is required")
 
@@ -1246,12 +1293,12 @@ class Database:
 
         with self.connection() as conn:
             schedule_rows = conn.execute(
-                "SELECT course_id, card_index, next_review_date FROM flashcard_schedule WHERE uid=?",
+                "SELECT course_id, item_index, next_review_date FROM revision_schedule WHERE uid=?",
                 (uid,),
             ).fetchall()
 
         schedule_by_key = {
-            (row["course_id"], row["card_index"]): row["next_review_date"]
+            (row["course_id"], row["item_index"]): row["next_review_date"]
             for row in schedule_rows
         }
 
@@ -1260,15 +1307,15 @@ class Database:
         new: List[Dict] = []
 
         for course in courses:
-            for idx, card in enumerate(course.flashcards or []):
+            for idx, q in enumerate(course.quiz or []):
                 key = (course.id, idx)
                 scheduled_for = schedule_by_key.get(key)
                 item = {
                     "course_id": course.id,
                     "course_nom": course.nom,
-                    "card_index": idx,
-                    "question": card.get("question"),
-                    "answer": card.get("answer"),
+                    "item_index": idx,
+                    "question": q.get("question"),
+                    "options": q.get("options"),
                 }
                 if scheduled_for is None:
                     new.append(item)
@@ -1281,22 +1328,33 @@ class Database:
         due.sort(key=lambda it: it["overdue_days"], reverse=True)
         return (due + new)[:limit]
 
-    def record_flashcard_review(
-        self, uid: str, course_id: str, card_index: int, quality: int
+    def record_quiz_answer(
+        self, uid: str, course_id: str, item_index: int, selected_option: str
     ) -> Dict:
-        """Enregistre la réponse à une carte et recalcule sa prochaine date
-        de révision via l'algorithme SM-2. ``quality`` : 0 (trou noir) à 5
-        (parfait) — voir spaced_repetition.py pour le détail des paliers."""
+        """Enregistre la réponse à une question de quiz et recalcule sa
+        prochaine date de révision via SM-2. Contrairement à l'ancienne
+        version basée sur les flashcards, la qualité SM-2 n'est jamais
+        déclarée par le client : elle est déduite automatiquement de la
+        bonne/mauvaise réponse (5 si correct, 1 sinon), ce qui retire tout
+        biais d'auto-évaluation ("je pensais savoir")."""
         if not uid or not course_id:
             raise ValueError("UID and course_id are required")
+
+        course = self.fetch_course(uid, course_id)
+        if not course or item_index >= len(course.quiz or []):
+            raise ValueError("Question de quiz introuvable")
+
+        correct_answer = course.quiz[item_index].get("correct")
+        is_correct = selected_option == correct_answer
+        quality = 5 if is_correct else 1
 
         with self.transaction() as conn:
             row = conn.execute(
                 """
                 SELECT ease_factor, interval_days, repetitions
-                FROM flashcard_schedule WHERE uid=? AND course_id=? AND card_index=?
+                FROM revision_schedule WHERE uid=? AND course_id=? AND item_index=?
                 """,
-                (uid, course_id, card_index),
+                (uid, course_id, item_index),
             ).fetchone()
 
             current = (
@@ -1314,10 +1372,10 @@ class Database:
 
             conn.execute(
                 """
-                INSERT INTO flashcard_schedule
-                    (uid, course_id, card_index, ease_factor, interval_days, repetitions, next_review_date, last_reviewed_at)
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, next_review_date, last_reviewed_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (uid, course_id, card_index) DO UPDATE SET
+                ON CONFLICT (uid, course_id, item_index) DO UPDATE SET
                     ease_factor=excluded.ease_factor,
                     interval_days=excluded.interval_days,
                     repetitions=excluded.repetitions,
@@ -1327,7 +1385,7 @@ class Database:
                 (
                     uid,
                     course_id,
-                    card_index,
+                    item_index,
                     new_schedule.ease_factor,
                     new_schedule.interval_days,
                     new_schedule.repetitions,
@@ -1337,6 +1395,8 @@ class Database:
             )
 
         return {
+            "correct": is_correct,
+            "correct_answer": correct_answer,
             "ease_factor": new_schedule.ease_factor,
             "interval_days": new_schedule.interval_days,
             "repetitions": new_schedule.repetitions,
