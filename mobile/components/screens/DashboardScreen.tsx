@@ -141,7 +141,7 @@ export function DashboardScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Tableau de bord</Text>
+          <Text style={styles.title} accessibilityRole="header">Tableau de bord</Text>
           <Text style={styles.subtitle}>Vue d'ensemble de votre apprentissage</Text>
         </View>
         <TouchableOpacity
@@ -163,7 +163,7 @@ export function DashboardScreen() {
       </View>
 
       <View style={styles.courseSection}>
-        <Text style={styles.sectionTitle}>Mes cours</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
       </View>
 
   {courses.length === 0 ? (
@@ -221,7 +221,7 @@ export function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistiques rapides</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Statistiques rapides</Text>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: '#eff6ff' }]}>
               <Ionicons name="time-outline" size={28} color="#3b82f6" />
@@ -251,7 +251,7 @@ export function DashboardScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Focus du jour</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Focus du jour</Text>
             <TouchableOpacity>
               <Text style={styles.seeAllText}>Modifier</Text>
             </TouchableOpacity>
@@ -301,7 +301,7 @@ export function DashboardScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Activité récente</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Activité récente</Text>
             <TouchableOpacity>
               <Text style={styles.seeAllText}>Voir tout</Text>
             </TouchableOpacity>
@@ -346,7 +346,7 @@ export function DashboardScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Actions rapides</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard}>
               <View style={[styles.actionIcon, { backgroundColor: '#e0f2fe' }]}>

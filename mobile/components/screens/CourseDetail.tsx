@@ -101,7 +101,7 @@ export function CourseDetailScreen({ route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
           {course.nom}
         </Text>
 
@@ -120,7 +120,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'resume' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Résumé</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Résumé</Text>
             <RenderHTML
               contentWidth={width}
               source={{ html: course.summary || "" }}
@@ -131,7 +131,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'flashcards' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Flashcards</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Flashcards</Text>
 
             {(course.flashcards || []).map((fc: any, i: number) => (
               <View key={i} style={styles.itemCard}>
@@ -144,7 +144,7 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'quiz' && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Quiz</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Quiz</Text>
 
             {(course.quiz || []).map((q: any, i: number) => (
               <View key={i} style={styles.itemCard}>

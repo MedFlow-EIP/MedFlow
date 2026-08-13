@@ -157,7 +157,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         {/* Section Parcours */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Parcours d'apprentissage</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Parcours d'apprentissage</Text>
             <TouchableOpacity>
               {/* <Text style={styles.seeAllText}>Tous</Text> */}
             </TouchableOpacity>

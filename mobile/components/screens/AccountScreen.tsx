@@ -343,7 +343,7 @@ export function AccountScreen() {
         {/* Badges */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Badges</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Badges</Text>
           </View>
 
           <View style={styles.badgesGrid}>
@@ -400,7 +400,7 @@ export function AccountScreen() {
         {/* Activité récente */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Activité récente</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Activité récente</Text>
           </View>
 
           {activity.length === 0 ? (
@@ -469,7 +469,7 @@ export function AccountScreen() {
 
         {/* About MedFlow Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
             À propos de MedFlow
           </Text>
 

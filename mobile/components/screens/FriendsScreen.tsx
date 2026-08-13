@@ -197,7 +197,7 @@ export function FriendsScreen() {
         >
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Amis</Text>
+        <Text style={styles.title} accessibilityRole="header">Amis</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -246,7 +246,7 @@ export function FriendsScreen() {
             <>
               {received.length > 0 && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Demandes reçues</Text>
+                  <Text style={styles.sectionTitle} accessibilityRole="header">Demandes reçues</Text>
                   {received.map((r) => (
                     <View key={r.uid} style={styles.row}>
                       <View style={styles.rowLeft}>
@@ -274,7 +274,7 @@ export function FriendsScreen() {
 
               {sent.length > 0 && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Demandes envoyées</Text>
+                  <Text style={styles.sectionTitle} accessibilityRole="header">Demandes envoyées</Text>
                   {sent.map((s) => (
                     <View key={s.uid} style={styles.row}>
                       <View style={styles.rowLeft}>
@@ -290,7 +290,7 @@ export function FriendsScreen() {
               )}
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
+                <Text style={styles.sectionTitle} accessibilityRole="header">
                   Tes amis {friends.length > 0 ? `(${friends.length})` : ''}
                 </Text>
                 {friends.length === 0 ? (
