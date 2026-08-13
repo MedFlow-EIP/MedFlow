@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
+from spaced_repetition import CardSchedule, next_review_date, next_schedule
+
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +282,22 @@ class Database:
                     lesson_id TEXT,
                     screen TEXT,
                     created_at TEXT NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS flashcard_schedule (
+                    uid TEXT NOT NULL,
+                    course_id TEXT NOT NULL,
+                    card_index INTEGER NOT NULL,
+                    ease_factor REAL NOT NULL DEFAULT 2.5,
+                    interval_days INTEGER NOT NULL DEFAULT 0,
+                    repetitions INTEGER NOT NULL DEFAULT 0,
+                    next_review_date TEXT NOT NULL,
+                    last_reviewed_at TEXT,
+                    PRIMARY KEY (uid, course_id, card_index)
                 )
                 """
             )
@@ -1213,6 +1231,118 @@ class Database:
                             """,
                             (uid, l["lesson_id"], path_id, status, 0)
                         )
+    def get_due_flashcards(
+        self, uid: str, course_id: Optional[str] = None, limit: int = 20
+    ) -> List[Dict]:
+        """Renvoie les cartes à réviser aujourd'hui (jamais vues, ou dont la
+        date de révision SM-2 est aujourd'hui ou passée), triées en
+        priorisant les cartes les plus en retard, puis les cartes jamais
+        vues. ``course_id=None`` cherche sur tous les cours de l'utilisateur."""
+        if not uid:
+            raise ValueError("UID is required")
+
+        courses = [self.fetch_course(uid, course_id)] if course_id else self.fetch_courses(uid)
+        courses = [c for c in courses if c is not None]
+
+        with self.connection() as conn:
+            schedule_rows = conn.execute(
+                "SELECT course_id, card_index, next_review_date FROM flashcard_schedule WHERE uid=?",
+                (uid,),
+            ).fetchall()
+
+        schedule_by_key = {
+            (row["course_id"], row["card_index"]): row["next_review_date"]
+            for row in schedule_rows
+        }
+
+        today = date.today().isoformat()
+        due: List[Dict] = []
+        new: List[Dict] = []
+
+        for course in courses:
+            for idx, card in enumerate(course.flashcards or []):
+                key = (course.id, idx)
+                scheduled_for = schedule_by_key.get(key)
+                item = {
+                    "course_id": course.id,
+                    "course_nom": course.nom,
+                    "card_index": idx,
+                    "question": card.get("question"),
+                    "answer": card.get("answer"),
+                }
+                if scheduled_for is None:
+                    new.append(item)
+                elif scheduled_for <= today:
+                    item["overdue_days"] = (
+                        date.today() - date.fromisoformat(scheduled_for)
+                    ).days
+                    due.append(item)
+
+        due.sort(key=lambda it: it["overdue_days"], reverse=True)
+        return (due + new)[:limit]
+
+    def record_flashcard_review(
+        self, uid: str, course_id: str, card_index: int, quality: int
+    ) -> Dict:
+        """Enregistre la réponse à une carte et recalcule sa prochaine date
+        de révision via l'algorithme SM-2. ``quality`` : 0 (trou noir) à 5
+        (parfait) — voir spaced_repetition.py pour le détail des paliers."""
+        if not uid or not course_id:
+            raise ValueError("UID and course_id are required")
+
+        with self.transaction() as conn:
+            row = conn.execute(
+                """
+                SELECT ease_factor, interval_days, repetitions
+                FROM flashcard_schedule WHERE uid=? AND course_id=? AND card_index=?
+                """,
+                (uid, course_id, card_index),
+            ).fetchone()
+
+            current = (
+                CardSchedule(
+                    ease_factor=row["ease_factor"],
+                    interval_days=row["interval_days"],
+                    repetitions=row["repetitions"],
+                )
+                if row
+                else CardSchedule()
+            )
+
+            new_schedule = next_schedule(current, quality)
+            next_date = next_review_date(new_schedule)
+
+            conn.execute(
+                """
+                INSERT INTO flashcard_schedule
+                    (uid, course_id, card_index, ease_factor, interval_days, repetitions, next_review_date, last_reviewed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (uid, course_id, card_index) DO UPDATE SET
+                    ease_factor=excluded.ease_factor,
+                    interval_days=excluded.interval_days,
+                    repetitions=excluded.repetitions,
+                    next_review_date=excluded.next_review_date,
+                    last_reviewed_at=excluded.last_reviewed_at
+                """,
+                (
+                    uid,
+                    course_id,
+                    card_index,
+                    new_schedule.ease_factor,
+                    new_schedule.interval_days,
+                    new_schedule.repetitions,
+                    next_date.isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+
+        return {
+            "ease_factor": new_schedule.ease_factor,
+            "interval_days": new_schedule.interval_days,
+            "repetitions": new_schedule.repetitions,
+            "next_review_date": next_date.isoformat(),
+        }
+
     def create_session_record(
         self,
         uid: str,

@@ -116,6 +116,16 @@ export function CourseDetailScreen({ route }: Props) {
         <TabButton label="Quiz" active={tab === 'quiz'} onPress={() => setTab('quiz')} colors={colors} styles={styles} />
       </View>
 
+      <TouchableOpacity
+        style={styles.reviseButton}
+        onPress={() => (navigation as any).navigate('Revision', { courseId })}
+        accessibilityRole="button"
+        accessibilityLabel="Réviser ce cours"
+      >
+        <Ionicons name="flash-outline" size={18} color={colors.onAccent} />
+        <Text style={styles.reviseButtonText}>Réviser ce cours</Text>
+      </TouchableOpacity>
+
       {/* CONTENT */}
       <ScrollView contentContainerStyle={{ padding: 16 }}>
 
@@ -246,6 +256,24 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.surfaceAlt,
       borderRadius: 14,
       padding: 4,
+    },
+
+    reviseButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      marginHorizontal: 12,
+      marginBottom: 4,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+
+    reviseButtonText: {
+      color: colors.onAccent,
+      fontSize: 14,
+      fontWeight: '600',
     },
 
     tabButton: {
