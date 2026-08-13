@@ -19,11 +19,17 @@ class TestGetDueQuizItems:
         assert resp.status_code == 200
         assert resp.get_json() == {"items": [], "count": 0}
 
-    def test_never_leaks_the_correct_answer(self, client, auth_headers, seeded_course):
+    def test_includes_the_correct_answer_for_instant_client_side_feedback(
+        self, client, auth_headers, seeded_course
+    ):
+        # Décision produit assumée : contrairement à une version précédente,
+        # la bonne réponse EST incluse — outil de révision personnel, pas un
+        # contexte compétitif, et ça évite un aller-retour réseau bloquant à
+        # chaque réponse.
         resp = client.get("/api/revision/due", headers=auth_headers)
         item = resp.get_json()["items"][0]
-        assert "correct" not in item
-        assert set(item.keys()) == {"course_id", "course_nom", "item_index", "question", "options"}
+        assert item["correct"] == "A"
+        assert set(item.keys()) == {"course_id", "course_nom", "item_index", "question", "options", "correct"}
 
     def test_includes_the_options(self, client, auth_headers, seeded_course):
         resp = client.get("/api/revision/due", headers=auth_headers)

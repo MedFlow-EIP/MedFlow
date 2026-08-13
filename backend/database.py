@@ -1253,6 +1253,7 @@ class Database:
                     "item_index": idx,
                     "question": q.get("question"),
                     "options": q.get("options"),
+                    "correct": q.get("correct"),
                 })
         return items
 
@@ -1283,8 +1284,10 @@ class Database:
         ou dont la date de révision SM-2 est aujourd'hui ou passée), triées
         en priorisant les plus en retard, puis les jamais vues.
         ``course_id=None`` cherche sur tous les cours de l'utilisateur.
-        Le champ ``correct`` n'est jamais renvoyé — la réponse ne doit pas
-        fuiter avant que l'utilisateur n'ait répondu."""
+        Le champ ``correct`` EST inclus dans la réponse (contrairement à une
+        version précédente) : c'est un outil de révision personnel, pas un
+        contexte compétitif — la comparaison se fait côté mobile pour un
+        feedback instantané, sans aller-retour réseau à chaque réponse."""
         if not uid:
             raise ValueError("UID is required")
 
@@ -1316,6 +1319,7 @@ class Database:
                     "item_index": idx,
                     "question": q.get("question"),
                     "options": q.get("options"),
+                    "correct": q.get("correct"),
                 }
                 if scheduled_for is None:
                     new.append(item)
