@@ -16,6 +16,7 @@ import RenderHTML from "react-native-render-html";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../../firebaseConfig";
+import { getAuthHeaders } from "../../utils/authHeaders";
 import { logScreenView } from "../../utils/analytics";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
@@ -80,11 +81,7 @@ export function UploadCourseScreen() {
 
       const response = await fetch(`${API_URL}/api/process`, {
         method: "POST",
-        headers: {
-          "X-User-UID": user.uid,
-          "X-User-Name": user.displayName || "",
-          "X-User-Avatar": user.photoURL || "",
-        },
+        headers: await getAuthHeaders(user),
         body: formData,
       });
 

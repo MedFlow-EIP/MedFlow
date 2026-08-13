@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
+import { getAuthHeaders } from '../../utils/authHeaders';
 import { API_URL } from '@/services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -54,7 +55,7 @@ export function CourseDetailScreen({ route }: Props) {
       if (!user) return;
 
       const res = await fetch(`${API_URL}/api/course/${courseId}`, {
-        headers: { 'X-User-UID': user.uid },
+        headers: await getAuthHeaders(user),
       });
 
       const data = await res.json();
