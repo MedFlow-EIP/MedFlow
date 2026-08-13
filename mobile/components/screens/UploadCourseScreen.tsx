@@ -127,7 +127,7 @@ export function UploadCourseScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1, marginLeft: 10, marginTop: 30 }}>
-          <Text style={styles.title}>Importer un cours</Text>
+          <Text style={styles.title} accessibilityRole="header">Importer un cours</Text>
           <Text style={styles.subtitle}>
             PDF → résumé, flashcards & quiz IA
           </Text>

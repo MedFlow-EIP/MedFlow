@@ -137,7 +137,7 @@ export function LeaderboardScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Classement</Text>
+          <Text style={styles.title} accessibilityRole="header">Classement</Text>
           <Text style={styles.subtitle}>
             {mode === 'global' ? 'Les meilleurs par XP' : 'Toi et tes amis'}
           </Text>

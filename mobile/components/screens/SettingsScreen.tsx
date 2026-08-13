@@ -281,7 +281,7 @@ export function SettingsScreen() {
           <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Paramètres</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Paramètres</Text>
 
         <View style={{ width: 26 }} />
       </View>

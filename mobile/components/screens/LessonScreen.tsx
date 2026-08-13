@@ -305,7 +305,7 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
             <Text style={styles.successEmoji}>✅</Text>
           </View>
 
-          <Text style={styles.resultsTitle}>Leçon terminée !</Text>
+          <Text style={styles.resultsTitle} accessibilityRole="header">Leçon terminée !</Text>
           <Text style={styles.resultsSubtitle}>
             Vous avez terminé cette leçon !
           </Text>

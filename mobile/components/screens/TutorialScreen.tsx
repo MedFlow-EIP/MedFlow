@@ -408,7 +408,7 @@ export function TutorialScreen({ visible, onComplete, navigation }: TutorialScre
             </View>
           </View>
 
-          <Text style={styles.title}>{step.title}</Text>
+          <Text style={styles.title} accessibilityRole="header">{step.title}</Text>
           <Text style={styles.description}>{step.description}</Text>
 
           {/* Points de progression désormais DANS le tooltip : ne peuvent

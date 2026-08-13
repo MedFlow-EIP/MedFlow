@@ -82,7 +82,7 @@ export function LoginScreen({ navigation }: any) {
           >
             <Ionicons name="medical" size={40} color={colors.onAccent} />
           </LinearGradient>
-          <Text style={styles.title}>Bienvenue</Text>
+          <Text style={styles.title} accessibilityRole="header">Bienvenue</Text>
           <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
         </Animated.View>
 

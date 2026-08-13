@@ -63,7 +63,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
 
       <View style={styles.content}>
         <Ionicons name="lock-open-outline" size={80} color={colors.primary} />
-        <Text style={styles.title}>Mot de passe oublié</Text>
+        <Text style={styles.title} accessibilityRole="header">Mot de passe oublié</Text>
         <Text style={styles.subtitle}>
           Entrez votre email pour recevoir un lien de réinitialisation
         </Text>

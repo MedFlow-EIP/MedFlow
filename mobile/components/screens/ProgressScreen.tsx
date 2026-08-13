@@ -103,7 +103,7 @@ export function ProgressScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Votre progression</Text>
+            <Text style={styles.title} accessibilityRole="header">Votre progression</Text>
             <Text style={styles.subtitle}>Suivi de tes leçons et de ton XP</Text>
           </View>
         </View>
