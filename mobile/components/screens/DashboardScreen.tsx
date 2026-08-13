@@ -171,6 +171,16 @@ export function DashboardScreen() {
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.reviseButton}
+        onPress={() => navigation.navigate('Revision')}
+        accessibilityRole="button"
+        accessibilityLabel="Lancer une session de révision"
+      >
+        <Ionicons name="flash-outline" size={20} color={colors.onAccent} />
+        <Text style={styles.reviseButtonText}>Réviser maintenant</Text>
+      </TouchableOpacity>
+
       <View style={styles.courseSection}>
         <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
       </View>
@@ -316,6 +326,24 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 11,
       color: colors.textSecondary,
       textAlign: 'center',
+    },
+
+    reviseButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      marginHorizontal: 20,
+      marginTop: 16,
+      paddingVertical: 14,
+      borderRadius: 14,
+    },
+
+    reviseButtonText: {
+      color: colors.onAccent,
+      fontSize: 15,
+      fontWeight: '600',
     },
 
     courseCard: {

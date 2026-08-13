@@ -10,6 +10,56 @@ logger = logging.getLogger(__name__)
 sessions_bp = Blueprint("sessions", __name__)
 
 
+@sessions_bp.route("/api/revision/due", methods=["GET"])
+@require_auth
+def get_due_revision():
+    """Cartes à réviser aujourd'hui, calculées par l'algorithme SM-2 de
+    répétition espacée (voir spaced_repetition.py). ``?course_id=`` limite
+    à un seul cours, sinon toutes les cartes dues sont renvoyées."""
+    try:
+        db = current_app.db
+        uid = g.uid
+        course_id = request.args.get("course_id")
+
+        cards = db.get_due_flashcards(uid, course_id=course_id)
+        return jsonify({"cards": cards, "count": len(cards)})
+
+    except Exception as e:
+        logger.exception("Erreur revision/due")
+        return jsonify({"error": f"Erreur revision/due: {str(e)}"}), 500
+
+
+@sessions_bp.route("/api/revision/answer", methods=["POST"])
+@require_auth
+def answer_revision_card():
+    """Enregistre la réponse à une carte pendant une session de révision
+    espacée et renvoie sa nouvelle planification (SM-2)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        db = current_app.db
+        uid = g.uid
+
+        course_id = data.get("course_id")
+        card_index = data.get("card_index")
+        quality = data.get("quality")
+
+        if not course_id or card_index is None or quality is None:
+            return jsonify({"error": "course_id, card_index et quality requis"}), 400
+
+        try:
+            card_index = int(card_index)
+            quality = int(quality)
+        except (TypeError, ValueError):
+            return jsonify({"error": "card_index et quality doivent être des entiers"}), 400
+
+        schedule = db.record_flashcard_review(uid, course_id, card_index, quality)
+        return jsonify(schedule)
+
+    except Exception as e:
+        logger.exception("Erreur revision/answer")
+        return jsonify({"error": f"Erreur revision/answer: {str(e)}"}), 500
+
+
 @sessions_bp.route("/api/revision", methods=["POST"])
 @require_auth
 def start_revision():
