@@ -353,7 +353,7 @@ export function AIChatScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.headerBadge}
           >
-            <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+            <Ionicons name="sparkles" size={16} color={colors.onAccent} />
           </LinearGradient>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {currentConv?.title || "Assistant Médical"}
@@ -420,7 +420,7 @@ export function AIChatScreen() {
                         <Ionicons 
                           name="chatbubble-ellipses" 
                           size={20} 
-                          color={item.id === currentConvId ? colors.textInverse : colors.primary} 
+                          color={item.id === currentConvId ? colors.onAccent : colors.primary} 
                         />
                       </View>
                       <View style={styles.historyInfo}>
@@ -448,7 +448,7 @@ export function AIChatScreen() {
                       <Ionicons 
                         name="trash-outline" 
                         size={18} 
-                        color={item.id === currentConvId ? colors.textInverse : colors.danger} 
+                        color={item.id === currentConvId ? colors.onAccent : colors.danger} 
                       />
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -467,7 +467,7 @@ export function AIChatScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.newConversationGradient}
                 >
-                  <Ionicons name="add" size={24} color={colors.textInverse} />
+                  <Ionicons name="add" size={24} color={colors.onAccent} />
                   <Text style={styles.newConversationText}>
                     Nouvelle conversation
                   </Text>
@@ -516,7 +516,7 @@ export function AIChatScreen() {
                   colors={[colors.primary, colors.primaryDark]}
                   style={styles.aiAvatar}
                 >
-                  <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+                  <Ionicons name="sparkles" size={16} color={colors.onAccent} />
                 </LinearGradient>
               )}
 
@@ -600,7 +600,7 @@ export function AIChatScreen() {
               colors={[colors.primary, colors.primaryDark]}
               style={styles.aiAvatar}
             >
-              <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+              <Ionicons name="sparkles" size={16} color={colors.onAccent} />
             </LinearGradient>
             <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
               <View style={styles.typingIndicator}>
@@ -723,7 +723,7 @@ export function AIChatScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.sendGradient}
                 >
-                  <Ionicons name="send" size={18} color={colors.textInverse} />
+                  <Ionicons name="send" size={18} color={colors.onAccent} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -951,7 +951,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     historyTitleActive: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     historyDate: {
@@ -980,7 +980,7 @@ function makeStyles(colors: ThemeColors) {
     newConversationText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     messagesContainer: {
@@ -1101,7 +1101,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     userText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     aiText: {

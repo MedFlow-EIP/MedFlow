@@ -73,7 +73,7 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           accessibilityLabel="Carte précédente"
           accessibilityState={{ disabled: currentIndex === 0 }}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.textInverse} />
+          <Ionicons name="chevron-back" size={24} color={colors.onAccent} />
         </Pressable>
 
         {isLastCard && (
@@ -98,7 +98,7 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           accessibilityLabel="Carte suivante"
           accessibilityState={{ disabled: isLastCard }}
         >
-          <Ionicons name="chevron-forward" size={24} color={colors.textInverse} />
+          <Ionicons name="chevron-forward" size={24} color={colors.onAccent} />
         </Pressable>
       </View>
     </View>
@@ -182,7 +182,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     continueText: { 
-      color: colors.textInverse, 
+      color: colors.onAccent, 
       fontWeight: "700",
     },
   });

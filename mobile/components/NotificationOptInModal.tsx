@@ -37,7 +37,7 @@ export function NotificationOptInModal({ visible, onAccept, onDecline }: Notific
             accessibilityRole="button"
             accessibilityLabel="Activer les rappels"
           >
-            <Ionicons name="notifications" size={18} color={colors.textInverse} />
+            <Ionicons name="notifications" size={18} color={colors.onAccent} />
             <Text style={styles.acceptButtonText}>Activer les rappels</Text>
           </TouchableOpacity>
 
@@ -111,7 +111,7 @@ function makeStyles(colors: ThemeColors) {
       width: '100%',
     },
     acceptButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '700',
     },

@@ -125,7 +125,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             <Ionicons 
               name={isFocused('Home') ? "home" : "home-outline"} 
               size={22} 
-              color={isFocused('Home') ? colors.textInverse : colors.textSecondary} 
+              color={isFocused('Home') ? colors.onAccent : colors.textSecondary} 
             />
           </View>
           <Text style={[
@@ -151,7 +151,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             <Ionicons 
               name={isFocused('AIChat') ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} 
               size={22} 
-              color={isFocused('AIChat') ? colors.textInverse : colors.textSecondary} 
+              color={isFocused('AIChat') ? colors.onAccent : colors.textSecondary} 
             />
           </View>
           <Text style={[
@@ -177,7 +177,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               end={{ x: 1, y: 1 }}
               style={styles.addButton}
             >
-              <Ionicons name="add" size={28} color={colors.textInverse} />
+              <Ionicons name="add" size={28} color={colors.onAccent} />
             </LinearGradient>
           </View>
           <Text style={styles.navText}>Ajouter</Text>
@@ -198,7 +198,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             <Ionicons 
               name={isFocused('Dashboard') ? "grid" : "grid-outline"} 
               size={22} 
-              color={isFocused('Dashboard') ? colors.textInverse : colors.textSecondary} 
+              color={isFocused('Dashboard') ? colors.onAccent : colors.textSecondary} 
             />
           </View>
           <Text style={[
@@ -224,7 +224,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             <Ionicons 
               name={isFocused('Account') ? "person" : "person-outline"} 
               size={22} 
-              color={isFocused('Account') ? colors.textInverse : colors.textSecondary} 
+              color={isFocused('Account') ? colors.onAccent : colors.textSecondary} 
             />
           </View>
           <Text style={[
@@ -356,7 +356,7 @@ export function AppNavigator() {
           colors={[colors.primary, colors.primaryDark]}
           style={styles.loadingGradient}
         >
-          <ActivityIndicator size="large" color={colors.textInverse} />
+          <ActivityIndicator size="large" color={colors.onAccent} accessibilityLabel="Chargement de l'application" />
           <Text style={styles.loadingText}>Chargement...</Text>
         </LinearGradient>
       </View>
@@ -566,7 +566,7 @@ function makeStyles(colors: ThemeColors) {
 
     loadingText: {
       fontSize: 16,
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: '500',
     },
   });

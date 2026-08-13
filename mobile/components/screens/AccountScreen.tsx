@@ -666,7 +666,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 40,
       fontWeight: "600",
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     editProfileButton: {

@@ -341,6 +341,9 @@ export function SettingsScreen() {
             value={streakRemindersOn}
             onValueChange={handleToggleStreakReminders}
             trackColor={{ false: colors.border, true: colors.primary }}
+            accessibilityLabel="Rappels de série"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: streakRemindersOn }}
           />
         </View>
       </View>
@@ -392,9 +395,9 @@ export function SettingsScreen() {
             style={styles.editAvatarButton}
           >
             {uploadingPhoto ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
+              <ActivityIndicator size="small" color={colors.onAccent} accessibilityLabel="Envoi de la photo en cours" />
             ) : (
-              <Ionicons name="camera" size={16} color={colors.textInverse} />
+              <Ionicons name="camera" size={16} color={colors.onAccent} />
             )}
           </TouchableOpacity>
         </View>
@@ -669,7 +672,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 34,
       fontWeight: "700",
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     avatarWrapper: {
@@ -724,7 +727,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     primaryButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       textAlign: "center",
       fontWeight: "600",
     },
@@ -764,7 +767,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     successButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       textAlign: "center",
       fontWeight: "600",
     },

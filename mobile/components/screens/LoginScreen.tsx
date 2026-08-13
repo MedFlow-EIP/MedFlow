@@ -80,7 +80,7 @@ export function LoginScreen({ navigation }: any) {
             colors={[colors.primary, colors.primaryDark]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color={colors.textInverse} />
+            <Ionicons name="medical" size={40} color={colors.onAccent} />
           </LinearGradient>
           <Text style={styles.title}>Bienvenue</Text>
           <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
@@ -160,7 +160,7 @@ export function LoginScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>Se connecter</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
+                  <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />
                 </>
               )}
             </LinearGradient>
@@ -274,7 +274,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       opacity: 0.7,
     },
     buttonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '600',
     },

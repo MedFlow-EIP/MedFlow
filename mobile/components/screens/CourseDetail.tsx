@@ -75,7 +75,7 @@ export function CourseDetailScreen({ route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Chargement du cours" />
       </View>
     );
   }
@@ -265,7 +265,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     tabTextActive: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     card: {

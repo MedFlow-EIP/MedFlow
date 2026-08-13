@@ -191,7 +191,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
     },
     buttonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '700',
     },

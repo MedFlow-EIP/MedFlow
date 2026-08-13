@@ -47,7 +47,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
     },
     optionText: { 
-      color: colors.textInverse, 
+      color: colors.onAccent, 
       fontSize: 18, 
       fontWeight: '600',
     },

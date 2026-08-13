@@ -105,7 +105,7 @@ export function RegisterScreen({ navigation }: any) {
             colors={[colors.primary, colors.primaryDark]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color={colors.textInverse} />
+            <Ionicons name="medical" size={40} color={colors.onAccent} />
           </LinearGradient>
           <Text style={styles.title}>Créer un compte</Text>
           <Text style={styles.subtitle}>Rejoignez notre plateforme médicale</Text>
@@ -225,7 +225,7 @@ export function RegisterScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>S'inscrire</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
+                  <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />
                 </>
               )}
             </LinearGradient>
@@ -337,7 +337,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       opacity: 0.7,
     },
     buttonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '600',
     },

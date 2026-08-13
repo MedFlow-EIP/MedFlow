@@ -50,7 +50,7 @@ function makeStyles(colors: ThemeColors, size: number) {
       justifyContent: 'center',
     },
     fallbackText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: '700',
       fontSize: size * 0.42,
     },

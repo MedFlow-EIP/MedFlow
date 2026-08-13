@@ -305,7 +305,7 @@ function makeStyles(colors: ThemeColors) {
     headerAvatarText: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     scrollContent: {

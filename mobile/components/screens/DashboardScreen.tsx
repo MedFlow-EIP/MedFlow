@@ -655,7 +655,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     startButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 12,
       fontWeight: '600',
     },

@@ -108,7 +108,7 @@ function makeStyles(colors: ThemeColors) {
     gotItText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
   });
 }

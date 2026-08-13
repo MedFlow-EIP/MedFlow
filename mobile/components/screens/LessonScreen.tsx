@@ -318,7 +318,7 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
               </View>
               <View style={styles.statItem}>
                 {streak === null ? (
-                  <ActivityIndicator size="small" color={colors.warning} />
+                  <ActivityIndicator size="small" color={colors.warning} accessibilityLabel="Chargement de la série" />
                 ) : streak === -1 ? (
                   <>
                     <Ionicons name="flame-outline" size={28} color={colors.muted} />

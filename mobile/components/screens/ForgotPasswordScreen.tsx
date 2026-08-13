@@ -186,7 +186,7 @@ function makeStyles(colors: ThemeColors) {
       opacity: 0.6,
     },
     buttonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '600',
     },

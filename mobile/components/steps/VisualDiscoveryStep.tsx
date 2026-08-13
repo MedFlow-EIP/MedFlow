@@ -155,7 +155,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     feedbackText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "600",
       fontSize: 16,
     },
