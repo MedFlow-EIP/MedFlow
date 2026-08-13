@@ -41,7 +41,12 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
       <Text style={styles.header}>Quick Learning</Text>
 
       <View style={styles.cardContainer}>
-        <Image source={{ uri: currentCard.image }} style={styles.image} resizeMode="contain" />
+        <Image
+          source={{ uri: currentCard.image }}
+          style={styles.image}
+          resizeMode="contain"
+          accessibilityLabel={`Illustration : ${currentCard.concept}`}
+        />
         <Text style={styles.concept}>{currentCard.concept}</Text>
       </View>
 
@@ -64,12 +69,20 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           style={[styles.navButton, currentIndex === 0 && styles.disabled]}
           onPress={handlePrev}
           disabled={currentIndex === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Carte précédente"
+          accessibilityState={{ disabled: currentIndex === 0 }}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.textInverse} />
+          <Ionicons name="chevron-back" size={24} color={colors.onAccent} />
         </Pressable>
 
         {isLastCard && (
-          <Pressable style={styles.continueButton} onPress={onComplete}>
+          <Pressable
+            style={styles.continueButton}
+            onPress={onComplete}
+            accessibilityRole="button"
+            accessibilityLabel="Continuer"
+          >
             <Text style={styles.continueText}>Got it! →</Text>
           </Pressable>
         )}
@@ -81,8 +94,11 @@ export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
           ]}
           onPress={handleNext}
           disabled={isLastCard}
+          accessibilityRole="button"
+          accessibilityLabel="Carte suivante"
+          accessibilityState={{ disabled: isLastCard }}
         >
-          <Ionicons name="chevron-forward" size={24} color={colors.textInverse} />
+          <Ionicons name="chevron-forward" size={24} color={colors.onAccent} />
         </Pressable>
       </View>
     </View>
@@ -166,7 +182,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     continueText: { 
-      color: colors.textInverse, 
+      color: colors.onAccent, 
       fontWeight: "700",
     },
   });

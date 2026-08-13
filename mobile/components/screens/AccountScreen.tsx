@@ -218,6 +218,8 @@ export function AccountScreen() {
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.navigate("Settings")}
+            accessibilityRole="button"
+            accessibilityLabel="Réglages"
           >
             <Ionicons
               name="settings-outline"
@@ -234,7 +236,11 @@ export function AccountScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
             {user.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+              <Image
+                source={{ uri: user.photoURL }}
+                style={styles.avatar}
+                accessibilityLabel={`Photo de profil de ${user.displayName || "Utilisateur"}`}
+              />
             ) : (
               <LinearGradient
                 colors={[colors.primary, colors.primaryDark]}
@@ -290,6 +296,8 @@ export function AccountScreen() {
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: colors.tintSuccess }]}
             onPress={() => navigation.navigate("Leaderboard")}
+            accessibilityRole="button"
+            accessibilityLabel={`Classement, rang numéro ${stats.rank}`}
           >
             <Ionicons name="trophy" size={28} color={colors.success} />
             <Text style={styles.statNumber}>#{stats.rank}</Text>
@@ -299,6 +307,8 @@ export function AccountScreen() {
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: colors.surfaceAlt }]}
             onPress={() => navigation.navigate("Friends" as never)}
+            accessibilityRole="button"
+            accessibilityLabel={`Amis, ${friendsCount}${pendingFriendRequests > 0 ? `, ${pendingFriendRequests} demande${pendingFriendRequests > 1 ? 's' : ''} en attente` : ''}`}
           >
             {pendingFriendRequests > 0 && (
               <View style={styles.friendsBadge}>
@@ -472,6 +482,8 @@ export function AccountScreen() {
           <TouchableOpacity
             style={styles.contactButton}
             onPress={sendEmail}
+            accessibilityRole="button"
+            accessibilityLabel="Nous contacter, medflow.app.contact@gmail.com"
           >
             <Ionicons
               name="mail-outline"
@@ -496,6 +508,8 @@ export function AccountScreen() {
 
           <TouchableOpacity
             style={styles.socialButton}
+            accessibilityRole="button"
+            accessibilityLabel="Instagram"
             onPress={() =>
               openLink(
                 "https://www.instagram.com/med_flowapp/"
@@ -515,6 +529,8 @@ export function AccountScreen() {
 
           <TouchableOpacity
             style={styles.socialButton}
+            accessibilityRole="button"
+            accessibilityLabel="LinkedIn"
             onPress={() =>
               openLink(
                 "https://www.linkedin.com/company/medflow-app/"
@@ -534,6 +550,8 @@ export function AccountScreen() {
 
           <TouchableOpacity
             style={styles.socialButton}
+            accessibilityRole="button"
+            accessibilityLabel="Product Hunt"
             onPress={() =>
               openLink(
                 "https://www.producthunt.com/products/medflow-3?launch=medflow-2"
@@ -554,7 +572,12 @@ export function AccountScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Se déconnecter"
+        >
           <View style={styles.logoutGradient}>
             <Ionicons name="log-out-outline" size={20} color={colors.danger} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -643,7 +666,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 40,
       fontWeight: "600",
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     editProfileButton: {

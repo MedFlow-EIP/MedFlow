@@ -111,7 +111,7 @@ export function ProgressScreen() {
 
       {loading && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Chargement de la progression" />
         </View>
       )}
 
@@ -134,7 +134,7 @@ export function ProgressScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.retryGradient}
               >
-                <Ionicons name="refresh" size={18} color={colors.textInverse} />
+                <Ionicons name="refresh" size={18} color={colors.onAccent} />
                 <Text style={styles.retryText}>Réessayer</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -253,7 +253,7 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 12,
     },
     retryText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 15,
       fontWeight: '600',
     },

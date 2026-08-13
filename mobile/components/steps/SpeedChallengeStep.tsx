@@ -117,6 +117,9 @@ export function SpeedChallengeStep({
               ]}
               onPress={() => select(o.id)}
               disabled={answered}
+              accessibilityRole="button"
+              accessibilityLabel={o.text}
+              accessibilityState={{ disabled: answered, selected: isSelected }}
             >
               <View style={styles.optionContent}>
                 <Text style={[styles.optionText, { color: textColor }]}>
@@ -221,7 +224,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     feedbackText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "600",
       fontSize: 16,
       textAlign: "center",

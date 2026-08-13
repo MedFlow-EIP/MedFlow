@@ -80,7 +80,7 @@ export function LoginScreen({ navigation }: any) {
             colors={[colors.primary, colors.primaryDark]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color={colors.textInverse} />
+            <Ionicons name="medical" size={40} color={colors.onAccent} />
           </LinearGradient>
           <Text style={styles.title}>Bienvenue</Text>
           <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
@@ -116,7 +116,11 @@ export function LoginScreen({ navigation }: any) {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
@@ -129,6 +133,8 @@ export function LoginScreen({ navigation }: any) {
           <TouchableOpacity 
             style={styles.forgotPasswordButton} 
             onPress={() => navigation.navigate('ForgotPassword')}
+            accessibilityRole="button"
+            accessibilityLabel="Mot de passe oublié ?"
           >
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
@@ -139,6 +145,9 @@ export function LoginScreen({ navigation }: any) {
             onPress={handleLogin} 
             disabled={loading}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Connexion en cours' : 'Se connecter'}
+            accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
@@ -151,7 +160,7 @@ export function LoginScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>Se connecter</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
+                  <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />
                 </>
               )}
             </LinearGradient>
@@ -161,6 +170,8 @@ export function LoginScreen({ navigation }: any) {
           <TouchableOpacity 
             style={styles.linkButton} 
             onPress={() => navigation.navigate('Register')}
+            accessibilityRole="button"
+            accessibilityLabel="Pas de compte ? S'inscrire"
           >
             <Text style={styles.linkText}>
               Pas de compte ? <Text style={styles.linkTextBold}>S'inscrire</Text>
@@ -263,7 +274,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       opacity: 0.7,
     },
     buttonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '600',
     },

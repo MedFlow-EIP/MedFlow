@@ -39,7 +39,12 @@ export function VisualDiscovery({ question, imageUrl, parts, correctId, onComple
         <Text style={styles.question}>🔍 {question}</Text>
         
         <View style={styles.imageWrapper}>
-          <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.image}
+            resizeMode="contain"
+            accessibilityLabel={`Schéma pour : ${question}`}
+          />
           {parts.map(part => {
             const isSelected = selected === part.id;
             const isCorrect = part.id === correctId;
@@ -77,6 +82,9 @@ export function VisualDiscovery({ question, imageUrl, parts, correctId, onComple
                   }
                 ]}
                 disabled={showFeedback}
+                accessibilityRole="button"
+                accessibilityLabel={`Zone ${part.id}`}
+                accessibilityState={{ disabled: showFeedback }}
               />
             );
           })}
@@ -147,7 +155,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     feedbackText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "600",
       fontSize: 16,
     },

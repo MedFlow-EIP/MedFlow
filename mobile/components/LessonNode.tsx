@@ -293,6 +293,11 @@ export function LessonNode({
         onPress={onPress}
         disabled={currentStatus === 'locked'}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}${
+          currentStatus === 'completed' ? ', terminée' : currentStatus === 'locked' ? ', verrouillée' : ', disponible'
+        }`}
+        accessibilityState={{ disabled: currentStatus === 'locked' }}
       >
         <Animated.View
           style={[

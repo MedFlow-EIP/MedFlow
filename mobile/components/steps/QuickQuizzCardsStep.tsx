@@ -70,6 +70,9 @@ export function QuickQuizCardsStep({ question, options, correctId, onComplete }:
                   }
                 ]}
                 disabled={showFeedback}
+                accessibilityRole="button"
+                accessibilityLabel={option.text}
+                accessibilityState={{ disabled: showFeedback, selected: isSelected }}
               >
                 <View style={styles.optionContent}>
                   <Text style={[styles.optionText, { color: textColor }]}>
@@ -153,7 +156,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     feedbackText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "600",
       fontSize: 16,
     },

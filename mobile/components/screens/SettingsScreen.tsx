@@ -341,6 +341,9 @@ export function SettingsScreen() {
             value={streakRemindersOn}
             onValueChange={handleToggleStreakReminders}
             trackColor={{ false: colors.border, true: colors.primary }}
+            accessibilityLabel="Rappels de série"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: streakRemindersOn }}
           />
         </View>
       </View>
@@ -368,7 +371,11 @@ export function SettingsScreen() {
       <View style={styles.profileCenter}>
         <View style={styles.avatarWrapper}>
           {photo ? (
-            <Image source={{ uri: photo }} style={styles.avatar} />
+            <Image
+              source={{ uri: photo }}
+              style={styles.avatar}
+              accessibilityLabel="Photo de profil actuelle"
+            />
           ) : (
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
@@ -388,9 +395,9 @@ export function SettingsScreen() {
             style={styles.editAvatarButton}
           >
             {uploadingPhoto ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
+              <ActivityIndicator size="small" color={colors.onAccent} accessibilityLabel="Envoi de la photo en cours" />
             ) : (
-              <Ionicons name="camera" size={16} color={colors.textInverse} />
+              <Ionicons name="camera" size={16} color={colors.onAccent} />
             )}
           </TouchableOpacity>
         </View>
@@ -401,6 +408,7 @@ export function SettingsScreen() {
         <TextInput
           value={fullName}
           onChangeText={setFullName}
+          accessibilityLabel="Nom"
           style={styles.input}
           placeholderTextColor={colors.muted}
         />
@@ -409,6 +417,7 @@ export function SettingsScreen() {
         <TextInput
           value={user?.email || ""}
           editable={false}
+          accessibilityLabel="Email (non modifiable)"
           style={styles.inputDisabled}
         />
 
@@ -425,6 +434,7 @@ export function SettingsScreen() {
           <TextInput
             placeholder="Nouveau mot de passe"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Nouveau mot de passe"
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
@@ -434,6 +444,7 @@ export function SettingsScreen() {
           <TextInput
             placeholder="Confirmer le mot de passe"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Confirmer le nouveau mot de passe"
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -661,7 +672,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 34,
       fontWeight: "700",
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     avatarWrapper: {
@@ -716,7 +727,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     primaryButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       textAlign: "center",
       fontWeight: "600",
     },
@@ -756,7 +767,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     successButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       textAlign: "center",
       fontWeight: "600",
     },

@@ -11,7 +11,12 @@ export function AddScreen({ navigation }: any) {
     <View style={styles.container}>
       <Text style={styles.title}>Que veux-tu faire ?</Text>
 
-      <TouchableOpacity style={styles.optionButton} onPress={() => navigation.navigate('UploadCourse')}>
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => navigation.navigate('UploadCourse')}
+        accessibilityRole="button"
+        accessibilityLabel="Uploader un cours"
+      >
         <Text style={styles.optionText}>📤 Uploader un cours</Text>
       </TouchableOpacity>
     </View>
@@ -42,7 +47,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
     },
     optionText: { 
-      color: colors.textInverse, 
+      color: colors.onAccent, 
       fontSize: 18, 
       fontWeight: '600',
     },

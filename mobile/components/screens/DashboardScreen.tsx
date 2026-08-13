@@ -147,6 +147,8 @@ export function DashboardScreen() {
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => navigation.navigate('Progress')}
+          accessibilityRole="button"
+          accessibilityLabel="Progression"
         >
           <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -174,6 +176,8 @@ export function DashboardScreen() {
       <TouchableOpacity
         style={styles.courseLeft}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={course.nom}
         onPress={() =>
           navigation.navigate('CourseDetail', {
             courseId: course.id,
@@ -199,6 +203,8 @@ export function DashboardScreen() {
         <TouchableOpacity
           onPress={() => handleDeleteCourse(course.id)}
           style={styles.actionBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Supprimer le cours"
         >
           <Ionicons name="trash-outline" size={20} color={colors.danger} />
         </TouchableOpacity>
@@ -649,7 +655,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     startButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 12,
       fontWeight: '600',
     },

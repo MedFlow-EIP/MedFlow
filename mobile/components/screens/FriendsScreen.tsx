@@ -208,9 +208,10 @@ export function FriendsScreen() {
           onChangeText={runSearch}
           placeholder="Rechercher un nom..."
           placeholderTextColor={colors.muted}
+          accessibilityLabel="Rechercher un ami par nom"
           style={styles.searchInput}
         />
-        {searching && <ActivityIndicator size="small" color={colors.primary} />}
+        {searching && <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Recherche en cours" />}
       </View>
 
       {query.trim().length >= 2 ? (
@@ -233,7 +234,7 @@ export function FriendsScreen() {
         />
       ) : loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Chargement des amis" />
         </View>
       ) : (
         <FlatList
@@ -457,7 +458,7 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 10,
     },
     smallAcceptButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 12,
       fontWeight: '700',
     },

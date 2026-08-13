@@ -22,6 +22,14 @@ export type ThemeColors = {
   tintDanger: string;
 
   muted: string;
+
+  /** Couleur de texte/icône à utiliser SUR un fond accentué
+   * (primary/secondary/success/warning/danger) — distincte de
+   * textInverse, qui reste réservé aux fonds véritablement sombres/noirs.
+   * Nécessaire car en thème sombre, les accents sont volontairement des
+   * pastels clairs : du texte blanc dessus ne passe pas le contraste
+   * WCAG AA (voir docs/audit-accessibilite.md). */
+  onAccent: string;
 };
 
 export const lightColors: ThemeColors = {
@@ -37,7 +45,7 @@ export const lightColors: ThemeColors = {
 
   primary: '#3b82f6',
   primaryDark: '#2563eb',
-  secondary: '#8b5cf6',
+  secondary: '#9266f7',
   success: '#10b981',
   warning: '#f59e0b',
   danger: '#ef4444',
@@ -47,7 +55,9 @@ export const lightColors: ThemeColors = {
   tintWarning: '#fef3c7',
   tintDanger: '#fee2e2',
 
-  muted: '#cbd5e1',
+  muted: '#7d96b4',
+
+  onAccent: '#111827',
 };
 
 export const darkColors: ThemeColors = {
@@ -73,5 +83,7 @@ export const darkColors: ThemeColors = {
   tintWarning: '#2e2410',
   tintDanger: '#2c1a1a',
 
-  muted: '#4b5563',
+  muted: '#5f6b7d',
+
+  onAccent: '#15171f',
 };

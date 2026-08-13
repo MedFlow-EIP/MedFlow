@@ -340,6 +340,8 @@ export function AIChatScreen() {
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => setIsHistoryVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Historique des conversations"
         >
           <Ionicons name="menu" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -351,7 +353,7 @@ export function AIChatScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.headerBadge}
           >
-            <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+            <Ionicons name="sparkles" size={16} color={colors.onAccent} />
           </LinearGradient>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {currentConv?.title || "Assistant Médical"}
@@ -361,6 +363,8 @@ export function AIChatScreen() {
         <TouchableOpacity 
           style={styles.headerButton}
           onPress={createNewConversation}
+          accessibilityRole="button"
+          accessibilityLabel="Nouvelle conversation"
         >
           <Ionicons name="create-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -386,6 +390,8 @@ export function AIChatScreen() {
                 <TouchableOpacity 
                   style={styles.modalClose}
                   onPress={() => setIsHistoryVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fermer"
                 >
                   <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -402,6 +408,9 @@ export function AIChatScreen() {
                       item.id === currentConvId && styles.historyItemActive
                     ]}
                     onPress={() => selectConversation(item.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.title}
+                    accessibilityState={{ selected: item.id === currentConvId }}
                   >
                     <View style={styles.historyItemLeft}>
                       <View style={[
@@ -411,7 +420,7 @@ export function AIChatScreen() {
                         <Ionicons 
                           name="chatbubble-ellipses" 
                           size={20} 
-                          color={item.id === currentConvId ? colors.textInverse : colors.primary} 
+                          color={item.id === currentConvId ? colors.onAccent : colors.primary} 
                         />
                       </View>
                       <View style={styles.historyInfo}>
@@ -433,11 +442,13 @@ export function AIChatScreen() {
                     <TouchableOpacity
                       onPress={() => deleteConversation(item.id)}
                       style={styles.historyDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel="Supprimer la conversation"
                     >
                       <Ionicons 
                         name="trash-outline" 
                         size={18} 
-                        color={item.id === currentConvId ? colors.textInverse : colors.danger} 
+                        color={item.id === currentConvId ? colors.onAccent : colors.danger} 
                       />
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -447,6 +458,8 @@ export function AIChatScreen() {
               <TouchableOpacity 
                 style={styles.newConversationButton}
                 onPress={createNewConversation}
+                accessibilityRole="button"
+                accessibilityLabel="Nouvelle conversation"
               >
                 <LinearGradient
                   colors={[colors.primary, colors.primaryDark]}
@@ -454,7 +467,7 @@ export function AIChatScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.newConversationGradient}
                 >
-                  <Ionicons name="add" size={24} color={colors.textInverse} />
+                  <Ionicons name="add" size={24} color={colors.onAccent} />
                   <Text style={styles.newConversationText}>
                     Nouvelle conversation
                   </Text>
@@ -503,7 +516,7 @@ export function AIChatScreen() {
                   colors={[colors.primary, colors.primaryDark]}
                   style={styles.aiAvatar}
                 >
-                  <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+                  <Ionicons name="sparkles" size={16} color={colors.onAccent} />
                 </LinearGradient>
               )}
 
@@ -514,7 +527,11 @@ export function AIChatScreen() {
                   {message.attachments?.map((att, idx) => (
                     <View key={idx} style={styles.attachmentPreview}>
                       {att.type === 'image' ? (
-                        <Image source={{ uri: att.uri }} style={styles.attachmentImage} />
+                        <Image
+                          source={{ uri: att.uri }}
+                          style={styles.attachmentImage}
+                          accessibilityLabel={`Image jointe : ${att.name}`}
+                        />
                       ) : (
                         <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentFile}>
                           <Ionicons name="document-text" size={24} color={colors.primary} />
@@ -583,7 +600,7 @@ export function AIChatScreen() {
               colors={[colors.primary, colors.primaryDark]}
               style={styles.aiAvatar}
             >
-              <Ionicons name="sparkles" size={16} color={colors.textInverse} />
+              <Ionicons name="sparkles" size={16} color={colors.onAccent} />
             </LinearGradient>
             <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
               <View style={styles.typingIndicator}>
@@ -609,7 +626,11 @@ export function AIChatScreen() {
             {attachments.map((att, index) => (
               <BlurView key={index} intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentItem}>
                 {att.type === 'image' ? (
-                  <Image source={{ uri: att.uri }} style={styles.attachmentThumb} />
+                  <Image
+                    source={{ uri: att.uri }}
+                    style={styles.attachmentThumb}
+                    accessibilityLabel={`Image à envoyer : ${att.name}`}
+                  />
                 ) : (
                   <View style={styles.attachmentThumbFile}>
                     <Ionicons name="document-text" size={30} color={colors.primary} />
@@ -618,6 +639,8 @@ export function AIChatScreen() {
                 <TouchableOpacity 
                   style={styles.removeAttachment}
                   onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retirer la pièce jointe"
                 >
                   <Ionicons name="close-circle" size={22} color={colors.danger} />
                 </TouchableOpacity>
@@ -649,6 +672,7 @@ export function AIChatScreen() {
               value={input}
               onChangeText={setInput}
               placeholder="Écrivez votre message..."
+              accessibilityLabel="Message à l'assistant IA"
               style={styles.input}
               multiline
               placeholderTextColor={colors.muted}
@@ -689,6 +713,9 @@ export function AIChatScreen() {
                 style={styles.sendButton}
                 onPress={sendMessage}
                 disabled={!input.trim() && attachments.length === 0}
+                accessibilityRole="button"
+                accessibilityLabel="Envoyer"
+                accessibilityState={{ disabled: !input.trim() && attachments.length === 0 }}
               >
                 <LinearGradient
                   colors={[colors.primary, colors.primaryDark]}
@@ -696,7 +723,7 @@ export function AIChatScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.sendGradient}
                 >
-                  <Ionicons name="send" size={18} color={colors.textInverse} />
+                  <Ionicons name="send" size={18} color={colors.onAccent} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -708,6 +735,8 @@ export function AIChatScreen() {
               <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.attachmentMenuBlur}>
                 <TouchableOpacity 
                   style={styles.attachmentMenuItem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajouter une image"
                   onPress={async () => {
                     const result = await ImagePicker.launchImageLibraryAsync({
                       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -730,6 +759,8 @@ export function AIChatScreen() {
                 
                 <TouchableOpacity 
                   style={styles.attachmentMenuItem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajouter un document"
                   onPress={async () => {
                     const result = await DocumentPicker.getDocumentAsync({
                       type: "*/*",
@@ -920,7 +951,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     historyTitleActive: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     historyDate: {
@@ -949,7 +980,7 @@ function makeStyles(colors: ThemeColors) {
     newConversationText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     messagesContainer: {
@@ -1070,7 +1101,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     userText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     aiText: {

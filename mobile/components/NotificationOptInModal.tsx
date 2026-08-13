@@ -30,12 +30,23 @@ export function NotificationOptInModal({ visible, onAccept, onDecline }: Notific
             Fini de perdre ton streak par oubli.
           </Text>
 
-          <TouchableOpacity style={styles.acceptButton} onPress={onAccept} activeOpacity={0.8}>
-            <Ionicons name="notifications" size={18} color={colors.textInverse} />
+          <TouchableOpacity
+            style={styles.acceptButton}
+            onPress={onAccept}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Activer les rappels"
+          >
+            <Ionicons name="notifications" size={18} color={colors.onAccent} />
             <Text style={styles.acceptButtonText}>Activer les rappels</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.declineButton} onPress={onDecline}>
+          <TouchableOpacity
+            style={styles.declineButton}
+            onPress={onDecline}
+            accessibilityRole="button"
+            accessibilityLabel="Plus tard"
+          >
             <Text style={styles.declineButtonText}>Plus tard</Text>
           </TouchableOpacity>
         </View>
@@ -100,7 +111,7 @@ function makeStyles(colors: ThemeColors) {
       width: '100%',
     },
     acceptButtonText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: '700',
     },

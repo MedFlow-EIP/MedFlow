@@ -182,7 +182,7 @@ export function LeaderboardScreen() {
 
       {loading && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Chargement du classement" />
         </View>
       )}
 
@@ -335,7 +335,7 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 10,
     },
     retryText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: '600',
     },
     listContent: {

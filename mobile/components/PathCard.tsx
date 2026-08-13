@@ -44,6 +44,9 @@ export function PathCard({
         onPress={onPress}
         disabled={isLocked}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}, ${completedLessons} sur ${totalLessons} leçons complétées${isLocked ? ', verrouillé' : ''}`}
+        accessibilityState={{ disabled: isLocked }}
       >
         <LinearGradient
           colors={isLocked 

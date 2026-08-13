@@ -166,7 +166,7 @@ export function UploadCourseScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textInverse} />
+            <ActivityIndicator color={colors.onAccent} accessibilityLabel="Génération en cours" />
           ) : (
             <Text style={styles.generateText}>
               Générer le contenu
@@ -255,6 +255,13 @@ export function UploadCourseScreen() {
                       bg = colors.primary;
                     }
 
+                    // bg peut être un fond neutre (surfaceAlt) ou un fond
+                    // accentué (primary/success/danger) selon l'état — la
+                    // couleur du texte doit suivre, sinon le texte devient
+                    // illisible sur le fond neutre clair (blanc sur quasi-blanc).
+                    const optionTextColor =
+                      bg === colors.surfaceAlt ? colors.textPrimary : colors.onAccent;
+
                     return (
                       <TouchableOpacity
                         key={key}
@@ -267,7 +274,7 @@ export function UploadCourseScreen() {
                         }
                         style={[styles.optionButton, { backgroundColor: bg }]}
                       >
-                        <Text style={styles.optionText}>
+                        <Text style={[styles.optionText, { color: optionTextColor }]}>
                           {key}. {value}
                         </Text>
                       </TouchableOpacity>
@@ -431,7 +438,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     generateText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "700",
       fontSize: 15,
     },
@@ -452,7 +459,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     primaryText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "700",
     },
 
@@ -536,7 +543,6 @@ function makeStyles(colors: ThemeColors) {
     },
 
     optionText: {
-      color: colors.textInverse,
       fontWeight: "600",
     },
 
@@ -577,7 +583,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     tabTextActive: {
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
 
     validateBtn: {
@@ -596,7 +602,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     validateText: {
-      color: colors.textInverse,
+      color: colors.onAccent,
       fontWeight: "700",
       fontSize: 15,
     },

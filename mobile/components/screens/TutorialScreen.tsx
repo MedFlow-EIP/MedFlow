@@ -444,7 +444,7 @@ export function TutorialScreen({ visible, onComplete, navigation }: TutorialScre
               <Text style={styles.nextButtonText}>
                 {currentStep === tutorialSteps.length - 1 ? 'Terminer' : 'Suivant'}
               </Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.textInverse} style={styles.nextIcon} />
+              <Ionicons name="arrow-forward" size={16} color={colors.onAccent} style={styles.nextIcon} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -587,7 +587,7 @@ function makeStyles(colors: ThemeColors) {
     nextButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textInverse,
+      color: colors.onAccent,
     },
     nextIcon: {
       marginLeft: 8,
