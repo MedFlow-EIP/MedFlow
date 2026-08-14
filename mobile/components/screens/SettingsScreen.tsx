@@ -30,6 +30,11 @@ import {
   disableStreakReminders,
   sendTestNotification,
 } from "../../utils/streakNotifications";
+import {
+  isRevisionReminderEnabled,
+  enableRevisionReminders,
+  disableRevisionReminders,
+} from "../../utils/revisionNotifications";
 import { getAuthHeaders } from "../../utils/authHeaders";
 import { API_URL } from "@/services/api";
 import { useTutorial } from "../../context/TutorialContext";
@@ -46,9 +51,11 @@ export function SettingsScreen() {
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [streakRemindersOn, setStreakRemindersOn] = useState(false);
+  const [revisionRemindersOn, setRevisionRemindersOn] = useState(false);
 
   useEffect(() => {
     isStreakReminderEnabled().then(setStreakRemindersOn);
+    isRevisionReminderEnabled().then(setRevisionRemindersOn);
   }, []);
 
   const handleToggleStreakReminders = async (value: boolean) => {
@@ -79,6 +86,37 @@ export function SettingsScreen() {
     } else {
       await disableStreakReminders();
       setStreakRemindersOn(false);
+    }
+  };
+
+  const handleToggleRevisionReminders = async (value: boolean) => {
+    if (value) {
+      const user = auth.currentUser;
+      let dueToday = 0;
+      if (user) {
+        try {
+          const res = await fetch(`${API_URL}/api/revision/forecast?days=1`, {
+            headers: await getAuthHeaders(user),
+          });
+          const data = await res.json();
+          dueToday = data?.forecast?.[0]?.count ?? 0;
+        } catch {
+          // Pas grave si ça échoue : on active quand même, le rappel se
+          // mettra à jour dès le prochain chargement du forecast.
+        }
+      }
+      const granted = await enableRevisionReminders(dueToday);
+      if (!granted) {
+        Alert.alert(
+          "Permission refusée",
+          "Active les notifications pour MedFlow dans les réglages de ton téléphone pour utiliser cette fonctionnalité."
+        );
+        return;
+      }
+      setRevisionRemindersOn(true);
+    } else {
+      await disableRevisionReminders();
+      setRevisionRemindersOn(false);
     }
   };
 
@@ -344,6 +382,23 @@ export function SettingsScreen() {
             accessibilityLabel="Rappels de série"
             accessibilityRole="switch"
             accessibilityState={{ checked: streakRemindersOn }}
+          />
+        </View>
+
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifTitle}>Rappels de révision</Text>
+            <Text style={styles.notifSubtitle}>
+              Un rappel le matin avec le nombre de cartes à réviser
+            </Text>
+          </View>
+          <Switch
+            value={revisionRemindersOn}
+            onValueChange={handleToggleRevisionReminders}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            accessibilityLabel="Rappels de révision"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: revisionRemindersOn }}
           />
         </View>
       </View>

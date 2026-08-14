@@ -46,6 +46,7 @@ import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { TutorialScreen } from '../screens/TutorialScreen';
 import { RevisionScreen } from '../screens/RevisionScreen';
+import { SearchScreen } from '../screens/SearchScreen';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { useTutorial } from '../../context/TutorialContext';
@@ -72,6 +73,7 @@ export type RootStackParamList = {
   Leaderboard: undefined;
   Friends: undefined;
   Revision: { courseId?: string } | undefined;
+  Search: undefined;
   Auth: undefined;
 };
 
@@ -381,6 +383,7 @@ export function AppNavigator() {
             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
             <Stack.Screen name="Friends" component={FriendsScreen} />
             <Stack.Screen name="Revision" component={RevisionScreen} />
+            <Stack.Screen name="Search" component={SearchScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

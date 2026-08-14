@@ -7,6 +7,7 @@ import { API_URL } from '@/services/api';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
+import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { ProgressBar } from '../ui/progress';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -60,12 +61,20 @@ export function RevisionScreen() {
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error('Erreur serveur');
       const data = await res.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const fetchedItems = Array.isArray(data.items) ? data.items : [];
+      setItems(fetchedItems);
       setCurrentIndex(0);
       setSelectedOption(null);
       setAnswerResult(null);
       setCorrectCount(0);
       setFinished(false);
+
+      // Remet à jour le rappel de notification avec le vrai nombre de
+      // cartes dues — uniquement en mode programmé, tous cours confondus
+      // (une session ciblée sur un seul cours ne représente pas le total).
+      if (loadMode === 'scheduled' && !courseId) {
+        scheduleRevisionReminder(fetchedItems.length).catch(() => {});
+      }
     } catch (err) {
       console.error('Erreur chargement révision:', err);
       setError(true);

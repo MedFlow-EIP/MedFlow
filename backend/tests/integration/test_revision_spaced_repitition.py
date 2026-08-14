@@ -23,7 +23,7 @@ class TestGetDueQuizItems:
         resp = client.get("/api/revision/due", headers=auth_headers)
         item = resp.get_json()["items"][0]
         assert "correct" not in item
-        assert set(item.keys()) == {"course_id", "course_nom", "item_index", "question", "options"}
+        assert set(item.keys()) == {"course_id", "course_nom", "item_index", "question", "options", "is_leech"}
 
     def test_includes_the_options(self, client, auth_headers, seeded_course):
         resp = client.get("/api/revision/due", headers=auth_headers)
@@ -278,7 +278,7 @@ class TestCheckRevisionAnswer:
             headers=auth_headers,
         )
         data = resp.get_json()
-        assert data == {"correct": True, "correct_answer": "A"}
+        assert data == {"correct": True, "correct_answer": "A", "explanation": None}
 
     def test_never_writes_to_revision_schedule(self, client, auth_headers, db, uid, seeded_course):
         # Le coeur de la fonctionnalité : répéter le mode pratique ne doit
@@ -328,3 +328,213 @@ class TestCheckRevisionAnswer:
             ).fetchone())
 
         assert before == after
+
+
+class TestExplanation:
+    def test_explanation_included_in_answer_when_present(
+        self, client, auth_headers, db, uid, sample_course_payload
+    ):
+        payload = dict(sample_course_payload)
+        payload["quiz"] = [{
+            "question": "Q ?",
+            "options": {"A": "1", "B": "2"},
+            "correct": "A",
+            "explanation": "Parce que A est la seule réponse physiologiquement possible.",
+        }]
+        db.save_course(uid, "course-expl", payload)
+
+        resp = client.post(
+            "/api/revision/answer",
+            json={"course_id": "course-expl", "item_index": 0, "selected_option": "B"},
+            headers=auth_headers,
+        )
+        data = resp.get_json()
+        assert data["explanation"] == "Parce que A est la seule réponse physiologiquement possible."
+
+    def test_explanation_is_none_for_older_courses_without_it(
+        self, client, auth_headers, seeded_course
+    ):
+        # sample_course_payload (fixture partagée) n'a pas de champ
+        # explanation — comportement rétro-compatible attendu, pas d'erreur.
+        resp = client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+            headers=auth_headers,
+        )
+        assert resp.get_json()["explanation"] is None
+
+    def test_explanation_never_leaks_in_due_items_before_answering(
+        self, client, auth_headers, db, uid, sample_course_payload
+    ):
+        payload = dict(sample_course_payload)
+        payload["quiz"] = [{
+            "question": "Q ?", "options": {"A": "1", "B": "2"}, "correct": "A",
+            "explanation": "Ne doit pas fuiter avant la réponse.",
+        }]
+        db.save_course(uid, "course-expl2", payload)
+
+        resp = client.get("/api/revision/due?course_id=course-expl2", headers=auth_headers)
+        item = resp.get_json()["items"][0]
+        assert "explanation" not in item
+
+
+class TestLeechDetection:
+    def test_new_card_is_not_a_leech(self, client, auth_headers, seeded_course):
+        resp = client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+            headers=auth_headers,
+        )
+        assert resp.get_json()["is_leech"] is False
+
+    def test_card_becomes_leech_after_three_consecutive_failures(
+        self, client, auth_headers, seeded_course
+    ):
+        for _ in range(2):
+            resp = client.post(
+                "/api/revision/answer",
+                json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},  # faux
+                headers=auth_headers,
+            )
+            assert resp.get_json()["is_leech"] is False
+
+        resp = client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},  # 3e échec
+            headers=auth_headers,
+        )
+        assert resp.get_json()["is_leech"] is True
+
+    def test_a_correct_answer_resets_the_lapse_counter(self, client, auth_headers, seeded_course):
+        for _ in range(2):
+            client.post(
+                "/api/revision/answer",
+                json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},
+                headers=auth_headers,
+            )
+        # Une bonne réponse doit remettre le compteur à zéro.
+        client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+            headers=auth_headers,
+        )
+        # Il faudrait de nouveau 3 échecs complets pour redevenir leech.
+        resp = client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},
+            headers=auth_headers,
+        )
+        assert resp.get_json()["is_leech"] is False
+
+    def test_leech_flag_is_persisted_after_three_failures(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        # Une carte qui vient d'être ratée est planifiée à J+1 (SM-2
+        # normal) — elle ne réapparaît donc pas dans /due immédiatement.
+        # On vérifie le statut leech directement en base plutôt que via
+        # l'endpoint /due, qui exclut à raison les cartes pas encore dues.
+        for _ in range(3):
+            client.post(
+                "/api/revision/answer",
+                json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},
+                headers=auth_headers,
+            )
+
+        with db.connection() as conn:
+            row = conn.execute(
+                "SELECT lapses FROM revision_schedule WHERE uid=? AND course_id=? AND item_index=0",
+                (uid, seeded_course),
+            ).fetchone()
+        assert row["lapses"] == 3
+
+    def test_leech_flag_surfaces_in_due_items_once_actually_due(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        import datetime
+        past_date = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        with db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (uid, seeded_course, 0, 1.3, 1, 0, 3, past_date),
+            )
+
+        resp = client.get("/api/revision/due", headers=auth_headers)
+        item = next(i for i in resp.get_json()["items"] if i["item_index"] == 0)
+        assert item["is_leech"] is True
+
+    def test_practice_mode_never_affects_leech_status(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        for _ in range(3):
+            client.post(
+                "/api/revision/check",
+                json={"course_id": seeded_course, "item_index": 0, "selected_option": "B"},
+                headers=auth_headers,
+            )
+        with db.connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM revision_schedule WHERE uid=? AND course_id=? AND item_index=0",
+                (uid, seeded_course),
+            ).fetchone()
+        assert row is None
+
+
+class TestRevisionForecast:
+    def test_requires_auth(self, client):
+        resp = client.get("/api/revision/forecast")
+        assert resp.status_code == 400
+
+    def test_empty_forecast_when_nothing_scheduled(self, client, auth_headers):
+        resp = client.get("/api/revision/forecast", headers=auth_headers)
+        data = resp.get_json()
+        assert len(data["forecast"]) == 7
+        assert all(day["count"] == 0 for day in data["forecast"])
+
+    def test_defaults_to_seven_days(self, client, auth_headers):
+        resp = client.get("/api/revision/forecast", headers=auth_headers)
+        assert len(resp.get_json()["forecast"]) == 7
+
+    def test_respects_days_param(self, client, auth_headers):
+        resp = client.get("/api/revision/forecast?days=3", headers=auth_headers)
+        assert len(resp.get_json()["forecast"]) == 3
+
+    def test_caps_days_at_thirty(self, client, auth_headers):
+        resp = client.get("/api/revision/forecast?days=999", headers=auth_headers)
+        assert len(resp.get_json()["forecast"]) == 30
+
+    def test_counts_a_freshly_scheduled_card_on_its_due_date(
+        self, client, auth_headers, seeded_course
+    ):
+        # Une bonne réponse planifie la carte à J+1 (voir SM-2).
+        client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+            headers=auth_headers,
+        )
+
+        resp = client.get("/api/revision/forecast", headers=auth_headers)
+        forecast = resp.get_json()["forecast"]
+        assert forecast[1]["count"] == 1  # demain (index 1)
+        assert forecast[0]["count"] == 0  # pas aujourd'hui
+
+    def test_overdue_cards_count_as_due_today_in_forecast(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        import datetime
+        past_date = (datetime.date.today() - datetime.timedelta(days=5)).isoformat()
+        with db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (uid, seeded_course, 0, 2.5, 1, 1, 0, past_date),
+            )
+
+        resp = client.get("/api/revision/forecast", headers=auth_headers)
+        assert resp.get_json()["forecast"][0]["count"] == 1
