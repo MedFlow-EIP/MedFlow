@@ -247,6 +247,18 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            # Migration légère : streak dédié à la révision espacée,
+            # distinct du streak de leçons (colonne streak ci-dessus).
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN revision_streak INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN last_revision_activity DATE")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_badges (
@@ -1334,6 +1346,42 @@ class Database:
 
         return results[:limit]
 
+    def get_leech_items(self, uid: str, course_id: Optional[str] = None) -> List[Dict]:
+        """Renvoie les questions signalées "leech" (LEECH_THRESHOLD échecs
+        consécutifs ou plus), sans tenir compte de la date de révision —
+        contrairement à get_due_quiz_items, on veut pouvoir les retravailler
+        sur demande, pas seulement attendre que SM-2 les replanifie."""
+        if not uid:
+            raise ValueError("UID is required")
+
+        with self.connection() as conn:
+            schedule_rows = conn.execute(
+                "SELECT course_id, item_index, lapses FROM revision_schedule WHERE uid=? AND lapses >= ?",
+                (uid, self.LEECH_THRESHOLD),
+            ).fetchall()
+
+        leech_by_key = {(row["course_id"], row["item_index"]): row["lapses"] for row in schedule_rows}
+        if not leech_by_key:
+            return []
+
+        courses = [self.fetch_course(uid, course_id)] if course_id else self.fetch_courses(uid)
+        courses = [c for c in courses if c is not None]
+
+        items: List[Dict] = []
+        for course in courses:
+            for idx, q in enumerate(course.quiz or []):
+                key = (course.id, idx)
+                if key in leech_by_key:
+                    items.append({
+                        "course_id": course.id,
+                        "course_nom": course.nom,
+                        "item_index": idx,
+                        "question": q.get("question"),
+                        "options": q.get("options"),
+                        "lapses": leech_by_key[key],
+                    })
+        return items
+
     def get_revision_forecast(self, uid: str, days: int = 7) -> List[Dict]:
         """Prévision du nombre de cartes dues chaque jour sur les
         ``days`` prochains jours (aujourd'hui inclus). Le jour "aujourd'hui"
@@ -1529,6 +1577,71 @@ class Database:
                 """,
                 (uid, course_id, session_type, score, total_questions),
             )
+
+            if session_type == "revision":
+                self._update_revision_streak(conn, uid)
+
+    def _update_revision_streak(self, conn, uid: str) -> None:
+        """Streak dédié à la révision espacée — même logique jour-par-jour
+        que le streak de leçons (complete_lesson), mais totalement
+        indépendant : réviser sans jamais compléter de leçon (ou
+        l'inverse) fait progresser l'un sans toucher à l'autre."""
+        today = date.today()
+
+        conn.execute(
+            "INSERT OR IGNORE INTO user_stats (uid, xp, streak) VALUES (?, 0, 0)",
+            (uid,),
+        )
+
+        stats_row = conn.execute(
+            "SELECT revision_streak, last_revision_activity FROM user_stats WHERE uid=?",
+            (uid,),
+        ).fetchone()
+
+        last_activity_str = stats_row["last_revision_activity"] if stats_row else None
+        current_streak = (stats_row["revision_streak"] if stats_row and stats_row["revision_streak"] else 0)
+
+        if last_activity_str:
+            last_activity = date.fromisoformat(last_activity_str)
+            delta_days = (today - last_activity).days
+
+            if delta_days == 0:
+                new_streak = current_streak
+            elif delta_days == 1:
+                new_streak = current_streak + 1
+            else:
+                new_streak = 1
+        else:
+            new_streak = 1
+
+        conn.execute(
+            "UPDATE user_stats SET revision_streak=?, last_revision_activity=? WHERE uid=?",
+            (new_streak, today.isoformat(), uid),
+        )
+
+    def get_revision_streak(self, uid: str) -> int:
+        if not uid:
+            raise ValueError("UID is required")
+
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT revision_streak, last_revision_activity FROM user_stats WHERE uid=?",
+                (uid,),
+            ).fetchone()
+
+        if not row or not row["revision_streak"]:
+            return 0
+
+        # Un streak "expire" silencieusement s'il n'y a pas eu d'activité
+        # hier ou aujourd'hui — sinon un streak de 5 jours vieux de 3
+        # semaines resterait affiché comme actif indéfiniment.
+        last_activity_str = row["last_revision_activity"]
+        if not last_activity_str:
+            return 0
+        delta_days = (date.today() - date.fromisoformat(last_activity_str)).days
+        if delta_days > 1:
+            return 0
+        return row["revision_streak"]
 
     def increment_sessions(self, uid: str, course_id: Optional[str]) -> bool:
         if not uid:

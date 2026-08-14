@@ -66,7 +66,7 @@ def check_revision_answer():
 @require_auth
 def get_revision_forecast_route():
     """Prévision du nombre de cartes dues par jour sur les 7 prochains
-    jours (paramétrable via ``?days=``)."""
+    jours (paramétrable via ``?days=``), et streak de révision actuel."""
     try:
         db = current_app.db
         uid = g.uid
@@ -74,11 +74,30 @@ def get_revision_forecast_route():
         days = max(1, min(days, 30))
 
         forecast = db.get_revision_forecast(uid, days=days)
-        return jsonify({"forecast": forecast})
+        streak = db.get_revision_streak(uid)
+        return jsonify({"forecast": forecast, "streak": streak})
 
     except Exception as e:
         logger.exception("Erreur revision/forecast")
         return jsonify({"error": f"Erreur revision/forecast: {str(e)}"}), 500
+
+
+@sessions_bp.route("/api/revision/leeches", methods=["GET"])
+@require_auth
+def get_leech_items_route():
+    """Questions signalées carte difficile (échouées plusieurs fois
+    d'affilée), pour les retravailler spécifiquement sur demande."""
+    try:
+        db = current_app.db
+        uid = g.uid
+        course_id = request.args.get("course_id")
+
+        items = db.get_leech_items(uid, course_id=course_id)
+        return jsonify({"items": items, "count": len(items)})
+
+    except Exception as e:
+        logger.exception("Erreur revision/leeches")
+        return jsonify({"error": f"Erreur revision/leeches: {str(e)}"}), 500
 
 
 @sessions_bp.route("/api/revision/due", methods=["GET"])
