@@ -36,6 +36,24 @@ def _ensure_user_folder(upload_folder: str, uid: str) -> str:
 # Routes
 # ---------------------------------------------------------------------------
 
+@courses_bp.route("/api/search", methods=["GET"])
+@require_auth
+def search_courses():
+    """Recherche dans les cours de l'utilisateur : nom de cours,
+    flashcards (question/réponse), questions de quiz. ``?q=`` requis."""
+    try:
+        db = current_app.db
+        uid = g.uid
+        query = request.args.get("q", "")
+
+        results = db.search_courses(uid, query)
+        return jsonify({"results": results, "count": len(results)})
+
+    except Exception as e:
+        logger.exception("Erreur search")
+        return jsonify({"error": f"Erreur search: {str(e)}"}), 500
+
+
 @courses_bp.route("/api/dashboard", methods=["GET"])
 @require_auth
 def get_dashboard():

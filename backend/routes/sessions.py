@@ -62,6 +62,25 @@ def check_revision_answer():
         return jsonify({"error": f"Erreur revision/check: {str(e)}"}), 500
 
 
+@sessions_bp.route("/api/revision/forecast", methods=["GET"])
+@require_auth
+def get_revision_forecast_route():
+    """Prévision du nombre de cartes dues par jour sur les 7 prochains
+    jours (paramétrable via ``?days=``)."""
+    try:
+        db = current_app.db
+        uid = g.uid
+        days = request.args.get("days", default=7, type=int)
+        days = max(1, min(days, 30))
+
+        forecast = db.get_revision_forecast(uid, days=days)
+        return jsonify({"forecast": forecast})
+
+    except Exception as e:
+        logger.exception("Erreur revision/forecast")
+        return jsonify({"error": f"Erreur revision/forecast: {str(e)}"}), 500
+
+
 @sessions_bp.route("/api/revision/due", methods=["GET"])
 @require_auth
 def get_due_revision():

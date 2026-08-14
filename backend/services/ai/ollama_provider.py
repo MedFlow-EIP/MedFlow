@@ -114,14 +114,15 @@ Retourne UNIQUEMENT du JSON valide :
       "C": "Option C",
       "D": "Option D"
     }},
-    "correct": "A"
+    "correct": "A",
+    "explanation": "Explication courte (1-2 phrases) de pourquoi c'est la bonne réponse"
   }}
 ]"""
             raw = self._generate(prompt)
             return json.loads(self._clean_json(raw))
         except Exception as e:
             logger.error("OllamaProvider.generate_quiz error: %s", e)
-            return [{"question": "Erreur", "options": {"A": "x", "B": "y", "C": "z", "D": "w"}, "correct": "A"}]
+            return [{"question": "Erreur", "options": {"A": "x", "B": "y", "C": "z", "D": "w"}, "correct": "A", "explanation": ""}]
 
     def generate_title(self, text: str, filename: str) -> str:
         try:

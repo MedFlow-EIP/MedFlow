@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { getAuthHeaders } from '../../utils/authHeaders';
+import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { API_URL } from '@/services/api';
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -69,6 +70,20 @@ export function DashboardScreen() {
           avgScore: data.stats.detailed_sessions?.avg_score ?? null,
         });
       }
+
+      // Rafraîchit le rappel de notification de révision avec le vrai
+      // nombre de cartes dues aujourd'hui — best-effort, ne doit jamais
+      // faire échouer le chargement du reste du Dashboard.
+      try {
+        const forecastRes = await fetch(`${API_URL}/api/revision/forecast?days=1`, {
+          headers: await getAuthHeaders(user),
+        });
+        const forecastData = await forecastRes.json();
+        const dueToday = forecastData?.forecast?.[0]?.count ?? 0;
+        await scheduleRevisionReminder(dueToday);
+      } catch {
+        // Silencieux : la notification n'est pas critique pour l'écran.
+      }
     } catch (e) {
       console.error(e);
     }
@@ -124,14 +139,24 @@ export function DashboardScreen() {
           <Text style={styles.title} accessibilityRole="header">Tableau de bord</Text>
           <Text style={styles.subtitle}>Vue d'ensemble de votre apprentissage</Text>
         </View>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('Progress')}
-          accessibilityRole="button"
-          accessibilityLabel="Progression"
-        >
-          <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Search')}
+            accessibilityRole="button"
+            accessibilityLabel="Rechercher"
+          >
+            <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Progress')}
+            accessibilityRole="button"
+            accessibilityLabel="Progression"
+          >
+            <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
         {/* <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="notifications-outline" size={24} color="#6b7280" />

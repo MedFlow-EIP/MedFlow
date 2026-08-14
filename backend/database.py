@@ -295,6 +295,7 @@ class Database:
                     ease_factor REAL NOT NULL DEFAULT 2.5,
                     interval_days INTEGER NOT NULL DEFAULT 0,
                     repetitions INTEGER NOT NULL DEFAULT 0,
+                    lapses INTEGER NOT NULL DEFAULT 0,
                     next_review_date TEXT NOT NULL,
                     last_reviewed_at TEXT,
                     PRIMARY KEY (uid, course_id, item_index)
@@ -1274,7 +1275,90 @@ class Database:
         return {
             "correct": selected_option == correct_answer,
             "correct_answer": correct_answer,
+            "explanation": course.quiz[item_index].get("explanation"),
         }
+
+    def search_courses(self, uid: str, query: str, limit: int = 30) -> List[Dict]:
+        """Recherche insensible à la casse dans les noms de cours, les
+        flashcards (question/réponse) et les questions de quiz (question
+        seule, jamais les options ni la bonne réponse — pas de raison de
+        les exposer ici). Ne s'appuie pas sur la recherche plein texte de
+        SQLite (non configurée) : filtrage en Python, suffisant vu le
+        volume de contenu par utilisateur."""
+        if not uid:
+            raise ValueError("UID is required")
+        query = (query or "").strip()
+        if not query:
+            return []
+
+        needle = query.lower()
+        courses = self.fetch_courses(uid)
+        results: List[Dict] = []
+
+        for course in courses:
+            if needle in (course.nom or "").lower():
+                results.append({
+                    "course_id": course.id,
+                    "course_nom": course.nom,
+                    "match_type": "course_name",
+                    "snippet": course.nom,
+                })
+
+            for idx, card in enumerate(course.flashcards or []):
+                question = card.get("question") or ""
+                answer = card.get("answer") or ""
+                if needle in question.lower() or needle in answer.lower():
+                    results.append({
+                        "course_id": course.id,
+                        "course_nom": course.nom,
+                        "match_type": "flashcard",
+                        "item_index": idx,
+                        "snippet": question,
+                    })
+
+            for idx, q in enumerate(course.quiz or []):
+                question = q.get("question") or ""
+                if needle in question.lower():
+                    results.append({
+                        "course_id": course.id,
+                        "course_nom": course.nom,
+                        "match_type": "quiz",
+                        "item_index": idx,
+                        "snippet": question,
+                    })
+
+        return results[:limit]
+
+    def get_revision_forecast(self, uid: str, days: int = 7) -> List[Dict]:
+        """Prévision du nombre de cartes dues chaque jour sur les
+        ``days`` prochains jours (aujourd'hui inclus). Le jour "aujourd'hui"
+        regroupe aussi tout ce qui est en retard — une carte en retard de 3
+        jours est due aujourd'hui, pas seulement à sa date d'origine.
+        N'inclut pas les cartes jamais vues (imprévisibles par nature :
+        elles deviennent dues dès qu'on les découvre)."""
+        if not uid:
+            raise ValueError("UID is required")
+
+        today = date.today()
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT next_review_date, COUNT(*) as count FROM revision_schedule WHERE uid=? GROUP BY next_review_date",
+                (uid,),
+            ).fetchall()
+
+        counts_by_date = {row["next_review_date"]: row["count"] for row in rows}
+
+        forecast: List[Dict] = []
+        for i in range(days):
+            d = today + timedelta(days=i)
+            if i == 0:
+                count = sum(
+                    c for date_str, c in counts_by_date.items() if date_str <= d.isoformat()
+                )
+            else:
+                count = counts_by_date.get(d.isoformat(), 0)
+            forecast.append({"date": d.isoformat(), "count": count})
+        return forecast
 
     def get_due_quiz_items(
         self, uid: str, course_id: Optional[str] = None, limit: int = 20
@@ -1293,12 +1377,12 @@ class Database:
 
         with self.connection() as conn:
             schedule_rows = conn.execute(
-                "SELECT course_id, item_index, next_review_date FROM revision_schedule WHERE uid=?",
+                "SELECT course_id, item_index, next_review_date, lapses FROM revision_schedule WHERE uid=?",
                 (uid,),
             ).fetchall()
 
         schedule_by_key = {
-            (row["course_id"], row["item_index"]): row["next_review_date"]
+            (row["course_id"], row["item_index"]): row
             for row in schedule_rows
         }
 
@@ -1309,13 +1393,15 @@ class Database:
         for course in courses:
             for idx, q in enumerate(course.quiz or []):
                 key = (course.id, idx)
-                scheduled_for = schedule_by_key.get(key)
+                schedule_row = schedule_by_key.get(key)
+                scheduled_for = schedule_row["next_review_date"] if schedule_row else None
                 item = {
                     "course_id": course.id,
                     "course_nom": course.nom,
                     "item_index": idx,
                     "question": q.get("question"),
                     "options": q.get("options"),
+                    "is_leech": bool(schedule_row and schedule_row["lapses"] >= self.LEECH_THRESHOLD),
                 }
                 if scheduled_for is None:
                     new.append(item)
@@ -1328,6 +1414,8 @@ class Database:
         due.sort(key=lambda it: it["overdue_days"], reverse=True)
         return (due + new)[:limit]
 
+    LEECH_THRESHOLD = 3  # échecs consécutifs à partir desquels une carte est signalée "leech"
+
     def record_quiz_answer(
         self, uid: str, course_id: str, item_index: int, selected_option: str
     ) -> Dict:
@@ -1336,7 +1424,13 @@ class Database:
         version basée sur les flashcards, la qualité SM-2 n'est jamais
         déclarée par le client : elle est déduite automatiquement de la
         bonne/mauvaise réponse (5 si correct, 1 sinon), ce qui retire tout
-        biais d'auto-évaluation ("je pensais savoir")."""
+        biais d'auto-évaluation ("je pensais savoir").
+
+        Suit aussi le nombre d'échecs consécutifs ("lapses") : une carte
+        ratée LEECH_THRESHOLD fois de suite est un "leech" — un signal
+        classique en répétition espacée qu'il faut retravailler ce
+        contenu autrement (reformulation, image, etc.) plutôt que de
+        continuer à la revoir en boucle avec la même formulation."""
         if not uid or not course_id:
             raise ValueError("UID and course_id are required")
 
@@ -1344,14 +1438,16 @@ class Database:
         if not course or item_index >= len(course.quiz or []):
             raise ValueError("Question de quiz introuvable")
 
-        correct_answer = course.quiz[item_index].get("correct")
+        quiz_item = course.quiz[item_index]
+        correct_answer = quiz_item.get("correct")
+        explanation = quiz_item.get("explanation")
         is_correct = selected_option == correct_answer
         quality = 5 if is_correct else 1
 
         with self.transaction() as conn:
             row = conn.execute(
                 """
-                SELECT ease_factor, interval_days, repetitions
+                SELECT ease_factor, interval_days, repetitions, lapses
                 FROM revision_schedule WHERE uid=? AND course_id=? AND item_index=?
                 """,
                 (uid, course_id, item_index),
@@ -1366,6 +1462,8 @@ class Database:
                 if row
                 else CardSchedule()
             )
+            current_lapses = row["lapses"] if row else 0
+            new_lapses = 0 if is_correct else current_lapses + 1
 
             new_schedule = next_schedule(current, quality)
             next_date = next_review_date(new_schedule)
@@ -1373,12 +1471,13 @@ class Database:
             conn.execute(
                 """
                 INSERT INTO revision_schedule
-                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, next_review_date, last_reviewed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date, last_reviewed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (uid, course_id, item_index) DO UPDATE SET
                     ease_factor=excluded.ease_factor,
                     interval_days=excluded.interval_days,
                     repetitions=excluded.repetitions,
+                    lapses=excluded.lapses,
                     next_review_date=excluded.next_review_date,
                     last_reviewed_at=excluded.last_reviewed_at
                 """,
@@ -1389,6 +1488,7 @@ class Database:
                     new_schedule.ease_factor,
                     new_schedule.interval_days,
                     new_schedule.repetitions,
+                    new_lapses,
                     next_date.isoformat(),
                     datetime.now(timezone.utc).isoformat(),
                 ),
@@ -1397,6 +1497,8 @@ class Database:
         return {
             "correct": is_correct,
             "correct_answer": correct_answer,
+            "explanation": explanation,
+            "is_leech": new_lapses >= self.LEECH_THRESHOLD,
             "ease_factor": new_schedule.ease_factor,
             "interval_days": new_schedule.interval_days,
             "repetitions": new_schedule.repetitions,
