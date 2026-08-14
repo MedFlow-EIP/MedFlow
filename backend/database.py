@@ -303,6 +303,11 @@ class Database:
                 """
             )
 
+            try:
+                conn.execute("ALTER TABLE revision_schedule ADD COLUMN lapses INTEGER NOT NULL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS friendships (
