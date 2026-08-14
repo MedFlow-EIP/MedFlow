@@ -16,6 +16,10 @@ jest.mock('../../../utils/authHeaders', () => ({
   getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer fake-token' }),
 }));
 
+jest.mock('../../../utils/revisionNotifications', () => ({
+  scheduleRevisionReminder: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockGoBack = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
