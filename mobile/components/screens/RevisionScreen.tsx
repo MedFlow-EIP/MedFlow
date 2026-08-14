@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +42,7 @@ export function RevisionScreen() {
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const activeItemKeyRef = useRef<string | null>(null);
 
   const load = useCallback(async (loadMode: 'scheduled' | 'practice' = mode) => {
     const user = auth.currentUser;
@@ -117,6 +118,13 @@ export function RevisionScreen() {
     const user = auth.currentUser;
     if (!item || !user) return;
 
+    // Identifie précisément CETTE question — si la réponse serveur arrive
+    // après qu'on a déjà avancé (cas normalement impossible depuis le fix
+    // sur le bouton "Continuer", mais gardé en filet de sécurité), on
+    // l'ignore plutôt que de l'appliquer à la mauvaise question affichée.
+    const requestKey = `${item.course_id}:${item.item_index}`;
+    activeItemKeyRef.current = requestKey;
+
     setSelectedOption(option);
 
     try {
@@ -132,9 +140,11 @@ export function RevisionScreen() {
         }),
       });
       const data = await res.json();
+      if (activeItemKeyRef.current !== requestKey) return; // question déjà quittée
       setAnswerResult(data);
     } catch (err) {
       console.error('Erreur enregistrement réponse:', err);
+      if (activeItemKeyRef.current !== requestKey) return;
       // Repli honnête : on ne sait pas si c'était correct, on ne compte
       // pas la question comme réussie, mais on laisse continuer la session.
       setAnswerResult({ correct: false, correct_answer: '' });
@@ -306,7 +316,7 @@ export function RevisionScreen() {
           ))}
         </View>
 
-        {selectedOption && (
+        {selectedOption && answerResult && (
           <TouchableOpacity
             style={styles.continueButton}
             onPress={goToNext}

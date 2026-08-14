@@ -486,3 +486,25 @@ describe('RevisionScreen — pas de flash "faux" avant la vraie reponse (regress
     expect(screen.UNSAFE_queryAllByProps({ name: 'close-circle' })).toHaveLength(0);
   });
 });
+
+describe('RevisionScreen — pas de fuite entre questions (regression course de vitesse)', () => {
+  it('n\'affiche pas "Continuer" tant que le serveur n\'a pas confirme, meme apres avoir choisi une reponse', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) return new Promise(() => {}); // ne repond jamais
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('206'));
+
+    // Meme apres avoir choisi une reponse, "Continuer" ne doit jamais
+    // apparaitre tant que le serveur n'a pas confirme -- c'est exactement
+    // ce qui permettait avant d'avancer trop vite et de "polluer" la
+    // question suivante avec la reponse de l'ancienne.
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByText('Continuer')).toBeNull();
+  });
+});
