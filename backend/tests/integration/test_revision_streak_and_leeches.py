@@ -200,3 +200,98 @@ class TestLeechItems:
         resp = client.get("/api/revision/leeches", headers=auth_headers)
         item = resp.get_json()["items"][0]
         assert "correct" not in item
+
+
+class TestMasteredItems:
+    def test_requires_auth(self, client):
+        resp = client.get("/api/revision/mastered")
+        assert resp.status_code == 400
+
+    def test_empty_when_nothing_is_mastered_yet(self, client, auth_headers, seeded_course):
+        resp = client.get("/api/revision/mastered", headers=auth_headers)
+        assert resp.get_json() == {"items": [], "count": 0}
+
+    def test_returns_card_with_interval_at_or_above_threshold(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        with db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+21 days'))
+                """,
+                (uid, seeded_course, 0, 2.8, 21, 5, 0),
+            )
+
+        resp = client.get("/api/revision/mastered", headers=auth_headers)
+        data = resp.get_json()
+        assert data["count"] == 1
+        assert data["items"][0]["interval_days"] == 21
+        assert data["items"][0]["repetitions"] == 5
+        assert data["items"][0]["question"] == "Question ?"
+
+    def test_card_below_threshold_is_not_mastered(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        with db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+20 days'))
+                """,
+                (uid, seeded_course, 0, 2.8, 20, 5, 0),
+            )
+
+        resp = client.get("/api/revision/mastered", headers=auth_headers)
+        assert resp.get_json() == {"items": [], "count": 0}
+
+    def test_filters_by_course_id(self, client, auth_headers, db, uid, sample_course_payload):
+        db.save_course(uid, "course-a", sample_course_payload)
+        db.save_course(uid, "course-b", sample_course_payload)
+
+        with db.transaction() as conn:
+            for cid in ("course-a", "course-b"):
+                conn.execute(
+                    """
+                    INSERT INTO revision_schedule
+                        (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+30 days'))
+                    """,
+                    (uid, cid, 0, 3.0, 30, 6, 0),
+                )
+
+        resp = client.get("/api/revision/mastered?course_id=course-a", headers=auth_headers)
+        data = resp.get_json()
+        assert data["count"] == 1
+        assert data["items"][0]["course_id"] == "course-a"
+
+    def test_practice_mode_never_creates_mastered_cards(self, client, auth_headers, seeded_course):
+        for _ in range(5):
+            client.post(
+                "/api/revision/check",
+                json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+                headers=auth_headers,
+            )
+
+        resp = client.get("/api/revision/mastered", headers=auth_headers)
+        assert resp.get_json() == {"items": [], "count": 0}
+
+    def test_never_exposes_options_or_correct_answer(
+        self, client, auth_headers, db, uid, seeded_course
+    ):
+        with db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO revision_schedule
+                    (uid, course_id, item_index, ease_factor, interval_days, repetitions, lapses, next_review_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+25 days'))
+                """,
+                (uid, seeded_course, 0, 2.9, 25, 4, 0),
+            )
+
+        resp = client.get("/api/revision/mastered", headers=auth_headers)
+        item = resp.get_json()["items"][0]
+        assert "options" not in item
+        assert "correct" not in item

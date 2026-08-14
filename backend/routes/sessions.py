@@ -100,6 +100,24 @@ def get_leech_items_route():
         return jsonify({"error": f"Erreur revision/leeches: {str(e)}"}), 500
 
 
+@sessions_bp.route("/api/revision/mastered", methods=["GET"])
+@require_auth
+def get_mastered_items_route():
+    """Questions "maîtrisées" (long intervalle SM-2), vue purement
+    informative pour visualiser les progrès accumulés."""
+    try:
+        db = current_app.db
+        uid = g.uid
+        course_id = request.args.get("course_id")
+
+        items = db.get_mastered_items(uid, course_id=course_id)
+        return jsonify({"items": items, "count": len(items)})
+
+    except Exception as e:
+        logger.exception("Erreur revision/mastered")
+        return jsonify({"error": f"Erreur revision/mastered: {str(e)}"}), 500
+
+
 @sessions_bp.route("/api/revision/due", methods=["GET"])
 @require_auth
 def get_due_revision():

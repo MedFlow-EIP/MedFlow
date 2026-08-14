@@ -1382,6 +1382,47 @@ class Database:
                     })
         return items
 
+    def get_mastered_items(self, uid: str, course_id: Optional[str] = None) -> List[Dict]:
+        """Renvoie les questions "maîtrisées" (intervalle SM-2 d'au moins
+        MASTERED_INTERVAL_DAYS, signe d'une série de bonnes réponses
+        soutenue — un seul échec réinitialise l'intervalle à 1 jour, donc
+        un long intervalle ne peut venir que d'une vraie maîtrise). Vue
+        purement informative — pas d'action de révision associée."""
+        if not uid:
+            raise ValueError("UID is required")
+
+        with self.connection() as conn:
+            schedule_rows = conn.execute(
+                "SELECT course_id, item_index, interval_days, repetitions FROM revision_schedule WHERE uid=? AND interval_days >= ?",
+                (uid, self.MASTERED_INTERVAL_DAYS),
+            ).fetchall()
+
+        mastered_by_key = {
+            (row["course_id"], row["item_index"]): (row["interval_days"], row["repetitions"])
+            for row in schedule_rows
+        }
+        if not mastered_by_key:
+            return []
+
+        courses = [self.fetch_course(uid, course_id)] if course_id else self.fetch_courses(uid)
+        courses = [c for c in courses if c is not None]
+
+        items: List[Dict] = []
+        for course in courses:
+            for idx, q in enumerate(course.quiz or []):
+                key = (course.id, idx)
+                if key in mastered_by_key:
+                    interval_days, repetitions = mastered_by_key[key]
+                    items.append({
+                        "course_id": course.id,
+                        "course_nom": course.nom,
+                        "item_index": idx,
+                        "question": q.get("question"),
+                        "interval_days": interval_days,
+                        "repetitions": repetitions,
+                    })
+        return items
+
     def get_revision_forecast(self, uid: str, days: int = 7) -> List[Dict]:
         """Prévision du nombre de cartes dues chaque jour sur les
         ``days`` prochains jours (aujourd'hui inclus). Le jour "aujourd'hui"
@@ -1468,6 +1509,7 @@ class Database:
         return (due + new)[:limit]
 
     LEECH_THRESHOLD = 3  # échecs consécutifs à partir desquels une carte est signalée "leech"
+    MASTERED_INTERVAL_DAYS = 21  # même convention qu'Anki pour une carte "mature"/bien maîtrisée
 
     def record_quiz_answer(
         self, uid: str, course_id: str, item_index: int, selected_option: str

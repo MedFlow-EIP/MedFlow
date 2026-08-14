@@ -221,15 +221,27 @@ export function DashboardScreen() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.leechesButton}
-        onPress={() => navigation.navigate('Revision', { startMode: 'leeches' })}
-        accessibilityRole="button"
-        accessibilityLabel="Revoir les cartes difficiles"
-      >
-        <Ionicons name="warning-outline" size={16} color={colors.warning} />
-        <Text style={styles.leechesButtonText}>Cartes difficiles</Text>
-      </TouchableOpacity>
+      <View style={styles.secondaryButtonsRow}>
+        <TouchableOpacity
+          style={styles.leechesButton}
+          onPress={() => navigation.navigate('Revision', { startMode: 'leeches' })}
+          accessibilityRole="button"
+          accessibilityLabel="Revoir les cartes difficiles"
+        >
+          <Ionicons name="warning-outline" size={16} color={colors.warning} />
+          <Text style={styles.leechesButtonText}>Cartes difficiles</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.masteredButton}
+          onPress={() => navigation.navigate('Mastered')}
+          accessibilityRole="button"
+          accessibilityLabel="Voir les cartes maîtrisées"
+        >
+          <Ionicons name="trophy-outline" size={16} color={colors.success} />
+          <Text style={styles.masteredButtonText}>Cartes maîtrisées</Text>
+        </TouchableOpacity>
+      </View>
 
       {forecast.length > 0 && (
         <View style={styles.forecastCard}>
@@ -532,17 +544,39 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 13,
       fontWeight: '700',
     },
+    secondaryButtonsRow: {
+      flexDirection: 'row',
+      marginHorizontal: 20,
+      marginTop: 10,
+      gap: 8,
+    },
     leechesButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      marginHorizontal: 20,
-      marginTop: 10,
       paddingVertical: 8,
+      backgroundColor: colors.tintWarning,
+      borderRadius: 12,
     },
     leechesButtonText: {
       color: colors.warning,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    masteredButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      backgroundColor: colors.tintSuccess,
+      borderRadius: 12,
+    },
+    masteredButtonText: {
+      color: colors.success,
       fontSize: 13,
       fontWeight: '600',
     },

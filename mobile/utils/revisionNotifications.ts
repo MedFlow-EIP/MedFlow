@@ -7,9 +7,11 @@ const LAST_SCHEDULED_COUNT_KEY = '@medflow_revision_reminder_last_count';
 
 // Le matin plutôt que le soir (contrairement au rappel de streak) —
 // la littérature sur la répétition espacée recommande de réviser tôt,
-// et ça évite d'empiler deux notifications à la même heure.
-const REMINDER_HOUR = 9;
-const REMINDER_MINUTE = 0;
+// et ça évite d'empiler deux notifications à la même heure. Valeur par
+// défaut seulement : l'utilisateur peut la changer (voir
+// getRevisionReminderHour/setRevisionReminderHour ci-dessous).
+const DEFAULT_REMINDER_HOUR = 9;
+const REMINDER_HOUR_KEY = '@medflow_revision_reminder_hour';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -22,6 +24,22 @@ Notifications.setNotificationHandler({
 export async function isRevisionReminderEnabled(): Promise<boolean> {
   const value = await AsyncStorage.getItem(ENABLED_KEY);
   return value === 'true';
+}
+
+export async function getRevisionReminderHour(): Promise<number> {
+  const stored = await AsyncStorage.getItem(REMINDER_HOUR_KEY);
+  const hour = stored ? parseInt(stored, 10) : DEFAULT_REMINDER_HOUR;
+  return Number.isFinite(hour) && hour >= 0 && hour <= 23 ? hour : DEFAULT_REMINDER_HOUR;
+}
+
+export async function setRevisionReminderHour(hour: number): Promise<void> {
+  const clamped = Math.max(0, Math.min(23, Math.round(hour)));
+  await AsyncStorage.setItem(REMINDER_HOUR_KEY, String(clamped));
+  // L'heure a changé : force une replanification même si le nombre de
+  // cartes dues, lui, n'a pas bougé (sinon le garde-fou "pas de
+  // changement -> ne rien refaire" empêcherait la nouvelle heure de
+  // prendre effet avant le prochain vrai changement de compte).
+  await AsyncStorage.removeItem(LAST_SCHEDULED_COUNT_KEY);
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -85,9 +103,10 @@ export async function scheduleRevisionReminder(dueCount: number): Promise<void> 
 
   await cancelScheduledReminder();
 
+  const reminderHour = await getRevisionReminderHour();
   const now = new Date();
   const target = new Date();
-  target.setHours(REMINDER_HOUR, REMINDER_MINUTE, 0, 0);
+  target.setHours(reminderHour, 0, 0, 0);
   if (target.getTime() <= now.getTime()) {
     target.setDate(target.getDate() + 1);
   }
@@ -109,4 +128,25 @@ export async function scheduleRevisionReminder(dueCount: number): Promise<void> 
 
   await AsyncStorage.setItem(NOTIFICATION_ID_KEY, id);
   await AsyncStorage.setItem(LAST_SCHEDULED_COUNT_KEY, String(dueCount));
+}
+
+/**
+ * Notification de test pour valider que tout le pipeline fonctionne
+ * (permission -> planification -> livraison) sans attendre l'heure du
+ * vrai rappel. N'utilise pas NOTIFICATION_ID_KEY : totalement séparée du
+ * système de rappel réel, ne l'annule/n'interfère pas avec lui.
+ */
+export async function sendTestRevisionNotification(): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted) return false;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🧠 Test révision MedFlow',
+      body: 'Si tu vois ça, les rappels de révision fonctionnent !',
+    },
+    trigger: { seconds: 5 },
+  });
+
+  return true;
 }

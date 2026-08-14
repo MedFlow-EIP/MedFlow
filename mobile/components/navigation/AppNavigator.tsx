@@ -47,6 +47,7 @@ import { FriendsScreen } from '../screens/FriendsScreen';
 import { TutorialScreen } from '../screens/TutorialScreen';
 import { RevisionScreen } from '../screens/RevisionScreen';
 import { SearchScreen } from '../screens/SearchScreen';
+import { MasteredScreen } from '../screens/MasteredScreen';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { useTutorial } from '../../context/TutorialContext';
@@ -74,6 +75,7 @@ export type RootStackParamList = {
   Friends: undefined;
   Revision: { courseId?: string; startMode?: 'scheduled' | 'leeches' } | undefined;
   Search: undefined;
+  Mastered: undefined;
   Auth: undefined;
 };
 
@@ -384,6 +386,7 @@ export function AppNavigator() {
             <Stack.Screen name="Friends" component={FriendsScreen} />
             <Stack.Screen name="Revision" component={RevisionScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="Mastered" component={MasteredScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
