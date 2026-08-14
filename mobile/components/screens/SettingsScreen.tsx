@@ -34,6 +34,10 @@ import {
   isRevisionReminderEnabled,
   enableRevisionReminders,
   disableRevisionReminders,
+  sendTestRevisionNotification,
+  getRevisionReminderHour,
+  setRevisionReminderHour,
+  scheduleRevisionReminder,
 } from "../../utils/revisionNotifications";
 import { getAuthHeaders } from "../../utils/authHeaders";
 import { API_URL } from "@/services/api";
@@ -52,10 +56,12 @@ export function SettingsScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [streakRemindersOn, setStreakRemindersOn] = useState(false);
   const [revisionRemindersOn, setRevisionRemindersOn] = useState(false);
+  const [reminderHour, setReminderHour] = useState(9);
 
   useEffect(() => {
     isStreakReminderEnabled().then(setStreakRemindersOn);
     isRevisionReminderEnabled().then(setRevisionRemindersOn);
+    getRevisionReminderHour().then(setReminderHour);
   }, []);
 
   const handleToggleStreakReminders = async (value: boolean) => {
@@ -120,10 +126,45 @@ export function SettingsScreen() {
     }
   };
 
+  const handleSelectReminderHour = async (hour: number) => {
+    await setRevisionReminderHour(hour);
+    setReminderHour(hour);
+    // Si un rappel est déjà programmé, le remettre à jour tout de suite
+    // avec la nouvelle heure plutôt que d'attendre le prochain chargement
+    // du forecast (Dashboard/écran Révision).
+    if (revisionRemindersOn) {
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const res = await fetch(`${API_URL}/api/revision/forecast?days=1`, {
+            headers: await getAuthHeaders(user),
+          });
+          const data = await res.json();
+          const dueToday = data?.forecast?.[0]?.count ?? 0;
+          await scheduleRevisionReminder(dueToday);
+        } catch {
+          // Pas grave si ça échoue : se remettra à jour au prochain chargement.
+        }
+      }
+    }
+  };
+
   const handleTestNotification = async () => {
     const sent = await sendTestNotification();
     if (sent) {
       Alert.alert("C'est parti", "Tu devrais recevoir une notification dans 5 secondes.");
+    } else {
+      Alert.alert(
+        "Permission refusée",
+        "Active les notifications pour MedFlow dans les réglages de ton téléphone."
+      );
+    }
+  };
+
+  const handleTestRevisionNotification = async () => {
+    const sent = await sendTestRevisionNotification();
+    if (sent) {
+      Alert.alert("C'est parti", "Tu devrais recevoir une notification de révision dans 5 secondes.");
     } else {
       Alert.alert(
         "Permission refusée",
@@ -389,7 +430,7 @@ export function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.notifTitle}>Rappels de révision</Text>
             <Text style={styles.notifSubtitle}>
-              Un rappel le matin avec le nombre de cartes à réviser
+              Un rappel à {reminderHour}h avec le nombre de cartes à réviser
             </Text>
           </View>
           <Switch
@@ -401,6 +442,33 @@ export function SettingsScreen() {
             accessibilityState={{ checked: revisionRemindersOn }}
           />
         </View>
+
+        {revisionRemindersOn && (
+          <View style={styles.hourPickerRow}>
+            {[7, 9, 12, 18, 21].map((hour) => (
+              <TouchableOpacity
+                key={hour}
+                onPress={() => handleSelectReminderHour(hour)}
+                style={[
+                  styles.hourChip,
+                  reminderHour === hour && styles.hourChipActive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Rappel à ${hour} heures`}
+                accessibilityState={{ selected: reminderHour === hour }}
+              >
+                <Text
+                  style={[
+                    styles.hourChipText,
+                    reminderHour === hour && styles.hourChipTextActive,
+                  ]}
+                >
+                  {hour}h
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* DEBUG */}
@@ -418,6 +486,16 @@ export function SettingsScreen() {
           <Ionicons name="notifications-outline" size={20} color={colors.primary} />
           <Text style={[styles.debugButtonText, { color: colors.primary }]}>
             Tester une notification (5s)
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleTestRevisionNotification}
+          style={[styles.debugButton, { marginTop: 10, backgroundColor: colors.tintWarning }]}
+        >
+          <Ionicons name="school-outline" size={20} color={colors.warning} />
+          <Text style={[styles.debugButtonText, { color: colors.warning }]}>
+            Tester une notification de révision (5s)
           </Text>
         </TouchableOpacity>
       </View>
@@ -709,6 +787,30 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 12,
       color: colors.textSecondary,
       marginTop: 2,
+    },
+    hourPickerRow: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingTop: 4,
+      paddingBottom: 8,
+    },
+    hourChip: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: 10,
+      alignItems: 'center',
+      backgroundColor: colors.surfaceAlt,
+    },
+    hourChipActive: {
+      backgroundColor: colors.primary,
+    },
+    hourChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    hourChipTextActive: {
+      color: colors.onAccent,
     },
 
     profileCenter: {
