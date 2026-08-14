@@ -49,6 +49,8 @@ export function DashboardScreen() {
     totalSessions: 0,
     avgScore: null,
   });
+  const [forecast, setForecast] = useState<{ date: string; count: number }[]>([]);
+  const [revisionStreak, setRevisionStreak] = useState(0);
 
   const loadCourses = async () => {
     const user = auth.currentUser;
@@ -71,18 +73,21 @@ export function DashboardScreen() {
         });
       }
 
-      // Rafraîchit le rappel de notification de révision avec le vrai
-      // nombre de cartes dues aujourd'hui — best-effort, ne doit jamais
-      // faire échouer le chargement du reste du Dashboard.
+      // Récupère la prévision (7 jours) une seule fois : sert à la fois à
+      // l'affichage et à rafraîchir le rappel de notification — best-effort,
+      // ne doit jamais faire échouer le chargement du reste du Dashboard.
       try {
-        const forecastRes = await fetch(`${API_URL}/api/revision/forecast?days=1`, {
+        const forecastRes = await fetch(`${API_URL}/api/revision/forecast?days=7`, {
           headers: await getAuthHeaders(user),
         });
         const forecastData = await forecastRes.json();
-        const dueToday = forecastData?.forecast?.[0]?.count ?? 0;
+        const days = Array.isArray(forecastData?.forecast) ? forecastData.forecast : [];
+        setForecast(days);
+        setRevisionStreak(forecastData?.streak ?? 0);
+        const dueToday = days[0]?.count ?? 0;
         await scheduleRevisionReminder(dueToday);
       } catch {
-        // Silencieux : la notification n'est pas critique pour l'écran.
+        // Silencieux : la prévision n'est pas critique pour l'écran.
       }
     } catch (e) {
       console.error(e);
@@ -204,7 +209,63 @@ export function DashboardScreen() {
       >
         <Ionicons name="flash-outline" size={20} color={colors.onAccent} />
         <Text style={styles.reviseButtonText}>Réviser maintenant</Text>
+        {revisionStreak > 0 && (
+          <View
+            style={styles.streakPill}
+            accessible={true}
+            accessibilityLabel={`${revisionStreak} jour${revisionStreak > 1 ? 's' : ''} de série de révision`}
+          >
+            <Ionicons name="flame" size={14} color={colors.warning} />
+            <Text style={styles.streakPillText}>{revisionStreak}</Text>
+          </View>
+        )}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.leechesButton}
+        onPress={() => navigation.navigate('Revision', { startMode: 'leeches' })}
+        accessibilityRole="button"
+        accessibilityLabel="Revoir les cartes difficiles"
+      >
+        <Ionicons name="warning-outline" size={16} color={colors.warning} />
+        <Text style={styles.leechesButtonText}>Cartes difficiles</Text>
+      </TouchableOpacity>
+
+      {forecast.length > 0 && (
+        <View style={styles.forecastCard}>
+          <Text style={styles.forecastTitle}>À réviser cette semaine</Text>
+          <View style={styles.forecastRow}>
+            {forecast.map((day, idx) => {
+              const maxCount = Math.max(1, ...forecast.map((d) => d.count));
+              const fillHeight = day.count === 0 ? 0 : 8 + (day.count / maxCount) * 32;
+              const dayLabel = idx === 0
+                ? 'Auj.'
+                : new Date(day.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
+              return (
+                <View
+                  key={day.date}
+                  style={styles.forecastDay}
+                  accessible={true}
+                  accessibilityLabel={`${dayLabel} : ${day.count} carte${day.count > 1 ? 's' : ''} à réviser`}
+                >
+                  <Text style={styles.forecastCount}>{day.count}</Text>
+                  <View style={styles.forecastBarTrack}>
+                    {fillHeight > 0 && (
+                      <View
+                        style={[
+                          styles.forecastBarFill,
+                          { height: fillHeight, backgroundColor: colors.primary },
+                        ]}
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.forecastDayLabel}>{dayLabel}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       <View style={styles.courseSection}>
         <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
@@ -455,6 +516,81 @@ function makeStyles(colors: ThemeColors) {
       color: colors.onAccent,
       fontSize: 15,
       fontWeight: '600',
+    },
+    streakPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      marginLeft: 4,
+    },
+    streakPillText: {
+      color: colors.onAccent,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    leechesButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginHorizontal: 20,
+      marginTop: 10,
+      paddingVertical: 8,
+    },
+    leechesButtonText: {
+      color: colors.warning,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    forecastCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      marginHorizontal: 20,
+      marginTop: 16,
+      padding: 16,
+    },
+    forecastTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 12,
+    },
+    forecastRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+    },
+    forecastDay: {
+      alignItems: 'center',
+      gap: 4,
+      flex: 1,
+    },
+    forecastCount: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    forecastBarTrack: {
+      width: 16,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: colors.border,
+      justifyContent: 'flex-end',
+      overflow: 'hidden',
+    },
+    forecastBarFill: {
+      width: '100%',
+      borderRadius: 8,
+    },
+    forecastDayLabel: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      textTransform: 'capitalize',
     },
   });
 }

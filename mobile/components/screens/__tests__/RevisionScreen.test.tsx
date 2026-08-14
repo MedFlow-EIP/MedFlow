@@ -508,3 +508,166 @@ describe('RevisionScreen — pas de fuite entre questions (regression course de 
     expect(screen.queryByText('Continuer')).toBeNull();
   });
 });
+
+describe('RevisionScreen — explication et carte difficile', () => {
+  it('affiche l\'explication apres une mauvaise reponse quand elle existe', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({
+          correct: false,
+          correct_answer: 'B',
+          explanation: 'Le rythme cardiaque normal est de 60 a 100 battements par minute.',
+          is_leech: false,
+        }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('186')); // mauvaise reponse
+
+    await waitFor(() => {
+      expect(screen.getByText('Le rythme cardiaque normal est de 60 a 100 battements par minute.')).toBeTruthy();
+    });
+    expect(screen.getByText('Pourquoi ?')).toBeTruthy();
+  });
+
+  it('n\'affiche pas d\'explication quand la reponse est correcte', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({
+          correct: true,
+          correct_answer: 'B',
+          explanation: 'Ne devrait pas s\'afficher.',
+          is_leech: false,
+        }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206')); // bonne reponse
+
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    expect(screen.queryByText("Ne devrait pas s'afficher.")).toBeNull();
+  });
+
+  it('n\'affiche rien quand explanation est absente (cours generes sans, ex: Vertex AI)', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: false, correct_answer: 'B', explanation: null, is_leech: false }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('186'));
+
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    expect(screen.queryByText('Pourquoi ?')).toBeNull();
+  });
+
+  it('affiche le badge "carte difficile" quand is_leech est vrai', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: false, correct_answer: 'B', is_leech: true }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('186'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Carte difficile — retravaille-la plus souvent')).toBeTruthy();
+    });
+  });
+
+  it('n\'affiche pas le badge "carte difficile" quand is_leech est faux', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/due')) return Promise.resolve(mockJsonResponse(twoItems));
+      if (url.includes('/api/revision/answer')) {
+        return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B', is_leech: false }));
+      }
+      return Promise.resolve(mockJsonResponse({ status: 'ok' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+    fireEvent.press(screen.getByText('206'));
+
+    await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
+    expect(screen.queryByText('Carte difficile — retravaille-la plus souvent')).toBeNull();
+  });
+});
+
+describe('RevisionScreen — mode cartes difficiles (leeches)', () => {
+  it('recupere les questions depuis /api/revision/leeches quand lance avec startMode leeches', async () => {
+    (global as any).__mockRouteParams = { startMode: 'leeches' };
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse(twoItems));
+
+    render(<RevisionScreen />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/revision/leeches'),
+        expect.anything()
+      );
+    });
+  });
+
+  it('utilise /api/revision/answer (pas /check) pour repondre en mode leeches', async () => {
+    (global as any).__mockRouteParams = { startMode: 'leeches' };
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/revision/leeches')) return Promise.resolve(mockJsonResponse(twoItems));
+      return Promise.resolve(mockJsonResponse({ correct: true, correct_answer: 'B' }));
+    });
+
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('206')).toBeTruthy());
+
+    fireEvent.press(screen.getByText('206'));
+
+    await waitFor(() => {
+      const answerCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
+        c[0].includes('/api/revision/answer')
+      );
+      expect(answerCall).toBeTruthy();
+      const checkCall = (global.fetch as jest.Mock).mock.calls.find((c) =>
+        c[0].includes('/api/revision/check')
+      );
+      expect(checkCall).toBeUndefined();
+    });
+  });
+
+  it('affiche un etat vide specifique quand aucune carte difficile', async () => {
+    (global as any).__mockRouteParams = { startMode: 'leeches' };
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
+
+    render(<RevisionScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Aucune carte difficile en ce moment')).toBeTruthy();
+    });
+  });
+
+  it('ne propose pas "Reviser quand meme" dans l\'etat vide du mode leeches', async () => {
+    (global as any).__mockRouteParams = { startMode: 'leeches' };
+    (global.fetch as jest.Mock).mockResolvedValue(mockJsonResponse({ items: [], count: 0 }));
+
+    render(<RevisionScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Aucune carte difficile en ce moment')).toBeTruthy();
+    });
+    expect(screen.queryByText('Réviser quand même (mode libre)')).toBeNull();
+  });
+});

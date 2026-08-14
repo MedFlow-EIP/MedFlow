@@ -17,11 +17,14 @@ type DueItem = {
   item_index: number;
   question: string;
   options: Record<string, string>;
+  lapses?: number;
 };
 
 type AnswerResult = {
   correct: boolean;
   correct_answer: string;
+  explanation?: string | null;
+  is_leech?: boolean;
 };
 
 type RevisionRoute = RouteProp<RootStackParamList, 'Revision'>;
@@ -34,7 +37,7 @@ export function RevisionScreen() {
   const courseId = route.params?.courseId;
 
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<'scheduled' | 'practice'>('scheduled');
+  const [mode, setMode] = useState<'scheduled' | 'practice' | 'leeches'>('scheduled');
   const [error, setError] = useState(false);
   const [items, setItems] = useState<DueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,7 +47,7 @@ export function RevisionScreen() {
   const [finished, setFinished] = useState(false);
   const activeItemKeyRef = useRef<string | null>(null);
 
-  const load = useCallback(async (loadMode: 'scheduled' | 'practice' = mode) => {
+  const load = useCallback(async (loadMode: 'scheduled' | 'practice' | 'leeches' = mode) => {
     const user = auth.currentUser;
     if (!user) {
       setLoading(false);
@@ -55,7 +58,10 @@ export function RevisionScreen() {
     setMode(loadMode);
     try {
       const headers = await getAuthHeaders(user);
-      const endpoint = loadMode === 'practice' ? '/api/revision/practice' : '/api/revision/due';
+      const endpoint =
+        loadMode === 'practice' ? '/api/revision/practice' :
+        loadMode === 'leeches' ? '/api/revision/leeches' :
+        '/api/revision/due';
       const url = courseId
         ? `${API_URL}${endpoint}?course_id=${encodeURIComponent(courseId)}`
         : `${API_URL}${endpoint}`;
@@ -86,7 +92,7 @@ export function RevisionScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      load('scheduled');
+      load(route.params?.startMode ?? 'scheduled');
     }, [courseId])
   );
 
@@ -201,11 +207,17 @@ export function RevisionScreen() {
         <View style={styles.centered}>
           <Ionicons name="checkmark-circle-outline" size={64} color={colors.success} />
           <Text style={styles.emptyTitle} accessibilityRole="header">
-            {mode === 'practice' ? "Aucune question dans ce cours" : "Rien à réviser aujourd'hui"}
+            {mode === 'practice'
+              ? "Aucune question dans ce cours"
+              : mode === 'leeches'
+              ? "Aucune carte difficile en ce moment"
+              : "Rien à réviser aujourd'hui"}
           </Text>
           <Text style={styles.emptySubtitle}>
             {mode === 'practice'
               ? "Ce cours n'a pas encore de quiz généré."
+              : mode === 'leeches'
+              ? "Bien joué — aucune carte n'a été ratée plusieurs fois d'affilée récemment."
               : "Le planning te propose ce qui est vraiment utile à revoir maintenant."}
           </Text>
           {mode === 'scheduled' && (
@@ -240,7 +252,7 @@ export function RevisionScreen() {
           )}
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => load('practice')}
+            onPress={() => load(mode)}
             accessibilityRole="button"
             accessibilityLabel="Recommencer"
           >
@@ -315,6 +327,20 @@ export function RevisionScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {answerResult?.is_leech && (
+          <View style={styles.leechBadge} accessible={true} accessibilityLabel="Carte difficile — plusieurs échecs récents">
+            <Ionicons name="flame-outline" size={16} color={colors.warning} />
+            <Text style={styles.leechBadgeText}>Carte difficile — retravaille-la plus souvent</Text>
+          </View>
+        )}
+
+        {!answerResult?.correct && answerResult?.explanation && (
+          <View style={styles.explanationBox}>
+            <Text style={styles.explanationLabel}>Pourquoi ?</Text>
+            <Text style={styles.explanationText}>{answerResult.explanation}</Text>
+          </View>
+        )}
 
         {selectedOption && answerResult && (
           <TouchableOpacity
@@ -476,6 +502,41 @@ function makeStyles(colors: ThemeColors) {
       color: colors.onAccent,
       fontSize: 16,
       fontWeight: '600',
+    },
+    leechBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.tintWarning,
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 16,
+    },
+    leechBadgeText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontWeight: '500',
+    },
+    explanationBox: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginTop: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+    },
+    explanationLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+      textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    explanationText: {
+      fontSize: 14,
+      color: colors.textPrimary,
+      lineHeight: 20,
     },
   });
 }
