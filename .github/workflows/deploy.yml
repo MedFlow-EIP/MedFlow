@@ -51,6 +51,7 @@ jobs:
           script: |
             set -e
             cd ~/MedFlow
-            ./deploy.sh "$DEPLOY_BRANCH"
+            # Via bash : ne dépend pas du bit exécutable (perdu avec core.fileMode=false).
+            bash deploy.sh "$DEPLOY_BRANCH"
         env:
           DEPLOY_BRANCH: ${{ github.event.inputs.branch || 'main' }}
