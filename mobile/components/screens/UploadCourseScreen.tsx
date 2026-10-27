@@ -67,7 +67,7 @@ function guessMimeType(name: string, mimeType?: string | null): string {
 }
 
 const AI_OUTPUTS = [
-  { title: "Un résumé structuré", detail: "titres, définitions, points clés" },
+  { title: "Un résumé structuré", detail: "titres, définitions, points clés, schémas compris" },
   { title: "Des flashcards", detail: "révisées ensuite en répétition espacée" },
   { title: "Un quiz", detail: "pour vérifier que c’est acquis" },
 ];

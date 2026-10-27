@@ -21,7 +21,7 @@ from services.documents import (
     extract_text_from_docx,
     extract_text_from_pptx,
 )
-from services.pdf import extract_text_from_pdf, pdf_page_count as _pdf_page_count
+from services.pdf import extract_text_from_pdf, pdf_has_images, pdf_page_count as _pdf_page_count
 from services.specialties import SPECIALTIES, clean_tags, suggest_tags
 from routes.errors import internal_error
 from services.push import notify_user
@@ -183,11 +183,16 @@ def _read_course_text(data: bytes, extension: str, mime_type: str):
             text = extract_text_from_pdf(data)
         except Exception:
             return None, False, "PDF illisible ou corrompu", 400
+        max_pages = current_app.config.get("PROCESS_MAX_SCANNED_PAGES", 30)
         if text and len(text.strip()) >= MIN_TEXT_CHARS:
+            # Schémas ou figures : l'IA lit le PDF entier pour les décrire (le
+            # texte extrait reste en secours). Au-delà de 30 pages, texte seul.
+            pages = _pdf_page_count(data) or 0
+            if pages <= max_pages and pdf_has_images(data):
+                return text, True, None, None
             return text, False, None, None
         # Pas de texte : PDF scanné (photos de pages). L'IA le lit, mais
         # chaque page est facturée : on limite le nombre de pages.
-        max_pages = current_app.config.get("PROCESS_MAX_SCANNED_PAGES", 30)
         pages = _pdf_page_count(data)
         if pages is None:
             return None, False, "PDF illisible ou corrompu", 400
@@ -266,20 +271,25 @@ def _generate_course(app, uid: str, job: dict) -> dict:
     ai = app.ai
     text = job["text"]
     if job["needs_reading"]:
-        text = ai.transcribe_document(job["data"], job["mime_type"])
+        read = ai.transcribe_document(job["data"], job["mime_type"])
+        # PDF avec schémas : si la lecture par l'IA échoue, on garde le texte extrait.
+        text = read if read and len(read.strip()) >= MIN_TEXT_CHARS else text
         if not text or len(text.strip()) < MIN_TEXT_CHARS:
             raise GenerationError("Aucun texte lisible sur ce document. Essaie une photo plus nette.", 400)
 
     logger.info("Extracted text length: %d", len(text))
     filename = job["filename"]
 
+    # Plus le cours est long, plus il y a de flashcards et de questions (5 à 15).
+    count = max(5, min(15, len(text) // 2500))
+
     # Run all 4 AI generation tasks concurrently
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(ai.generate_title, text, filename): "nom",
-            executor.submit(ai.generate_flashcards, text): "flashcards",
+            executor.submit(ai.generate_flashcards, text, count): "flashcards",
             executor.submit(ai.generate_summary, text): "summary",
-            executor.submit(ai.generate_quiz, text, 5, job["difficulty"]): "quiz",
+            executor.submit(ai.generate_quiz, text, count, job["difficulty"]): "quiz",
         }
         results = {}
         for future in as_completed(futures):

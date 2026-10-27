@@ -24,6 +24,7 @@ def get_ai_provider(config) -> AIProvider:
         chat_model=_setting(config, "AI_CHAT_MODEL", "gemini-2.5-pro"),
         course_model=_setting(config, "AI_COURSE_MODEL", "gemini-2.5-pro"),
         max_output_tokens=_setting(config, "AI_MAX_OUTPUT_TOKENS", 8192),
+        max_input_chars=_setting(config, "COURSE_TEXT_MAX_CHARS", 30000),
     )
 
 
