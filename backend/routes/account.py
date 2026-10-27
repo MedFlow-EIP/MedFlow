@@ -286,6 +286,18 @@ def push_token():
     return jsonify({"success": True})
 
 
+@account_bp.route("/api/activity/calendar", methods=["GET"])
+@require_auth
+def activity_calendar():
+    """Activité par jour (18 semaines par défaut, 1 an au maximum)."""
+    try:
+        days = max(7, min(request.args.get("days", default=126, type=int), 366))
+        return jsonify(current_app.db.get_activity_calendar(g.uid, days=days))
+    except Exception:
+        logger.exception("Erreur calendrier d'activité")
+        return internal_error("Erreur interne")
+
+
 @account_bp.route("/api/account/export", methods=["GET"])
 @require_auth
 def export_account():

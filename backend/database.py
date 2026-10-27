@@ -2011,6 +2011,41 @@ class Database:
 
         return {"interval_days": new_schedule.interval_days, "next_review_date": next_date.isoformat()}
 
+    def get_activity_calendar(self, uid: str, days: int = 126) -> Dict:
+        """Activité par jour sur les ``days`` derniers jours (calendrier façon GitHub) :
+        réponses (quiz, flashcards, examens blancs) + leçons terminées."""
+        today = date.today()
+        start = today - timedelta(days=days - 1)
+        counts: Dict[str, int] = {}
+        with self.connection() as conn:
+            for table, column, extra in (
+                ("answer_log", "answered_at", ""),
+                ("activity_log", "created_at", " AND type IN ('lesson_completed', 'mock_exam', 'challenge')"),
+            ):
+                rows = conn.execute(
+                    f"SELECT substr({column}, 1, 10) AS day, COUNT(*) AS n FROM {table} "
+                    f"WHERE uid=? AND {column}>=?{extra} GROUP BY day",
+                    (uid, start.isoformat()),
+                ).fetchall()
+                for r in rows:
+                    counts[r["day"]] = counts.get(r["day"], 0) + r["n"]
+
+        calendar = [
+            {"date": (start + timedelta(days=i)).isoformat(), "count": counts.get((start + timedelta(days=i)).isoformat(), 0)}
+            for i in range(days)
+        ]
+        # Plus longue suite de jours actifs sur la période.
+        best = run = 0
+        for d in calendar:
+            run = run + 1 if d["count"] else 0
+            best = max(best, run)
+        return {
+            "days": calendar,
+            "active_days": sum(1 for d in calendar if d["count"]),
+            "total": sum(d["count"] for d in calendar),
+            "best_run": best,
+        }
+
     def create_exam(self, uid: str, title: str, exam_date: str, course_ids: List[str]) -> int:
         with self.transaction() as conn:
             cur = conn.execute(

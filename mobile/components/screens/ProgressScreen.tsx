@@ -14,6 +14,7 @@ import { auth } from '../../firebaseConfig';
 import { API_URL } from '@/services/api';
 import { ProgressDashboard } from '../../components/ProgressDashboard';
 import { SpecialtyStats } from '../../components/SpecialtyStats';
+import { ActivityCalendar } from '../../components/ActivityCalendar';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
@@ -170,6 +171,7 @@ export function ProgressScreen() {
             weeklyGoal={data.weeklyGoal}
             weeklyProgress={data.weeklyProgress}
           />
+          <ActivityCalendar />
           <SpecialtyStats />
         </ScrollView>
       )}
