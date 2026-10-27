@@ -4,6 +4,7 @@ import random
 from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.auth import require_auth
+from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def get_practice_revision():
 
     except Exception as e:
         logger.exception("Erreur revision/practice")
-        return jsonify({"error": f"Erreur revision/practice: {str(e)}"}), 500
+        return internal_error("Erreur revision/practice")
 
 
 @sessions_bp.route("/api/revision/check", methods=["POST"])
@@ -59,7 +60,7 @@ def check_revision_answer():
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         logger.exception("Erreur revision/check")
-        return jsonify({"error": f"Erreur revision/check: {str(e)}"}), 500
+        return internal_error("Erreur revision/check")
 
 
 @sessions_bp.route("/api/revision/forecast", methods=["GET"])
@@ -79,7 +80,7 @@ def get_revision_forecast_route():
 
     except Exception as e:
         logger.exception("Erreur revision/forecast")
-        return jsonify({"error": f"Erreur revision/forecast: {str(e)}"}), 500
+        return internal_error("Erreur revision/forecast")
 
 
 @sessions_bp.route("/api/revision/leeches", methods=["GET"])
@@ -97,7 +98,7 @@ def get_leech_items_route():
 
     except Exception as e:
         logger.exception("Erreur revision/leeches")
-        return jsonify({"error": f"Erreur revision/leeches: {str(e)}"}), 500
+        return internal_error("Erreur revision/leeches")
 
 
 @sessions_bp.route("/api/revision/mastered", methods=["GET"])
@@ -115,7 +116,7 @@ def get_mastered_items_route():
 
     except Exception as e:
         logger.exception("Erreur revision/mastered")
-        return jsonify({"error": f"Erreur revision/mastered: {str(e)}"}), 500
+        return internal_error("Erreur revision/mastered")
 
 
 @sessions_bp.route("/api/revision/due", methods=["GET"])
@@ -135,7 +136,7 @@ def get_due_revision():
 
     except Exception as e:
         logger.exception("Erreur revision/due")
-        return jsonify({"error": f"Erreur revision/due: {str(e)}"}), 500
+        return internal_error("Erreur revision/due")
 
 
 @sessions_bp.route("/api/revision/answer", methods=["POST"])
@@ -170,7 +171,7 @@ def answer_revision_card():
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         logger.exception("Erreur revision/answer")
-        return jsonify({"error": f"Erreur revision/answer: {str(e)}"}), 500
+        return internal_error("Erreur revision/answer")
 
 
 @sessions_bp.route("/api/revision", methods=["POST"])
@@ -217,7 +218,7 @@ def start_revision():
 
     except Exception as e:
         logger.exception("Erreur révision")
-        return jsonify({"error": f"Erreur révision: {str(e)}"}), 500
+        return internal_error("Erreur révision")
 
 
 @sessions_bp.route("/api/session-done", methods=["POST"])
@@ -259,4 +260,4 @@ def session_done():
 
     except Exception as e:
         logger.exception("Erreur session")
-        return jsonify({"error": f"Erreur session: {str(e)}"}), 500
+        return internal_error("Erreur session")

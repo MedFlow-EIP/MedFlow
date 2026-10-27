@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.auth import require_auth
+from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ def search_users():
         return jsonify({"results": results})
     except Exception as e:
         logger.exception("Erreur recherche utilisateurs")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends", methods=["GET"])
@@ -34,7 +35,7 @@ def get_friends():
         return jsonify({"friends": friends})
     except Exception as e:
         logger.exception("Erreur liste amis")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends/requests", methods=["GET"])
@@ -46,7 +47,7 @@ def get_friend_requests():
         return jsonify(requests_data)
     except Exception as e:
         logger.exception("Erreur demandes amis")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends/request", methods=["POST"])
@@ -65,7 +66,7 @@ def send_friend_request():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.exception("Erreur envoi demande ami")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends/respond", methods=["POST"])
@@ -83,7 +84,7 @@ def respond_friend_request():
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur réponse demande ami")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends/<friend_uid>", methods=["DELETE"])
@@ -95,7 +96,7 @@ def remove_friend(friend_uid):
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur suppression ami")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @friends_bp.route("/api/friends/leaderboard", methods=["GET"])
@@ -107,4 +108,4 @@ def get_friends_leaderboard():
         return jsonify({"entries": entries, "yourUid": g.uid})
     except Exception as e:
         logger.exception("Erreur classement amis")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")

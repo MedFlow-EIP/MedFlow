@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, current_app, jsonify, request
 
 from middleware.auth import _extract_uid_legacy
+from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,10 @@ def health_check():
     db_status = "ok"
     try:
         current_app.db.total_courses()
-    except Exception as e:
-        db_status = f"error: {e}"
+    except Exception:
+        # Route publique : le détail reste dans les logs.
+        logger.exception("Health check : base de données inaccessible")
+        db_status = "error"
 
     return jsonify({
         "status": "ok",
@@ -58,7 +61,7 @@ def debug_db_status():
             "recent_courses": current_app.db.recent_courses(),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @health_bp.route("/api/debug/test-with-sample", methods=["GET"])
@@ -78,4 +81,4 @@ def test_with_sample():
             "stats": stats,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")

@@ -4,6 +4,7 @@ import os
 from flask import Blueprint, current_app, g, jsonify, request, send_from_directory
 
 from middleware.auth import build_user_response, require_auth
+from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def get_account():
 
     except Exception as e:
         logger.exception("Erreur account")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @account_bp.route("/api/leaderboard", methods=["GET"])
@@ -86,7 +87,7 @@ def get_leaderboard():
 
     except Exception as e:
         logger.exception("Erreur leaderboard")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 def _avatars_folder() -> str:
@@ -137,7 +138,7 @@ def upload_avatar():
 
     except Exception as e:
         logger.exception("Erreur upload avatar")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @account_bp.route("/avatars/<path:filename>", methods=["GET"])
@@ -160,7 +161,7 @@ def get_badges():
         return jsonify({"badges": badges})
     except Exception as e:
         logger.exception("Erreur badges")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @account_bp.route("/api/activity", methods=["GET"])
@@ -175,7 +176,7 @@ def get_activity():
         return jsonify({"activity": activity})
     except Exception as e:
         logger.exception("Erreur activity")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @account_bp.route("/api/account/reset-progress", methods=["POST"])
@@ -188,7 +189,7 @@ def reset_progress():
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur reset progress")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
 
 
 @account_bp.route("/api/analytics/screen-view", methods=["POST"])
@@ -208,4 +209,4 @@ def log_screen_view():
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur screen-view")
-        return jsonify({"error": str(e)}), 500
+        return internal_error("Erreur interne")
