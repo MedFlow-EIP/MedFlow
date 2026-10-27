@@ -43,7 +43,7 @@ import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/ne
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
 import { useVoiceDictation } from '../../utils/voiceDictation';
 import { splitDiagrams, stripDiagrams } from '../../utils/diagrams';
-import { worthFlashcards } from '../../utils/chatAnswers';
+import { tableColumnWidth, worthFlashcards } from '../../utils/chatAnswers';
 import { ChatDiagram } from '../chat/ChatDiagram';
 
 type Message = {
@@ -240,6 +240,8 @@ export function AIChatScreen() {
   );
 
   const { width } = useWindowDimensions();
+  // Largeur utile d'une bulle de réponse (schémas, tableaux).
+  const bubbleWidth = Math.min(width * 0.8, 520) - 48;
 
   const currentConv = conversations.find((c) => c.id === currentConvId);
 
@@ -803,17 +805,27 @@ export function AIChatScreen() {
                   ) : (
                     splitDiagrams(message.text).map((part, partIndex) =>
                       part.type === 'svg' ? (
-                        <ChatDiagram key={partIndex} xml={part.content} width={Math.min(width * 0.8, 520) - 48} />
+                        <ChatDiagram key={partIndex} xml={part.content} width={bubbleWidth} />
                       ) : (
                     <Markdown
                       key={partIndex}
                       rules={{
+                        // Tableaux : colonnes de largeur fixe (le texte passe à la ligne dans la
+                        // cellule) qui remplissent la bulle ; au-delà, le tableau défile.
                         table: (node, children, _parent, mdStyles) => (
                           <ScrollView key={node.key} horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
-                            <View style={[mdStyles._VIEW_SAFE_table, { minWidth: Math.min(width * 0.8, 520) - 48 }]}>
-                              {children}
-                            </View>
+                            <View style={mdStyles._VIEW_SAFE_table}>{children}</View>
                           </ScrollView>
+                        ),
+                        th: (node, children, parents, mdStyles) => (
+                          <View key={node.key} style={[mdStyles._VIEW_SAFE_th, { width: tableColumnWidth(parents, bubbleWidth) }]}>
+                            {children}
+                          </View>
+                        ),
+                        td: (node, children, parents, mdStyles) => (
+                          <View key={node.key} style={[mdStyles._VIEW_SAFE_td, { width: tableColumnWidth(parents, bubbleWidth) }]}>
+                            {children}
+                          </View>
                         ),
                       }}
                       style={{
@@ -832,8 +844,8 @@ export function AIChatScreen() {
                         hr: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 14 },
                         table: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginVertical: 4 },
                         thead: { backgroundColor: colors.surfaceAlt },
-                        th: { padding: 10, fontWeight: "600", minWidth: 120 },
-                        td: { padding: 10, minWidth: 120 },
+                        th: { padding: 10, fontWeight: "600", flex: 0 },
+                        td: { padding: 10, flex: 0 },
                         tr: { borderBottomWidth: 0 },
                         code_inline: {
                           backgroundColor: colors.surfaceAlt,

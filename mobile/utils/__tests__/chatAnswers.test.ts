@@ -1,4 +1,23 @@
-import { worthFlashcards } from '../chatAnswers';
+import { tableColumnWidth, worthFlashcards } from '../chatAnswers';
+
+const table = (columns: number) => ({
+  type: 'table',
+  children: [{ type: 'thead', children: [{ type: 'tr', children: Array.from({ length: columns }, () => ({ type: 'th' })) }] }],
+});
+
+describe('largeur des colonnes de tableau', () => {
+  it('partage la bulle entre peu de colonnes', () => {
+    expect(tableColumnWidth([{ type: 'tr' }, table(2)], 300)).toBe(150);
+  });
+
+  it('garde 130 px minimum quand il y a beaucoup de colonnes (le tableau défile)', () => {
+    expect(tableColumnWidth([table(5)], 300)).toBe(130);
+  });
+
+  it('ne plante pas sans tableau parent', () => {
+    expect(tableColumnWidth([], 300)).toBe(300);
+  });
+});
 
 const COURSE = 'La systole est la phase de contraction du cœur. '.repeat(12);
 
