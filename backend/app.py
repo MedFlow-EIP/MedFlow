@@ -51,6 +51,7 @@ def create_app(config=None):
     from routes.chat import chat_bp
     from routes.friends import friends_bp
     from routes.exams import exams_bp
+    from routes.quests import quests_bp
     from services.ai import get_ai_provider
 
     app = Flask(__name__)
@@ -115,6 +116,7 @@ def create_app(config=None):
     app.register_blueprint(chat_bp)
     app.register_blueprint(friends_bp)
     app.register_blueprint(exams_bp)
+    app.register_blueprint(quests_bp)
 
     # ------------------------------------------------------------------
     # Swagger / OpenAPI docs at /api/docs
@@ -194,4 +196,4 @@ if __name__ == "__main__":
     # Débogueur Werkzeug seulement sur demande explicite (FLASK_DEBUG=1) et
     # jamais en production : écoutant sur 0.0.0.0, il serait joignable depuis le réseau.
     debug = flask_env != "production" and os.getenv("FLASK_DEBUG") == "1"
-    application.run(debug=debug, host="0.0.0.0", port=8080)
+    application.run(debug=debug, host="0.0.0.0", port=8080)

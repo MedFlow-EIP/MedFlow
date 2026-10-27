@@ -529,6 +529,19 @@ class Database:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_exams_uid_date ON exams(uid, exam_date)")
 
+            # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS quest_claims (
+                    uid TEXT NOT NULL,
+                    quest_id TEXT NOT NULL,
+                    period_key TEXT NOT NULL,
+                    claimed_at TEXT NOT NULL,
+                    PRIMARY KEY (uid, quest_id, period_key)
+                )
+                """
+            )
+
     @contextmanager
     def connection(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
