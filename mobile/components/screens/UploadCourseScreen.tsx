@@ -28,12 +28,11 @@ import {
 import { useScreenInsets } from "../navigation/constants";
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { dismissImportJob, startBackgroundImport, useImportJobs } from '../../utils/importJobs';
 
 // Même limite que le backend (MAX_PDF_BYTES).
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-// Génération longue (lecture d'une photo + 4 appels IA) : on attend jusqu'à 3 min.
-const GENERATE_TIMEOUT_MS = 180_000;
 
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -158,6 +157,44 @@ export function UploadCourseScreen() {
    * replaceId : régénère ce cours au lieu d'en créer un.
    * keepDuplicate : importe quand même un document déjà importé.
    */
+  // Import suivi par cet écran : la génération continue même si on le quitte.
+  const [jobId, setJobId] = useState<string | null>(null);
+  const job = useImportJobs().find((j) => j.jobId === jobId);
+
+  useEffect(() => {
+    if (!job || job.status === "processing") return;
+    setJobId(null);
+    dismissImportJob(job.jobId);
+    if (job.status === "error") {
+      setError(job.error || "La génération a échoué. Réessaie.");
+      setLoading(false);
+      return;
+    }
+    // Toujours sur l'écran : on affiche le cours généré.
+    (async () => {
+      const user = auth.currentUser;
+      try {
+        if (!user || !job.courseId) throw new Error("cours manquant");
+        const res = await fetchWithTimeout(`${API_URL}/api/course/${encodeURIComponent(job.courseId)}`, {
+          headers: await getAuthHeaders(user),
+        });
+        const result = await readJsonOrThrow<any>(res, "Cours introuvable.");
+        setData({
+          resume: result.summary,
+          flashcards: Array.isArray(result.flashcards) ? result.flashcards : [],
+          quiz: Array.isArray(result.quiz) ? result.quiz : [],
+          courseId: result.id,
+          courseName: result.nom,
+        });
+        setActiveTab("resume");
+      } catch (err) {
+        setError(errorMessage(err, "Le cours est prêt, retrouve-le dans « Mes cours »."));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [job?.status]);
+
   const handleGenerate = async (options: { replaceId?: string; keepDuplicate?: boolean } = {}) => {
     if (!file) return;
 
@@ -185,38 +222,15 @@ export function UploadCourseScreen() {
       if (replaceId) formData.append("replace_course_id", replaceId);
       if (options.keepDuplicate) formData.append("on_duplicate", "keep");
 
-      const response = await fetchWithTimeout(
-        `${API_URL}/api/process`,
-        {
-          method: "POST",
-          headers: await getAuthHeaders(user),
-          body: formData,
-        },
-        GENERATE_TIMEOUT_MS
-      );
-
-      if (response.status === 409) {
-        const duplicate = await response.json().catch(() => null);
-        if (duplicate?.code === "duplicate") {
-          askAboutDuplicate(duplicate.course_id, duplicate.nom);
-          return;
-        }
+      const started = await startBackgroundImport(user, formData, file.name);
+      if ("duplicate" in started) {
+        setLoading(false);
+        askAboutDuplicate(started.duplicate.courseId, started.duplicate.courseName);
+        return;
       }
-
-      const result = await readJsonOrThrow(response, "La génération a échoué. Réessaie.");
-
-      setData({
-        resume: result.summary,
-        flashcards: Array.isArray(result.flashcards) ? result.flashcards : [],
-        quiz: Array.isArray(result.quiz) ? result.quiz : [],
-        courseId: result.id,
-        courseName: result.nom,
-      });
-
-      setActiveTab("resume");
+      setJobId(started.job.jobId);
     } catch (err) {
       setError(errorMessage(err, "La génération a échoué. Réessaie."));
-    } finally {
       setLoading(false);
     }
   };
@@ -362,6 +376,26 @@ export function UploadCourseScreen() {
               ))}
             </View>
           </>
+        )}
+
+        {/* GÉNÉRATION EN COURS : l'utilisateur peut quitter l'écran */}
+        {loading && !!jobId && (
+          <View style={styles.backgroundCard} accessibilityLiveRegion="polite">
+            <ActivityIndicator color={colors.primaryDark} />
+            <View style={styles.backgroundText}>
+              <Text style={styles.backgroundTitle}>Génération en cours…</Text>
+              <Text style={styles.backgroundDetail}>
+                Ça peut prendre une minute. Tu peux quitter cet écran : une notification te prévient quand le cours est prêt.
+              </Text>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backgroundLink}
+                accessibilityRole="button"
+              >
+                <Text style={styles.backgroundLinkText}>Continuer ailleurs</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {/* ERREUR */}
@@ -693,6 +727,45 @@ function makeStyles(colors: ThemeColors) {
     infoItemDetail: {
       fontSize: 13,
       color: colors.textSecondary,
+    },
+
+    backgroundCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      padding: 16,
+      borderRadius: 16,
+      backgroundColor: colors.tintPrimary,
+    },
+
+    backgroundText: {
+      flex: 1,
+      gap: 4,
+    },
+
+    backgroundTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.primaryText,
+    },
+
+    backgroundDetail: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.primaryText,
+    },
+
+    backgroundLink: {
+      alignSelf: "flex-start",
+      minHeight: 40,
+      justifyContent: "center",
+    },
+
+    backgroundLinkText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.primaryText,
+      textDecorationLine: "underline",
     },
 
     errorCard: {

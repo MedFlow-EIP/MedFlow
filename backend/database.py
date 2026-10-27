@@ -579,6 +579,24 @@ class Database:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_challenges_challenger ON challenges(challenger_uid)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_challenges_opponent ON challenges(opponent_uid)")
 
+            # Imports en arrière-plan : l'app suit l'avancement pendant que
+            # l'utilisateur navigue ailleurs.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS import_jobs (
+                    id TEXT PRIMARY KEY,
+                    uid TEXT NOT NULL,
+                    file_name TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK(status IN ('processing','done','error')),
+                    course_id TEXT,
+                    course_nom TEXT,
+                    error TEXT,
+                    created_at TEXT NOT NULL,
+                    finished_at TEXT
+                )
+                """
+            )
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """
@@ -2134,6 +2152,31 @@ class Database:
                 (uid, course_id),
             )
         return result.rowcount > 0
+
+    def create_import_job(self, job_id: str, uid: str, file_name: str) -> None:
+        with self.transaction() as conn:
+            conn.execute(
+                "INSERT INTO import_jobs (id, uid, file_name, status, created_at) VALUES (?, ?, ?, 'processing', ?)",
+                (job_id, uid, file_name, datetime.now(timezone.utc).isoformat()),
+            )
+
+    def finish_import_job(
+        self,
+        job_id: str,
+        status: str,
+        course_id: Optional[str] = None,
+        course_nom: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE import_jobs SET status=?, course_id=?, course_nom=?, error=?, finished_at=? WHERE id=?",
+                (status, course_id, course_nom, error, datetime.now(timezone.utc).isoformat(), job_id),
+            )
+
+    def fetch_import_job(self, uid: str, job_id: str):
+        with self.connection() as conn:
+            return conn.execute("SELECT * FROM import_jobs WHERE id=? AND uid=?", (job_id, uid)).fetchone()
 
     def find_course_by_hash(self, uid: str, source_hash: str) -> Optional[Dict]:
         """Cours de l'utilisateur importé depuis le même document, ou None."""

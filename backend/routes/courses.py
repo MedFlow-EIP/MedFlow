@@ -2,6 +2,9 @@ import hashlib
 import logging
 import os
 import re
+import threading
+import uuid
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
@@ -238,14 +241,120 @@ def _clean_quiz(questions) -> list:
     ]
 
 
-def _new_course_id(uid: str, filename: str) -> str:
+def _new_course_id(db, uid: str, filename: str) -> str:
     """Identifiant libre : deux photos « image.jpg » ne s'écrasent plus."""
     base = os.path.splitext(filename)[0] or "cours"
     course_id, n = base, 2
-    while current_app.db.fetch_course(uid, course_id):
+    while db.fetch_course(uid, course_id):
         course_id = f"{base}-{n}"
         n += 1
     return course_id
+
+
+class GenerationError(Exception):
+    """Échec de génération à montrer à l'utilisateur (message + code HTTP)."""
+
+    def __init__(self, message: str, status: int):
+        super().__init__(message)
+        self.status = status
+
+
+def _generate_course(app, uid: str, job: dict) -> dict:
+    """Lecture (OCR) + génération IA + enregistrement d'un cours. Appelé
+    pendant la requête, ou dans un thread pour un import en arrière-plan."""
+    ai = app.ai
+    text = job["text"]
+    if job["needs_reading"]:
+        text = ai.transcribe_document(job["data"], job["mime_type"])
+        if not text or len(text.strip()) < MIN_TEXT_CHARS:
+            raise GenerationError("Aucun texte lisible sur ce document. Essaie une photo plus nette.", 400)
+
+    logger.info("Extracted text length: %d", len(text))
+    filename = job["filename"]
+
+    # Run all 4 AI generation tasks concurrently
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(ai.generate_title, text, filename): "nom",
+            executor.submit(ai.generate_flashcards, text): "flashcards",
+            executor.submit(ai.generate_summary, text): "summary",
+            executor.submit(ai.generate_quiz, text, 5, job["difficulty"]): "quiz",
+        }
+        results = {}
+        for future in as_completed(futures):
+            key = futures[future]
+            results[key] = future.result()
+
+    flashcards = _clean_flashcards(results["flashcards"])
+    quiz = _clean_quiz(results["quiz"])
+    if not flashcards and not quiz:
+        # Rien d'exploitable : on n'enregistre pas un cours vide.
+        raise GenerationError("La génération a échoué. Réessaie dans un instant.", 502)
+
+    replace_id = job["replace_id"]
+    course_id = replace_id or _new_course_id(app.db, uid, filename)
+    output = {
+        "id": course_id,
+        "nom": (results["nom"] or os.path.splitext(filename)[0])[:MAX_COURSE_NAME_CHARS],
+        "flashcards": flashcards,
+        "summary": results["summary"],
+        "quiz": quiz,
+        "sessions": 0,
+        "source_hash": job["source_hash"],
+    }
+    # Nouveau cours : spécialités suggérées. Régénération : on garde les tags choisis.
+    if not replace_id:
+        output["tags"] = suggest_tags(text)
+
+    logger.info("Saving course %s for user %s", course_id, uid)
+    app.db.save_course(uid, course_id, output)
+
+    course = app.db.fetch_course(uid, course_id)
+    return _course_to_response(course) if course else output
+
+
+# Au-delà, une génération « en cours » est considérée comme interrompue
+# (serveur redémarré pendant le traitement, par exemple lors d'un déploiement).
+JOB_TIMEOUT = timedelta(minutes=10)
+GENERIC_FAILURE = "La génération a échoué. Réessaie dans un instant."
+
+
+def _run_import_job(app, uid: str, job_id: str, job: dict) -> None:
+    with app.app_context():
+        try:
+            course = _generate_course(app, uid, job)
+            app.db.finish_import_job(job_id, "done", course_id=course["id"], course_nom=course["nom"])
+        except GenerationError as e:
+            app.db.finish_import_job(job_id, "error", error=str(e))
+        except Exception:
+            logger.exception("Erreur import en arrière-plan")
+            app.db.finish_import_job(job_id, "error", error=GENERIC_FAILURE)
+
+
+def _job_response(row) -> dict:
+    status, error = row["status"], row["error"]
+    started = datetime.fromisoformat(row["created_at"])
+    if status == "processing" and datetime.now(timezone.utc) - started > JOB_TIMEOUT:
+        status, error = "error", "La génération a été interrompue. Relance l'import."
+    return {
+        "job_id": row["id"],
+        "status": status,
+        "file_name": row["file_name"],
+        "course_id": row["course_id"],
+        "course_nom": row["course_nom"],
+        "error": error,
+        "created_at": row["created_at"],
+    }
+
+
+@courses_bp.route("/api/process/jobs/<job_id>", methods=["GET"])
+@require_auth
+def get_import_job(job_id):
+    """État d'un import lancé en arrière-plan : processing, done ou error."""
+    row = current_app.db.fetch_import_job(g.uid, job_id)
+    if not row:
+        return jsonify({"error": "Import introuvable"}), 404
+    return jsonify(_job_response(row))
 
 
 @courses_bp.route("/api/process", methods=["POST"])
@@ -255,6 +364,8 @@ def process_document():
     résumé, flashcards et quiz en parallèle.
 
     ``replace_course_id`` (facultatif) : régénère ce cours au lieu d'en créer un.
+    ``background=1`` : répond tout de suite (202 + job_id) et génère en
+    arrière-plan ; l'app suit l'avancement via /api/process/jobs/<id>.
     """
     logger.info("Starting document processing for uid=%s", g.uid)
 
@@ -318,52 +429,28 @@ def process_document():
         if quota_error:
             return quota_error
 
-        ai = current_app.ai
-        if needs_reading:
-            text = ai.transcribe_document(data, mime_type)
-            if not text or len(text.strip()) < MIN_TEXT_CHARS:
-                return jsonify({"error": "Aucun texte lisible sur ce document. Essaie une photo plus nette."}), 400
-
-        logger.info("Extracted text length: %d", len(text))
-
-        # Run all 4 AI generation tasks concurrently
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {
-                executor.submit(ai.generate_title, text, filename): "nom",
-                executor.submit(ai.generate_flashcards, text): "flashcards",
-                executor.submit(ai.generate_summary, text): "summary",
-                executor.submit(ai.generate_quiz, text, 5, difficulty): "quiz",
-            }
-            results = {}
-            for future in as_completed(futures):
-                key = futures[future]
-                results[key] = future.result()
-
-        flashcards = _clean_flashcards(results["flashcards"])
-        quiz = _clean_quiz(results["quiz"])
-        if not flashcards and not quiz:
-            # Rien d'exploitable : on n'enregistre pas un cours vide.
-            return jsonify({"error": "La génération a échoué. Réessaie dans un instant."}), 502
-
-        course_id = replace_id or _new_course_id(g.uid, filename)
-        output = {
-            "id": course_id,
-            "nom": (results["nom"] or os.path.splitext(filename)[0])[:MAX_COURSE_NAME_CHARS],
-            "flashcards": flashcards,
-            "summary": results["summary"],
-            "quiz": quiz,
-            "sessions": 0,
+        job = {
+            "text": text,
+            "needs_reading": needs_reading,
+            "data": data,
+            "mime_type": mime_type,
+            "filename": filename,
+            "difficulty": difficulty,
+            "replace_id": replace_id,
             "source_hash": source_hash,
         }
-        # Nouveau cours : spécialités suggérées. Régénération : on garde les tags choisis.
-        if not replace_id:
-            output["tags"] = suggest_tags(text)
+        app = current_app._get_current_object()
 
-        logger.info("Saving course %s for user %s", course_id, g.uid)
-        current_app.db.save_course(g.uid, course_id, output)
+        if request.form.get("background") == "1":
+            job_id = str(uuid.uuid4())
+            app.db.create_import_job(job_id, g.uid, file.filename or filename)
+            threading.Thread(target=_run_import_job, args=(app, g.uid, job_id, job), daemon=True).start()
+            return jsonify({"job_id": job_id, "status": "processing"}), 202
 
-        course = current_app.db.fetch_course(g.uid, course_id)
-        return jsonify(_course_to_response(course) if course else output)
+        try:
+            return jsonify(_generate_course(app, g.uid, job))
+        except GenerationError as e:
+            return jsonify({"error": str(e)}), e.status
 
     except Exception as e:
         logger.exception("Erreur traitement document")

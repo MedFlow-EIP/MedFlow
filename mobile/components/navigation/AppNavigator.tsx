@@ -60,6 +60,8 @@ import { useTutorial } from '../../context/TutorialContext';
 import { navigationRef } from '../../navigationRef';
 import { isFirstTimeUser } from '../../utils/firstTime';
 import { checkSocialNotifications, resetSocialBadge, useSocialBadge } from '../../utils/socialNotifications';
+import { resetImportJobs, resumeImportJobs, useImportJobs } from '../../utils/importJobs';
+import * as Notifications from 'expo-notifications';
 import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
 
 const { width, height } = Dimensions.get('window');
@@ -155,6 +157,8 @@ function CustomTabBar({ state, navigation }: any) {
   const isFocused = (routeName: string) => state.routes[state.index].name === routeName;
   // Demandes d'ami et défis en attente : pastille sur l'onglet Compte.
   const socialCount = useSocialBadge();
+  // Imports de cours en cours de génération (on peut naviguer pendant ce temps).
+  const importing = useImportJobs().filter((j) => j.status === 'processing');
 
   const renderTab = (tab: (typeof TABS)[number]) => {
     const focused = isFocused(tab.route);
@@ -191,6 +195,16 @@ function CustomTabBar({ state, navigation }: any) {
 
   return (
     <>
+      {importing.length > 0 && (
+        <View style={[styles.importPill, { bottom: tabBarHeight + 10 }]} accessibilityLiveRegion="polite" pointerEvents="none">
+          <ActivityIndicator size="small" color={colors.onAction} />
+          <Text style={styles.importPillText} numberOfLines={1}>
+            {importing.length > 1
+              ? `Génération de ${importing.length} cours…`
+              : `Génération de « ${importing[0].fileName} »…`}
+          </Text>
+        </View>
+      )}
       <View style={[styles.bottomNav, { height: tabBarHeight, paddingBottom: bottom }]}>
         {renderTab(TABS[0])}
         {renderTab(TABS[1])}
@@ -322,8 +336,10 @@ export function AppNavigator() {
   useEffect(() => {
     if (!user) {
       resetSocialBadge();
+      resetImportJobs();
       return;
     }
+    resumeImportJobs(user);
     checkSocialNotifications(user);
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') checkSocialNotifications(user);
@@ -336,6 +352,17 @@ export function AppNavigator() {
       sub.remove();
     };
   }, [user]);
+
+  // Toucher la notification « Cours prêt » ouvre directement le cours.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const courseId = response.notification.request.content.data?.courseId;
+      if (typeof courseId === 'string' && navigationRef.isReady()) {
+        (navigationRef as any).navigate('CourseDetail', { courseId });
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Vérifié une fois par session (au login), pas à chaque focus d'écran —
   // maintenant que TutorialScreen est monté ici et non plus dans HomeScreen,
@@ -442,6 +469,28 @@ function makeStyles(colors: ThemeColors) {
 
     navIndicatorActive: {
       backgroundColor: colors.action,
+    },
+
+    importPill: {
+      position: 'absolute',
+      alignSelf: 'center',
+      maxWidth: '86%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.action,
+      zIndex: 10,
+      elevation: 6,
+    },
+
+    importPillText: {
+      flexShrink: 1,
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.onAction,
     },
 
     badge: {
