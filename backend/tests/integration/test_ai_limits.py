@@ -16,7 +16,8 @@ def _chat(client, uid, message="Bonjour", **extra):
 def _upload(client, uid, pdf_bytes, name="cours.pdf"):
     return client.post(
         "/api/process",
-        data={"file": (io.BytesIO(pdf_bytes), name)},
+        # Le même PDF est réimporté : on garde les deux (sinon 409, cours déjà importé).
+        data={"file": (io.BytesIO(pdf_bytes), name), "on_duplicate": "keep"},
         headers=_headers(uid),
         content_type="multipart/form-data",
     )

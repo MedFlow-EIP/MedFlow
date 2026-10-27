@@ -171,6 +171,12 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            # Empreinte du document importé (F52) : détecte un cours déjà importé.
+            try:
+                conn.execute("ALTER TABLE courses ADD COLUMN source_hash TEXT")
+            except sqlite3.OperationalError:
+                pass
+
             # Journal des réponses (révision, entraînement) : précision par
             # spécialité, quêtes. Une ligne par réponse donnée.
             conn.execute(
@@ -576,8 +582,8 @@ class Database:
         with self.transaction() as conn:
             conn.execute(
                 """
-                INSERT INTO courses (uid, course_id, nom, summary, flashcards, quiz, sessions, tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO courses (uid, course_id, nom, summary, flashcards, quiz, sessions, tags, source_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(uid, course_id) DO UPDATE SET
                     nom=excluded.nom,
                     summary=excluded.summary,
@@ -586,6 +592,7 @@ class Database:
                     sessions=COALESCE(courses.sessions, excluded.sessions),
                     -- Régénérer un cours garde les tags choisis par l'utilisateur.
                     tags=CASE WHEN ? THEN excluded.tags ELSE courses.tags END,
+                    source_hash=COALESCE(excluded.source_hash, courses.source_hash),
                     updated_at=CURRENT_TIMESTAMP
                 """,
                 (
@@ -597,6 +604,7 @@ class Database:
                     json.dumps(payload.get("quiz", []), ensure_ascii=False),
                     payload.get("sessions", 0),
                     json.dumps(payload.get("tags", []), ensure_ascii=False),
+                    payload.get("source_hash"),
                     "tags" in payload,
                 ),
             )
@@ -2089,6 +2097,15 @@ class Database:
                 (uid, course_id),
             )
         return result.rowcount > 0
+
+    def find_course_by_hash(self, uid: str, source_hash: str) -> Optional[Dict]:
+        """Cours de l'utilisateur importé depuis le même document, ou None."""
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT course_id, nom FROM courses WHERE uid=? AND source_hash=? ORDER BY created_at DESC LIMIT 1",
+                (uid, source_hash),
+            ).fetchone()
+        return {"course_id": row["course_id"], "nom": row["nom"]} if row else None
 
     def update_course(
         self,
