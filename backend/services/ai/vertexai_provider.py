@@ -3,7 +3,7 @@ import logging
 import os
 
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Part
 from google.oauth2 import service_account
 
 from .base import AIProvider
@@ -200,7 +200,9 @@ class VertexAIProvider(AIProvider):
         self,
         user_message: str,
         history: list | None = None,
+        attachments: list | None = None,
     ) -> str:
+        """``attachments`` : liste de (octets, mime_type) — images ou PDF lus par Gemini."""
 
         try:
 
@@ -254,10 +256,15 @@ class VertexAIProvider(AIProvider):
 
                     prompt += f"{role}: {msg['content']}\n"
 
+            if attachments:
+                prompt += "\n(L'utilisateur a joint des fichiers : appuie-toi dessus pour répondre.)\n"
+
             prompt += f"\nUtilisateur: {user_message}\nAssistant:"
 
+            parts = [Part.from_data(data=data, mime_type=mime) for data, mime in (attachments or [])]
+
             response = self._model().generate_content(
-                prompt,
+                [*parts, prompt] if parts else prompt,
                 stream=False,
             )
 

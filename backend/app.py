@@ -63,6 +63,11 @@ def create_app(config=None):
 
     CORS(app)
 
+    @app.errorhandler(413)
+    def _payload_too_large(_error):
+        # Au-delà de MAX_CONTENT_LENGTH : message lisible côté app plutôt qu'une page HTML.
+        return {"error": "Fichier trop lourd"}, 413
+
     # ------------------------------------------------------------------
     # Database
     # ------------------------------------------------------------------
@@ -163,7 +168,7 @@ def _init_swagger(app: Flask):
                 "swagger_ui": True,
                 "specs_route": "/api/docs",
             }
-            Swagger(app, config=swagger_config, template_filename=spec_path)
+            Swagger(app, config=swagger_config, template_file=spec_path)
             logger.info("Swagger UI available at /api/docs")
         else:
             logger.warning("openapi.yaml not found — Swagger UI disabled")

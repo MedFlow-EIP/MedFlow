@@ -20,6 +20,13 @@ class Config:
     # When False (dev/test), fall back to trusting the raw X-User-UID header.
     FIREBASE_VERIFY = os.getenv("FIREBASE_VERIFY", "true").lower() == "true"
     VERSION = "2.0.0"
+    # Routes /api/debug/* : désactivées sauf ENABLE_DEBUG_ROUTES=true explicite
+    # (le conteneur peut tourner en config "development" si FLASK_ENV n'est pas défini).
+    ENABLE_DEBUG_ROUTES = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
+    # Taille max d'une requête (PDF de 20 Mo + marge multipart, pièces jointes du chat en base64).
+    MAX_CONTENT_LENGTH = 32 * 1024 * 1024
+    # Taille max d'un PDF importé.
+    MAX_PDF_BYTES = 20 * 1024 * 1024
 
 
 class DevelopmentConfig(Config):
@@ -36,6 +43,7 @@ class TestingConfig(Config):
     """Automated tests: temporary file DB (set by conftest), no token verification."""
     TESTING = True
     FIREBASE_VERIFY = False
+    ENABLE_DEBUG_ROUTES = True
     # DATABASE_PATH is overridden per-test by conftest.py via a tmp_path fixture
 
 

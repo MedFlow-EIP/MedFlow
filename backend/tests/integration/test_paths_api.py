@@ -33,6 +33,13 @@ class TestGetPaths:
         resp = client.get("/api/paths")
         assert resp.status_code == 400
 
+    def test_paths_without_lessons_are_coming_soon_and_locked(self, client, auth_headers):
+        paths = {p["id"]: p for p in client.get("/api/paths", headers=auth_headers).get_json()["paths"]}
+        assert paths["anatomy"]["comingSoon"] is False
+        for path_id in ("cardiology", "neurology", "pharmacology"):
+            assert paths[path_id]["comingSoon"] is True
+            assert paths[path_id]["isLocked"] is True
+
 
 class TestGetLessons:
     def test_returns_lessons_for_path(self, client, auth_headers):

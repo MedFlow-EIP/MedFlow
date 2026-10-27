@@ -9,6 +9,14 @@ logger = logging.getLogger(__name__)
 health_bp = Blueprint("health", __name__)
 
 
+@health_bp.before_request
+def _hide_debug_routes():
+    """Les routes /api/debug/* répondent 404 hors développement et tests."""
+    if request.path.startswith("/api/debug/") and not current_app.config.get("ENABLE_DEBUG_ROUTES"):
+        return jsonify({"error": "Not found"}), 404
+    return None
+
+
 @health_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint — no authentication required."""
