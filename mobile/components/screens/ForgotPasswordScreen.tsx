@@ -1,17 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
-import { appAlert } from '../../utils/appAlert';
+import { AuthButton, AuthError, AuthField, AuthLayout, AuthLink, authErrorMessage } from '../auth/AuthKit';
 
 export function ForgotPasswordScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -20,194 +14,95 @@ export function ForgotPasswordScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleResetPassword = async () => {
-    if (!email) {
-      appAlert('Erreur', 'Veuillez entrer votre email');
+    if (!email.trim()) {
+      setError('Renseigne l’email de ton compte.');
       return;
     }
 
+    setError(null);
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
-      appAlert('Succès', 'Un email de réinitialisation a été envoyé');
-    } catch (error: any) {
-      let errorMessage = 'Une erreur est survenue';
-      
-      switch (error.code) {
-        case 'auth/invalid-email':
-          errorMessage = 'Email invalide';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'Aucun compte trouvé avec cet email';
-          break;
-      }
-      
-      appAlert('Erreur', errorMessage);
+    } catch (e: any) {
+      // Pas de distinction « compte inexistant » : on ne révèle pas quels emails ont un compte.
+      if (e?.code === 'auth/user-not-found') setSent(true);
+      else setError(authErrorMessage(e?.code));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-        accessibilityLabel="Retour"
-        accessibilityRole="button"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.primary} />
-      </TouchableOpacity>
-
-      <View style={styles.content}>
-        <Ionicons name="lock-open-outline" size={80} color={colors.primary} />
-        <Text style={styles.title} accessibilityRole="header">Mot de passe oublié</Text>
-        <Text style={styles.subtitle}>
-          Entrez votre email pour recevoir un lien de réinitialisation
-        </Text>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={24} color={colors.muted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Votre email"
-              placeholderTextColor={colors.textSecondary}
-              accessibilityLabel="Votre email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!sent}
-            />
+    <AuthLayout
+      title="Mot de passe oublié"
+      subtitle="Entre l’email de ton compte : on t’envoie un lien pour en choisir un nouveau."
+      onBack={() => navigation.goBack()}
+      footer={<AuthLink text="Tu t’en souviens ?" action="Se connecter" onPress={() => navigation.navigate('Login')} />}
+    >
+      {sent ? (
+        <View style={styles.sent} accessibilityLiveRegion="polite">
+          <View style={styles.sentIcon}>
+            <Ionicons name="mail-open-outline" size={28} color={colors.success} />
           </View>
-
-          {sent ? (
-            <>
-              <Text style={styles.successText}>
-                ✅ Email envoyé ! Vérifiez votre boîte de réception.
-              </Text>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate('Login')}
-              >
-                <Text style={styles.buttonText}>Retour à la connexion</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleResetPassword}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? 'Envoi...' : 'Envoyer le lien'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.linkText}>
-              <Text style={styles.linkTextBold}>Retour à la connexion</Text>
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.sentTitle}>Vérifie ta boîte mail</Text>
+          <Text style={styles.sentText}>
+            Si un compte existe pour {email.trim()}, un lien de réinitialisation vient d’y être envoyé. Pense à regarder
+            dans les spams.
+          </Text>
+          <AuthButton label="Retour à la connexion" onPress={() => navigation.navigate('Login')} />
         </View>
-      </View>
-    </View>
+      ) : (
+        <>
+          <AuthField
+            label="Email"
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="prenom.nom@email.com"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            returnKeyType="send"
+            onSubmitEditing={handleResetPassword}
+          />
+          <AuthError message={error} />
+          <AuthButton label="Envoyer le lien" loading={loading} onPress={handleResetPassword} />
+        </>
+      )}
+    </AuthLayout>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      padding: 20,
+    sent: {
+      alignItems: 'center',
+      gap: 10,
     },
-    backButton: {
-      marginTop: 40,
-      marginBottom: 20,
-    },
-    content: {
-      flex: 1,
+    sentIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.tintSuccess,
+      alignItems: 'center',
       justifyContent: 'center',
-      alignItems: 'center',
     },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-      marginTop: 20,
-      marginBottom: 10,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: 40,
-      paddingHorizontal: 20,
-    },
-    form: {
-      width: '100%',
-      gap: 16,
-    },
-    inputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 16,
-    },
-    inputIcon: {
-      marginRight: 12,
-    },
-    input: {
-      flex: 1,
-      height: 56,
-      fontSize: 16,
+    sentTitle: {
+      fontSize: 18,
+      fontWeight: '700',
       color: colors.textPrimary,
     },
-    button: {
-      backgroundColor: colors.action,
-      height: 56,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    buttonDisabled: {
-      opacity: 0.6,
-    },
-    buttonText: {
-      color: colors.onAction,
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    successText: {
-      color: colors.success,
+    sentText: {
       fontSize: 14,
-      textAlign: 'center',
-      marginTop: 10,
-      marginBottom: 20,
-    },
-    linkButton: {
-      alignItems: 'center',
-      marginTop: 16,
-    },
-    linkText: {
+      lineHeight: 21,
       color: colors.textSecondary,
-      fontSize: 14,
-    },
-    linkTextBold: {
-      color: colors.primaryText,
-      fontWeight: '600',
+      textAlign: 'center',
+      marginBottom: 8,
     },
   });
 }

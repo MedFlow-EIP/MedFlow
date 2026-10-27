@@ -21,6 +21,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
@@ -52,6 +53,9 @@ def create_app(config=None):
     from services.ai import get_ai_provider
 
     app = Flask(__name__)
+    # Derrière Caddy (HTTPS) : reprend le schéma et l'hôte d'origine pour que
+    # les URL générées (avatars) soient en https.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # ------------------------------------------------------------------
     # Configuration
@@ -62,6 +66,11 @@ def create_app(config=None):
     app.config.from_object(config)
 
     CORS(app)
+
+    @app.errorhandler(413)
+    def _payload_too_large(_error):
+        # Au-delà de MAX_CONTENT_LENGTH : message lisible côté app plutôt qu'une page HTML.
+        return {"error": "Fichier trop lourd"}, 413
 
     # ------------------------------------------------------------------
     # Database
@@ -163,7 +172,7 @@ def _init_swagger(app: Flask):
                 "swagger_ui": True,
                 "specs_route": "/api/docs",
             }
-            Swagger(app, config=swagger_config, template_filename=spec_path)
+            Swagger(app, config=swagger_config, template_file=spec_path)
             logger.info("Swagger UI available at /api/docs")
         else:
             logger.warning("openapi.yaml not found — Swagger UI disabled")
@@ -180,4 +189,7 @@ if __name__ == "__main__":
     cfg = ProductionConfig if flask_env == "production" else DevelopmentConfig
 
     application = create_app(cfg)
-    application.run(debug=(flask_env != "production"), host="0.0.0.0", port=8080)
+    # Débogueur Werkzeug seulement sur demande explicite (FLASK_DEBUG=1) et
+    # jamais en production : écoutant sur 0.0.0.0, il serait joignable depuis le réseau.
+    debug = flask_env != "production" and os.getenv("FLASK_DEBUG") == "1"
+    application.run(debug=debug, host="0.0.0.0", port=8080)

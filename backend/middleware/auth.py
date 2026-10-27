@@ -15,10 +15,14 @@ Development / Testing (FIREBASE_VERIFY=False):
 from functools import wraps
 
 import logging
+import re
 
 from flask import current_app, g, jsonify, request
 
 logger = logging.getLogger(__name__)
+
+# Forme d'un uid Firebase (lettres, chiffres, - et _).
+_UID_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,128}")
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +89,10 @@ def require_auth(f):
         uid = _extract_verified_uid(data)
         if not uid:
             return jsonify({"error": "UID Firebase requis"}), 400
+        # L'uid sert à construire des chemins (avatar, dossier d'upload) : on
+        # refuse tout ce qui n'a pas la forme d'un uid Firebase (ex. « ../ »).
+        if not _UID_PATTERN.fullmatch(uid):
+            return jsonify({"error": "UID invalide"}), 400
         g.uid = uid
         g.display_name = request.headers.get("X-User-Name") or "Utilisateur"
         g.photo_url = request.headers.get("X-User-Avatar") or None

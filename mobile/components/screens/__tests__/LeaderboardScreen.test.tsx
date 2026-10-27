@@ -228,7 +228,7 @@ describe('LeaderboardScreen — navigation', () => {
     render(<LeaderboardScreen />);
     await waitFor(() => expect(screen.getByText('Classement')).toBeTruthy());
 
-    fireEvent.press(screen.UNSAFE_getAllByProps({ name: 'chevron-back' })[0]);
+    fireEvent.press(screen.getByLabelText('Retour'));
 
     expect(mockGoBack).toHaveBeenCalledTimes(1);
   });

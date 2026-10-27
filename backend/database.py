@@ -563,7 +563,14 @@ class Database:
                     (uid, row["path_id"])
                 ).fetchone()[0]
 
-                is_locked = not previous_completed
+                # Parcours annoncé mais sans aucune leçon en base : jamais déblocable
+                # (sinon on ouvrirait un parcours vide une fois le précédent terminé).
+                lesson_count = conn.execute(
+                    "SELECT COUNT(*) FROM lessons WHERE path_id=?", (row["path_id"],)
+                ).fetchone()[0]
+                coming_soon = lesson_count == 0
+
+                is_locked = coming_soon or not previous_completed
 
                 paths.append({
                     "id": row["path_id"],
@@ -574,6 +581,7 @@ class Database:
                     "totalLessons": total,
                     "completedLessons": completed,
                     "isLocked": is_locked,
+                    "comingSoon": coming_soon,
                     "progress": round((completed / total) * 100, 2) if total else 0,
                 })
 
@@ -1914,6 +1922,15 @@ class Database:
                     title,
                 ),
             )
+
+    def get_chat_conversation_owner(self, conversation_id: str) -> str | None:
+        """UID propriétaire d'une conversation, ou None si elle n'existe pas."""
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT uid FROM chat_conversations WHERE conversation_id = ?",
+                (conversation_id,),
+            ).fetchone()
+        return row["uid"] if row else None
 
     def save_chat_message(
         self,

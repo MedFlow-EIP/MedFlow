@@ -27,6 +27,9 @@ import {
 import { useScreenInsets } from "../navigation/constants";
 import { appAlert } from '../../utils/appAlert';
 
+// Même limite que le backend (MAX_PDF_BYTES).
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
 const formatSize = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(2).replace(".", ",")} Mo` : "";
 
@@ -62,7 +65,13 @@ export function UploadCourseScreen() {
 
       if (result.canceled) return;
 
-      setFile(result.assets[0]);
+      const picked = result.assets[0];
+      if (picked.size && picked.size > MAX_PDF_BYTES) {
+        appAlert("PDF trop lourd", `Ce fichier fait ${formatSize(picked.size)}. La limite est de 20 Mo.`);
+        return;
+      }
+
+      setFile(picked);
       setData(null);
       setError("");
     } catch (err) {

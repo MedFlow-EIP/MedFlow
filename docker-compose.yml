@@ -10,9 +10,29 @@ services:
       - ./backend/.env
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+      # Toujours en production dans Docker : tokens Firebase vérifiés, pas de
+      # débogueur Flask, pas d'en-tête X-User-UID accepté (prioritaire sur backend/.env).
+      - FLASK_ENV=production
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/data:/app/data
+    restart: always
+
+  # HTTPS gratuit (Let's Encrypt) devant le backend. Voir Caddyfile.
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: medflow-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - MEDFLOW_DOMAIN=${MEDFLOW_DOMAIN:-5-196-191-64.sslip.io}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
     restart: always
 
   # frontend:
@@ -23,3 +43,7 @@ services:
   #   depends_on:
   #     - backend
   #   restart: always
+volumes:
+  # Certificats Let's Encrypt conservés entre les redémarrages.
+  caddy_data:
+  caddy_config:

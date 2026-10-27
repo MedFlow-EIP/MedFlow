@@ -165,6 +165,14 @@ def process_document():
     if not filename.lower().endswith(".pdf"):
         return jsonify({"error": "Format non supporté, PDF uniquement"}), 400
 
+    # Taille réelle du fichier reçu (sans le charger en mémoire).
+    file.stream.seek(0, os.SEEK_END)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    max_bytes = current_app.config.get("MAX_PDF_BYTES", 20 * 1024 * 1024)
+    if size > max_bytes:
+        return jsonify({"error": f"PDF trop lourd ({max_bytes // (1024 * 1024)} Mo maximum)"}), 413
+
     try:
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         user_folder = _ensure_user_folder(upload_folder, g.uid)

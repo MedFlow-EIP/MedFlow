@@ -9,6 +9,7 @@ name: Deploy backend
 #   VM_USER     utilisateur SSH (doit pouvoir lancer docker sans sudo)
 #   VM_SSH_KEY  clé privée SSH dont la clé publique est dans ~/.ssh/authorized_keys de la VM
 #   VM_PORT     (optionnel) port SSH, 22 par défaut
+#   VM_SSH_PASSPHRASE (optionnel) phrase de passe de la clé, si elle en a une
 
 on:
   workflow_run:
@@ -42,6 +43,8 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          # Seulement si la clé est protégée par une phrase de passe (préférer une clé dédiée sans).
+          passphrase: ${{ secrets.VM_SSH_PASSPHRASE }}
           port: ${{ secrets.VM_PORT || 22 }}
           command_timeout: 30m
           envs: DEPLOY_BRANCH

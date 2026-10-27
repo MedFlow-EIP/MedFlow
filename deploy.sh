@@ -84,6 +84,7 @@ check_env_vars .env "FIREBASE_"
 
 info "Rebuild du backend (--no-cache)..."
 docker compose build --no-cache backend
+docker compose pull caddy || warn "Image Caddy non récupérée (non bloquant)."
 
 info "Redémarrage des conteneurs..."
 docker compose up -d

@@ -27,6 +27,7 @@ def get_paths():
             "totalLessons": p["totalLessons"],
             "completedLessons": p["completedLessons"],
             "isLocked": p["isLocked"],
+            "comingSoon": p.get("comingSoon", False),
             "color": p["color"],
             "emoji": p["emoji"],
         }

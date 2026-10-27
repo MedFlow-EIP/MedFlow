@@ -31,3 +31,11 @@ class MockAIProvider(AIProvider):
 
     def generate_title(self, text: str, filename: str) -> str:
         return "Cours de Test - Titre Mock"
+
+    def __init__(self):
+        # Derniers arguments reçus par medical_chat, pour vérifier ce qui part au modèle.
+        self.last_chat_call = None
+
+    def medical_chat(self, user_message: str, history: list | None = None, attachments: list | None = None) -> str:
+        self.last_chat_call = {"user_message": user_message, "history": history or [], "attachments": attachments or []}
+        return f"Réponse mock à : {user_message}"

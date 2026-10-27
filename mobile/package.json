@@ -4,6 +4,7 @@
   "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
+    "emu": "adb reverse tcp:8081 tcp:8081; expo start --localhost",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
@@ -34,7 +35,6 @@
     "firebase": "^12.7.0",
     "install": "^0.13.0",
     "nativewind": "^2.0.11",
-    "npm": "^11.18.0",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-gesture-handler": "~2.16.1",
@@ -66,6 +66,8 @@
       "^@/(.*)$": "<rootDir>/$1"
     },
     "testTimeout": 15000,
-    "setupFiles": ["./jest.setup.js"]
+    "setupFiles": [
+      "./jest.setup.js"
+    ]
   }
 }
