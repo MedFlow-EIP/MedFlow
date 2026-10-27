@@ -490,7 +490,15 @@ export function DashboardScreen() {
 
         <View style={styles.coursesHeader}>
           <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
-          <Text style={styles.coursesCount}>{plural(courses.length, 'cours importé')}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Documents')}
+            style={styles.documentsLink}
+            accessibilityRole="button"
+            accessibilityLabel="Voir mes documents importés"
+          >
+            <Ionicons name="folder-open-outline" size={16} color={colors.primaryText} />
+            <Text style={styles.documentsLinkText}>Mes documents</Text>
+          </TouchableOpacity>
         </View>
 
         {allTags.length > 0 && (
@@ -681,6 +689,18 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 12,
     },
 
+    documentsLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 40,
+      paddingHorizontal: 4,
+    },
+    documentsLinkText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
     tagFilters: {
       gap: 8,
       paddingRight: 8,

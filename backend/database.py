@@ -38,6 +38,10 @@ class Course:
     updated_at: str
     # Spécialités médicales (F54) : suggérées à l'import, modifiables.
     tags: List[str] = field(default_factory=list)
+    # Document d'origine conservé (nom affiché, taille, type), s'il y en a un.
+    source_name: Optional[str] = None
+    source_size: Optional[int] = None
+    source_mime: Optional[str] = None
 
 
 # Catalogue des badges — chaque condition est évaluée contre un dict de
@@ -176,6 +180,13 @@ class Database:
                 conn.execute("ALTER TABLE courses ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'")
             except sqlite3.OperationalError:
                 pass
+
+            # Document d'origine conservé sur le serveur (consultable depuis l'app).
+            for column in ("source_name TEXT", "source_size INTEGER", "source_mime TEXT"):
+                try:
+                    conn.execute(f"ALTER TABLE courses ADD COLUMN {column}")
+                except sqlite3.OperationalError:
+                    pass
 
             # Empreinte du document importé (F52) : détecte un cours déjà importé.
             try:
@@ -736,7 +747,8 @@ class Database:
         with self.connection() as conn:
             rows = conn.execute(
                 """
-                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags
+                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags,
+                       source_name, source_size, source_mime
                 FROM courses
                 WHERE uid=?
                 ORDER BY updated_at DESC
@@ -2380,6 +2392,17 @@ class Database:
         with self.connection() as conn:
             return conn.execute("SELECT * FROM import_jobs WHERE id=? AND uid=?", (job_id, uid)).fetchone()
 
+    def set_course_source(self, uid: str, course_id: str, name, size, mime) -> None:
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE courses SET source_name=?, source_size=?, source_mime=? WHERE uid=? AND course_id=?",
+                (name, size, mime, uid, course_id),
+            )
+
+    def total_source_bytes(self, uid: str) -> int:
+        with self.connection() as conn:
+            return conn.execute("SELECT COALESCE(SUM(source_size), 0) FROM courses WHERE uid=?", (uid,)).fetchone()[0]
+
     def find_course_by_hash(self, uid: str, source_hash: str) -> Optional[Dict]:
         """Cours de l'utilisateur importé depuis le même document, ou None."""
         with self.connection() as conn:
@@ -2511,7 +2534,8 @@ class Database:
 
             rows = conn.execute(
                 """
-                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags
+                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags,
+                       source_name, source_size, source_mime
                 FROM courses
                 WHERE uid=?
                 ORDER BY updated_at DESC
@@ -2571,7 +2595,11 @@ class Database:
         except json.JSONDecodeError:
             tags = []
 
+        keys = row.keys()
         return Course(
+            source_name=row["source_name"] if "source_name" in keys else None,
+            source_size=row["source_size"] if "source_size" in keys else None,
+            source_mime=row["source_mime"] if "source_mime" in keys else None,
             tags=tags,
             id=row["course_id"],
             nom=row["nom"],

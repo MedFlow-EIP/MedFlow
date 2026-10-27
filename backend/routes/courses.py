@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
-from flask import Blueprint, current_app, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 
 from middleware.ai_quota import consume_ai_quota
@@ -109,6 +109,8 @@ def get_dashboard():
                 "quiz": len(c.quiz or []),
                 "created_at": c.created_at,
                 "tags": c.tags,
+                "source_name": c.source_name,
+                "source_size": c.source_size,
             }
             for c in paginated
         ]
@@ -164,6 +166,7 @@ def delete_course(course_id):
         if not course:
             return jsonify({"error": "Cours introuvable"}), 404
         db.delete_course(g.uid, course_id)
+        _delete_source(current_app._get_current_object(), g.uid, course_id)
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur suppression cours")
@@ -257,6 +260,41 @@ def _new_course_id(db, uid: str, filename: str) -> str:
     return course_id
 
 
+def _source_path(app, uid: str, course_id: str) -> str:
+    """Fichier d'origine d'un cours : uploads/<uid>/sources/<empreinte du course_id>."""
+    digest = hashlib.sha256(course_id.encode("utf-8")).hexdigest()[:32]
+    return os.path.join(app.config.get("UPLOAD_FOLDER", "uploads"), uid, "sources", digest)
+
+
+def _store_source(app, uid: str, course_id: str, job: dict) -> None:
+    """Garde le document importé pour qu'il puisse être rouvert. Best-effort :
+    au-delà du quota de stockage du compte, le cours est créé sans son original."""
+    try:
+        data = job["data"]
+        previous = app.db.fetch_course(uid, course_id)
+        used = app.db.total_source_bytes(uid) - ((previous.source_size or 0) if previous else 0)
+        if used + len(data) > app.config.get("MAX_SOURCES_BYTES", 200 * 1024 * 1024):
+            logger.info("Quota de documents atteint pour %s : original non conservé", uid)
+            app.db.set_course_source(uid, course_id, None, None, None)
+            return
+        path = _source_path(app, uid, course_id)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(data)
+        app.db.set_course_source(uid, course_id, job.get("original_name") or job["filename"], len(data), job["mime_type"])
+    except Exception:
+        logger.exception("Document d'origine non conservé")
+
+
+def _delete_source(app, uid: str, course_id: str) -> None:
+    try:
+        os.remove(_source_path(app, uid, course_id))
+    except FileNotFoundError:
+        pass
+    except OSError:
+        logger.warning("Suppression du document d'origine impossible", exc_info=True)
+
+
 class GenerationError(Exception):
     """Échec de génération à montrer à l'utilisateur (message + code HTTP)."""
 
@@ -319,6 +357,7 @@ def _generate_course(app, uid: str, job: dict) -> dict:
 
     logger.info("Saving course %s for user %s", course_id, uid)
     app.db.save_course(uid, course_id, output)
+    _store_source(app, uid, course_id, job)
 
     course = app.db.fetch_course(uid, course_id)
     return _course_to_response(course) if course else output
@@ -445,6 +484,7 @@ def process_document():
             return quota_error
 
         job = {
+            "original_name": (file.filename or filename)[:200],
             "text": text,
             "needs_reading": needs_reading,
             "data": data,
@@ -470,6 +510,38 @@ def process_document():
     except Exception as e:
         logger.exception("Erreur traitement document")
         return internal_error("Erreur traitement")
+
+
+@courses_bp.route("/api/course/<course_id>/source", methods=["GET"])
+@require_auth
+def get_course_source(course_id):
+    """Document d'origine du cours (PDF, Word, PowerPoint ou photo)."""
+    course = current_app.db.fetch_course(g.uid, course_id)
+    if not course or not course.source_name:
+        return jsonify({"error": "Document d'origine indisponible"}), 404
+    path = _source_path(current_app._get_current_object(), g.uid, course_id)
+    if not os.path.exists(path):
+        return jsonify({"error": "Document d'origine indisponible"}), 404
+    return send_file(path, mimetype=course.source_mime or "application/octet-stream",
+                     as_attachment=False, download_name=course.source_name)
+
+
+@courses_bp.route("/api/sources", methods=["GET"])
+@require_auth
+def list_sources():
+    """Documents importés, du plus récent au plus ancien, et place utilisée."""
+    db = current_app.db
+    courses = [c for c in db.fetch_courses(g.uid) if c.source_name]
+    courses.sort(key=lambda c: c.created_at or "", reverse=True)
+    return jsonify({
+        "documents": [
+            {"course_id": c.id, "nom": c.nom, "source_name": c.source_name, "source_size": c.source_size,
+             "source_mime": c.source_mime, "created_at": c.created_at}
+            for c in courses
+        ],
+        "used_bytes": db.total_source_bytes(g.uid),
+        "max_bytes": current_app.config.get("MAX_SOURCES_BYTES", 200 * 1024 * 1024),
+    })
 
 
 # ---------------------------------------------------------------------------

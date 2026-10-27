@@ -22,6 +22,7 @@ import { OfflineBanner } from '../course/OfflineBanner';
 import { EditCourseSheet } from '../course/EditCourseSheet';
 import { StateView } from '../ui/StateView';
 import { shareRevisionSheet } from '../../utils/revisionSheet';
+import { formatBytes, openCourseDocument } from '../../utils/courseDocuments';
 import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
 import { courseCacheName, readOffline, saveOffline } from '../../utils/offlineCache';
@@ -61,6 +62,20 @@ export function CourseDetailScreen({ route }: Props) {
   const [editing, setEditing] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [openingSource, setOpeningSource] = useState(false);
+
+  const openSource = async () => {
+    const user = auth.currentUser;
+    if (!user || !course?.source_name || openingSource) return;
+    setOpeningSource(true);
+    try {
+      await openCourseDocument(user, { course_id: courseId, source_name: course.source_name, source_mime: course.source_mime });
+    } catch {
+      appAlert('Ouverture impossible', 'Vérifie ta connexion puis réessaie.');
+    } finally {
+      setOpeningSource(false);
+    }
+  };
 
   // Fiche PDF (F51) : marche aussi hors ligne, depuis la copie du cours.
   const exportSheet = async () => {
@@ -214,6 +229,25 @@ export function CourseDetailScreen({ route }: Props) {
 
         {offline && <OfflineBanner />}
 
+        {!!course.source_name && (
+          <TouchableOpacity
+            style={styles.sourceRow}
+            onPress={openSource}
+            disabled={openingSource}
+            accessibilityRole="button"
+            accessibilityLabel={`Ouvrir le document d'origine ${course.source_name}`}
+          >
+            {openingSource ? (
+              <ActivityIndicator size="small" color={colors.primaryDark} />
+            ) : (
+              <Ionicons name="document-text-outline" size={20} color={colors.primaryDark} />
+            )}
+            <Text style={styles.sourceName} numberOfLines={1}>{course.source_name}</Text>
+            <Text style={styles.sourceSize}>{formatBytes(course.source_size)}</Text>
+            <Ionicons name="open-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         <CourseTabs value={tab} onChange={setTab} />
 
         {/* « Réviser ce cours » toujours visible sous les onglets */}
@@ -348,6 +382,27 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 12,
       fontWeight: '600',
       color: colors.primaryText,
+    },
+    sourceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minHeight: 52,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    sourceName: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    sourceSize: {
+      fontSize: 13,
+      color: colors.textSecondary,
     },
     flashcardsButton: {
       flexDirection: 'row',
