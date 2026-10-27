@@ -14,6 +14,7 @@ import {
   Dimensions,
   Keyboard,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
@@ -21,7 +22,6 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { getAuthHeaders } from "../../utils/authHeaders";
-import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -41,6 +41,7 @@ import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/network';
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
+import { useVoiceDictation } from '../../utils/voiceDictation';
 
 type Message = {
   type: "user" | "ai";
@@ -182,9 +183,7 @@ export function AIChatScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<string | null>(null);
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -203,6 +202,15 @@ export function AIChatScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+
+  // Dictée vocale (F45) : le texte retranscrit s'ajoute au champ, à relire avant d'envoyer.
+  const dictation = useVoiceDictation(
+    (text) => {
+      setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text).slice(0, 2000));
+      inputRef.current?.focus();
+    },
+    (message) => appAlert('Dictée', message)
+  );
 
   const { width } = useWindowDimensions();
 
@@ -909,6 +917,40 @@ export function AIChatScreen() {
             </ScrollView>
           )}
 
+          {dictation.state !== 'idle' && (
+            <View style={styles.dictationBar} accessibilityLiveRegion="polite">
+              {dictation.state === 'recording' ? (
+                <>
+                  <View style={styles.recordingDot} />
+                  <Text style={styles.dictationText}>
+                    Je t’écoute… {Math.floor(dictation.seconds / 60)}:{String(dictation.seconds % 60).padStart(2, '0')}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dictationAction}
+                    onPress={dictation.cancel}
+                    accessibilityRole="button"
+                    accessibilityLabel="Annuler la dictée"
+                  >
+                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dictationAction, styles.dictationStop]}
+                    onPress={dictation.stop}
+                    accessibilityRole="button"
+                    accessibilityLabel="Terminer la dictée"
+                  >
+                    <Ionicons name="checkmark" size={20} color={colors.onAction} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ActivityIndicator size="small" color={colors.primaryDark} />
+                  <Text style={styles.dictationText}>Transcription…</Text>
+                </>
+              )}
+            </View>
+          )}
+
           {/* Capsule dans capsule : rayon extérieur 28 = rayon intérieur 22 + padding 6 */}
           <View style={styles.chatBar}>
             <View style={styles.inputField}>
@@ -932,6 +974,19 @@ export function AIChatScreen() {
                 multiline
                 placeholderTextColor={colors.textSecondary}
               />
+              <TouchableOpacity
+                onPress={dictation.start}
+                disabled={dictation.state !== 'idle'}
+                style={styles.attachButton}
+                accessibilityRole="button"
+                accessibilityLabel="Dicter ta question"
+              >
+                <Ionicons
+                  name={dictation.state === 'recording' ? 'mic' : 'mic-outline'}
+                  size={20}
+                  color={dictation.state === 'recording' ? colors.danger : colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -1384,6 +1439,47 @@ function makeStyles(colors: ThemeColors) {
       minHeight: 44,
       borderRadius: 22,
       backgroundColor: colors.surfaceAlt,
+    },
+
+    dictationBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 8,
+      paddingLeft: 16,
+      paddingRight: 6,
+      minHeight: 52,
+      borderRadius: 26,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+
+    recordingDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.danger,
+    },
+
+    dictationText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+
+    dictationAction: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    dictationStop: {
+      backgroundColor: colors.action,
     },
 
     attachButton: {

@@ -57,6 +57,44 @@ def _parse_attachments(raw):
     return files, None, None
 
 
+# Formats enregistrés par l'app (AAC sur Android, WAV sur iOS) et lus par Gemini.
+AUDIO_TYPES = {"audio/aac", "audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4", "audio/ogg", "audio/flac"}
+
+
+@chat_bp.route("/chat/transcribe", methods=["POST"])
+@require_auth
+def transcribe():
+    """Dictée vocale (F45) : renvoie le texte, que l'utilisateur relit avant
+    de l'envoyer. Compte dans le quota du chat."""
+    try:
+        data = request.get_json(silent=True) or {}
+        mime_type = (data.get("mime_type") or "").lower()
+        if mime_type not in AUDIO_TYPES:
+            return jsonify({"error": "Format audio non pris en charge"}), 400
+        try:
+            audio = base64.b64decode(data.get("audio") or "", validate=True)
+        except (binascii.Error, ValueError):
+            return jsonify({"error": "Audio illisible"}), 400
+        if not audio:
+            return jsonify({"error": "Enregistrement vide"}), 400
+        if len(audio) > current_app.config.get("MAX_AUDIO_BYTES", 2 * 1024 * 1024):
+            return jsonify({"error": "Enregistrement trop long (2 minutes maximum)"}), 413
+
+        if current_app.ai is None:
+            return jsonify({"error": "Assistant IA indisponible"}), 503
+        quota_error = consume_ai_quota("chat")
+        if quota_error:
+            return quota_error
+
+        text = current_app.ai.transcribe_audio(audio, mime_type)
+        if not text:
+            return jsonify({"error": "Je n'ai rien compris. Parle plus près du micro et réessaie."}), 422
+        return jsonify({"text": text[: current_app.config.get("CHAT_MAX_MESSAGE_CHARS", 2000)]})
+    except Exception:
+        logger.exception("Erreur dictée vocale")
+        return jsonify({"error": "Erreur interne de l'assistant"}), 500
+
+
 @chat_bp.route("/chat", methods=["POST"])
 @require_auth
 def medical_chat():
