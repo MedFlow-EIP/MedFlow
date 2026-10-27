@@ -19,6 +19,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { getAuthHeaders } from "../../utils/authHeaders";
 import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -54,7 +56,20 @@ type Conversation = {
   title: string;
   messages: Message[];
   createdAt: number;
+  /** Identifiant de la conversation côté serveur : permet à l'IA de garder le fil. */
+  serverId?: string;
 };
+
+type PendingAttachment = {
+  type: "image" | "file";
+  uri: string;
+  name?: string;
+  mimeType: string;
+};
+
+// Mêmes limites que le backend (/chat).
+const MAX_ATTACHMENT_BYTES = 7 * 1024 * 1024;
+const MAX_ATTACHMENTS = 3;
 
 type RootStackParamList = {
   MainTabs: undefined;
@@ -207,29 +222,47 @@ export function AIChatScreen() {
     return "Nouvelle conversation";
   };
 
-  const askMedicalAI = async (message: string): Promise<string> => {
+  const askMedicalAI = async (
+    message: string,
+    serverId: string | undefined,
+    files: PendingAttachment[]
+  ): Promise<{ response: string; conversationId?: string }> => {
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Non connecté");
+
+      // Les fichiers partent en base64 ; le serveur les transmet au modèle sans les stocker.
+      const attachmentsPayload = await Promise.all(
+        files.map(async (f) => ({
+          name: f.name,
+          mime_type: f.mimeType,
+          data: await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 }),
+        }))
+      );
+
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: {
+          ...(await getAuthHeaders(user)),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           message,
+          conversation_id: serverId,
+          attachments: attachmentsPayload,
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error("Erreur serveur");
+        return { response: data?.error || "L'assistant n'a pas pu répondre. Réessaie dans un instant." };
       }
 
-      const data = await response.json();
-
-      return data.response;
+      return { response: data.response, conversationId: data.conversation_id };
     } catch (error) {
       console.error("Erreur AI:", error);
 
-      return "Une erreur est survenue lors de la communication avec l'assistant médical.";
+      return { response: "Une erreur est survenue lors de la communication avec l'assistant médical." };
     }
   };
 
@@ -256,13 +289,16 @@ export function AIChatScreen() {
       )
     );
 
+    const files = [...attachments] as PendingAttachment[];
+    const serverId = conversations.find((c) => c.id === currentConvId)?.serverId;
+
     setInput("");
     setAttachments([]);
     setIsAttachMenuOpen(false);
     setIsTyping(true);
 
     try {
-      const aiResponse = await askMedicalAI(text);
+      const { response: aiResponse, conversationId } = await askMedicalAI(text, serverId, files);
 
       setIsTyping(false);
 
@@ -275,7 +311,7 @@ export function AIChatScreen() {
       setConversations(prev =>
         prev.map(c =>
           c.id === currentConvId
-            ? { ...c, messages: [...c.messages, aiMessage] }
+            ? { ...c, serverId: conversationId ?? c.serverId, messages: [...c.messages, aiMessage] }
             : c
         )
       );
@@ -343,34 +379,46 @@ export function AIChatScreen() {
     setInput("");
   };
 
+  // Vérifie le nombre et la taille avant d'ajouter une pièce jointe (mêmes règles que le serveur).
+  const addAttachment = (attachment: PendingAttachment, size?: number | null) => {
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      appAlert("Trop de fichiers", `${MAX_ATTACHMENTS} pièces jointes maximum par message.`);
+      return;
+    }
+    if (size && size > MAX_ATTACHMENT_BYTES) {
+      appAlert("Fichier trop lourd", "Chaque pièce jointe doit faire 7 Mo maximum.");
+      return;
+    }
+    setAttachments([...attachments, attachment]);
+  };
+
   const pickImage = async () => {
+    setIsAttachMenuOpen(false);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 1,
+      quality: 0.7,
     });
     if (!result.canceled) {
-      setAttachments([...attachments, {
-        type: 'image',
-        uri: result.assets[0].uri,
-        name: result.assets[0].fileName || 'Image'
-      }]);
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType && asset.mimeType.startsWith("image/") ? asset.mimeType : "image/jpeg";
+      addAttachment({ type: 'image', uri: asset.uri, name: asset.fileName || 'Image', mimeType }, asset.fileSize);
     }
-    setIsAttachMenuOpen(false);
   };
 
   const pickDocument = async () => {
+    setIsAttachMenuOpen(false);
     const result = await DocumentPicker.getDocumentAsync({
-      type: "*/*",
+      type: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+      copyToCacheDirectory: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setAttachments([...attachments, {
-        type: 'file',
-        uri: result.assets[0].uri,
-        name: result.assets[0].name
-      }]);
+      const asset = result.assets[0];
+      addAttachment(
+        { type: 'file', uri: asset.uri, name: asset.name, mimeType: asset.mimeType || "application/pdf" },
+        asset.size
+      );
     }
-    setIsAttachMenuOpen(false);
   };
 
   const formatTime = (timestamp: number) => {
