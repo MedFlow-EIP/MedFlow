@@ -1949,6 +1949,51 @@ class Database:
                 ),
             )
 
+    def delete_user_data(self, uid: str) -> None:
+        """Efface toutes les données d'un utilisateur (suppression de compte).
+
+        Parcourt toutes les tables ayant une colonne ``uid`` plutôt qu'une liste
+        figée : une table ajoutée plus tard sera effacée elle aussi.
+        """
+        with self.transaction() as conn:
+            # Les messages n'ont pas de colonne uid, et les clés étrangères
+            # SQLite ne sont pas activées : on les supprime explicitement.
+            conn.execute(
+                """
+                DELETE FROM chat_messages WHERE conversation_id IN (
+                    SELECT conversation_id FROM chat_conversations WHERE uid = ?
+                )
+                """,
+                (uid,),
+            )
+            conn.execute(
+                "DELETE FROM friendships WHERE requester_uid = ? OR addressee_uid = ?",
+                (uid, uid),
+            )
+            tables = [
+                row["name"]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+                ).fetchall()
+            ]
+            for table in tables:
+                columns = {col["name"] for col in conn.execute(f'PRAGMA table_info("{table}")').fetchall()}
+                if "uid" in columns:
+                    conn.execute(f'DELETE FROM "{table}" WHERE uid = ?', (uid,))
+
+    def delete_chat_conversation(self, uid: str, conversation_id: str) -> bool:
+        """Supprime une conversation de l'utilisateur. False si elle n'est pas à lui."""
+        with self.transaction() as conn:
+            owner = conn.execute(
+                "SELECT uid FROM chat_conversations WHERE conversation_id = ?",
+                (conversation_id,),
+            ).fetchone()
+            if not owner or owner["uid"] != uid:
+                return False
+            conn.execute("DELETE FROM chat_messages WHERE conversation_id = ?", (conversation_id,))
+            conn.execute("DELETE FROM chat_conversations WHERE conversation_id = ?", (conversation_id,))
+        return True
+
     def consume_ai_quota(
         self,
         uid: str,
@@ -2067,7 +2112,7 @@ class Database:
                 SELECT *
                 FROM chat_messages
                 WHERE conversation_id = ?
-                ORDER BY created_at ASC
+                ORDER BY created_at ASC, rowid ASC
                 """,
                 (conversation_id,),
             ).fetchall()

@@ -28,12 +28,6 @@ def _course_to_response(course) -> dict:
     return data
 
 
-def _ensure_user_folder(upload_folder: str, uid: str) -> str:
-    user_folder = os.path.join(upload_folder, uid)
-    os.makedirs(user_folder, exist_ok=True)
-    return user_folder
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -179,14 +173,9 @@ def process_document():
         return jsonify({"error": "IA indisponible"}), 503
 
     try:
-        upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
-        user_folder = _ensure_user_folder(upload_folder, g.uid)
-        filepath = os.path.join(user_folder, filename)
-        file.save(filepath)
-        logger.info("File saved to: %s", filepath)
-
-        with open(filepath, "rb") as f:
-            pdf_content = f.read()
+        # Le PDF n'est pas gardé sur le disque : seul le contenu généré est
+        # conservé (évite que le dossier uploads/ grossisse sans fin).
+        pdf_content = file.read()
 
         text = extract_text_from_pdf(pdf_content)
 

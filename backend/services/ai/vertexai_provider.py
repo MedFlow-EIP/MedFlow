@@ -170,9 +170,11 @@ class VertexAIProvider(AIProvider):
               "C": "Option C",
               "D": "Option D"
             }},
-            "correct": "A"
+            "correct": "A",
+            "explanation": "Une ou deux phrases expliquant pourquoi A est la bonne réponse."
           }}
         ]
+        L'explication s'appuie sur le texte fourni et reste courte.
         Retourne UNIQUEMENT du JSON.
         """
             response = self._model().generate_content(prompt)

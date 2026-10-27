@@ -145,3 +145,51 @@ def medical_chat():
     except Exception:
         logger.exception("Erreur chat médical")
         return jsonify({"error": "Erreur interne de l'assistant"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Historique synchronisé entre appareils
+# ---------------------------------------------------------------------------
+
+@chat_bp.route("/chat/conversations", methods=["GET"])
+@require_auth
+def list_conversations():
+    """Conversations de l'utilisateur, avec leurs messages (plus récentes d'abord)."""
+    try:
+        db = current_app.db
+        conversations = []
+        for conv in db.fetch_chat_conversations(g.uid)[:50]:
+            messages = db.fetch_chat_messages(conv["conversation_id"])
+            if not messages:
+                continue
+            conversations.append({
+                "conversation_id": conv["conversation_id"],
+                "title": conv["title"],
+                "created_at": conv["created_at"],
+                "updated_at": conv["updated_at"],
+                "messages": [
+                    {
+                        "sender": m["sender"],
+                        "content": m["content"],
+                        "attachments": m["attachments"],
+                        "created_at": m["created_at"],
+                    }
+                    for m in messages
+                ],
+            })
+        return jsonify({"conversations": conversations})
+    except Exception:
+        logger.exception("Erreur liste des conversations")
+        return jsonify({"error": "Erreur interne"}), 500
+
+
+@chat_bp.route("/chat/conversations/<conversation_id>", methods=["DELETE"])
+@require_auth
+def delete_conversation(conversation_id):
+    try:
+        if not current_app.db.delete_chat_conversation(g.uid, conversation_id):
+            return jsonify({"error": "Conversation introuvable"}), 404
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur suppression conversation")
+        return jsonify({"error": "Erreur interne"}), 500

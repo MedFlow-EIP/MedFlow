@@ -1,5 +1,7 @@
 import logging
 import os
+import shutil
+import time
 
 from flask import Blueprint, current_app, g, jsonify, request, send_from_directory
 
@@ -189,6 +191,62 @@ def reset_progress():
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur reset progress")
+        return internal_error("Erreur interne")
+
+
+# Délai maximal depuis la dernière connexion pour supprimer son compte :
+# un token volé ou un téléphone déverrouillé ne suffit pas.
+RECENT_LOGIN_SECONDS = 5 * 60
+
+
+def _delete_firebase_user(uid: str) -> None:
+    """Supprime le compte Firebase (sans effet si Firebase Admin n'est pas
+    initialisé, c.-à-d. en dev/test)."""
+    import firebase_admin
+    if not firebase_admin._apps:
+        return
+    from firebase_admin import auth as fb_auth
+    try:
+        fb_auth.delete_user(uid)
+    except fb_auth.UserNotFoundError:
+        pass
+
+
+def _delete_user_files(uid: str) -> None:
+    upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
+    for ext in ALLOWED_AVATAR_EXTENSIONS:
+        path = os.path.join(upload_folder, "avatars", f"{uid}.{ext}")
+        if os.path.exists(path):
+            os.remove(path)
+    user_folder = os.path.join(upload_folder, uid)
+    if os.path.isdir(user_folder):
+        shutil.rmtree(user_folder, ignore_errors=True)
+
+
+@account_bp.route("/api/account", methods=["DELETE"])
+@require_auth
+def delete_account():
+    """Supprime définitivement le compte : Firebase, données en base et fichiers.
+    Exige une connexion récente (le mobile redemande le mot de passe ou Google)."""
+    if current_app.config.get("FIREBASE_VERIFY", True):
+        auth_time = getattr(g, "auth_time", None)
+        if not auth_time or time.time() - auth_time > RECENT_LOGIN_SECONDS:
+            return jsonify({
+                "error": "Reconnecte-toi avant de supprimer ton compte.",
+                "code": "requires_recent_login",
+            }), 401
+
+    try:
+        # Firebase d'abord : si ça échoue, les données restent intactes et
+        # l'utilisateur peut réessayer.
+        _delete_firebase_user(g.uid)
+        current_app.db.delete_user_data(g.uid)
+        _delete_user_files(g.uid)
+        current_app.extensions.get("registered_profiles", {}).pop(g.uid, None)
+        logger.info("Compte supprimé uid=%s", g.uid)
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur suppression compte")
         return internal_error("Erreur interne")
 
 

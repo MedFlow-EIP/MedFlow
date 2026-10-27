@@ -61,6 +61,10 @@ def _verify_firebase_token() -> str | None:
         # Email certifié par Firebase : seule source fiable pour la recherche
         # d'amis par email (un header pourrait être falsifié).
         g.token_email = decoded.get("email")
+        g.email_verified = bool(decoded.get("email_verified"))
+        # Date de la dernière vraie connexion (pas du rafraîchissement du token) :
+        # sert à exiger une reconnexion récente avant de supprimer le compte.
+        g.auth_time = decoded.get("auth_time")
         return decoded.get("uid")
     except Exception as e:
         logger.warning("Firebase token verification failed: %s", e)
