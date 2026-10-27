@@ -76,7 +76,7 @@ export type RootStackParamList = {
   Progress: undefined;
   Leaderboard: undefined;
   Friends: undefined;
-  Revision: { courseId?: string; startMode?: 'scheduled' | 'leeches' } | undefined;
+  Revision: { courseId?: string; startMode?: 'scheduled' | 'practice' | 'leeches' } | undefined;
   Search: undefined;
   Mastered: undefined;
   Auth: undefined;

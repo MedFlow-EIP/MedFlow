@@ -10,6 +10,7 @@ import { getAuthHeaders } from '../../utils/authHeaders';
 import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { ProgressBar } from '../ui/progress';
 import { shuffle } from '../../utils/shuffle';
+import { StateView } from '../ui/StateView';
 import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -194,90 +195,58 @@ export function RevisionScreen() {
 
   if (error) {
     return (
-      <View style={[styles.container, { paddingTop: top }]}>
-        <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={48} color={colors.muted} />
-          <Text style={styles.emptyTitle}>Impossible de charger la révision</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => load()} accessibilityRole="button" accessibilityLabel="Réessayer">
-            <Text style={styles.primaryButtonText}>Réessayer</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <StateView
+        icon="cloud-offline-outline"
+        tone="neutral"
+        title="Impossible de charger la révision"
+        subtitle="Vérifie ta connexion puis réessaie."
+        primary={{ label: 'Réessayer', onPress: () => load() }}
+        onClose={() => navigation.goBack()}
+      />
     );
   }
 
   if (items.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: top }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Retour">
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.centered}>
-          <Ionicons name="checkmark-circle-outline" size={64} color={colors.success} />
-          <Text style={styles.emptyTitle} accessibilityRole="header">
-            {mode === 'practice'
-              ? "Aucune question dans ce cours"
-              : mode === 'leeches'
-              ? "Aucune carte difficile en ce moment"
-              : "Rien à réviser aujourd'hui"}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {mode === 'practice'
-              ? "Ce cours n'a pas encore de quiz généré."
-              : mode === 'leeches'
-              ? "Bien joué — aucune carte n'a été ratée plusieurs fois d'affilée récemment."
-              : "Le planning te propose ce qui est vraiment utile à revoir maintenant."}
-          </Text>
-          {mode === 'scheduled' && (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => load('practice')}
-              accessibilityRole="button"
-              accessibilityLabel="Réviser quand même en mode libre"
-            >
-              <Text style={styles.secondaryButtonText}>Réviser quand même (mode libre)</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      <StateView
+        icon={mode === 'leeches' ? 'shield-checkmark-outline' : 'checkmark-done-outline'}
+        tone="success"
+        title={
+          mode === 'practice'
+            ? "Aucune question dans ce cours"
+            : mode === 'leeches'
+            ? "Aucune carte difficile en ce moment"
+            : "Rien à réviser aujourd'hui"
+        }
+        subtitle={
+          mode === 'practice'
+            ? "Ce cours n'a pas encore de quiz généré."
+            : mode === 'leeches'
+            ? "Bien joué — aucune carte n'a été ratée plusieurs fois d'affilée récemment."
+            : "Le planning te propose ce qui est vraiment utile à revoir maintenant."
+        }
+        primary={
+          mode === 'scheduled'
+            ? { label: 'Réviser quand même (mode libre)', onPress: () => load('practice') }
+            : undefined
+        }
+        onClose={() => navigation.goBack()}
+      />
     );
   }
 
   if (finished) {
     const scorePercent = Math.round((correctCount / items.length) * 100);
     return (
-      <View style={[styles.container, { paddingTop: top }]}>
-        <View style={styles.centered}>
-          <Ionicons name="ribbon-outline" size={64} color={colors.warning} />
-          <Text style={styles.emptyTitle} accessibilityRole="header">Session terminée !</Text>
-          <Text style={styles.emptySubtitle}>
-            {correctCount} / {items.length} bonnes réponses ({scorePercent}%)
-          </Text>
-          {mode === 'practice' && (
-            <Text style={styles.practiceHint}>
-              Mode libre — ce résultat n'affecte pas ton planning de révision.
-            </Text>
-          )}
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => load(mode)}
-            accessibilityRole="button"
-            accessibilityLabel="Recommencer"
-          >
-            <Text style={styles.primaryButtonText}>Recommencer</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-            accessibilityLabel="Terminer"
-          >
-            <Text style={styles.secondaryButtonText}>Terminer</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <StateView
+        icon="ribbon-outline"
+        tone="warning"
+        title="Session terminée !"
+        subtitle={`${correctCount} / ${items.length} bonnes réponses (${scorePercent}%)`}
+        hint={mode === 'practice' ? "Mode libre — ce résultat n'affecte pas ton planning de révision." : undefined}
+        primary={{ label: 'Terminer', onPress: () => navigation.goBack() }}
+        secondary={{ label: 'Recommencer', onPress: () => load(mode) }}
+      />
     );
   }
 
@@ -315,7 +284,23 @@ export function RevisionScreen() {
 
       <ScrollView contentContainerStyle={styles.cardArea} showsVerticalScrollIndicator={false}>
         <View style={styles.questionBlock}>
-          <Text style={styles.overline}>QUESTION {currentIndex + 1}</Text>
+          <View style={styles.overlineRow}>
+            <Text style={styles.overline}>QUESTION {currentIndex + 1}</Text>
+            {mode !== 'scheduled' && (
+              <View
+                style={[styles.modeChip, { backgroundColor: mode === 'leeches' ? colors.tintWarning : colors.surfaceAlt }]}
+              >
+                <Ionicons
+                  name={mode === 'leeches' ? 'flame-outline' : 'infinite-outline'}
+                  size={13}
+                  color={mode === 'leeches' ? colors.warningText : colors.textSecondary}
+                />
+                <Text style={[styles.modeChipText, { color: mode === 'leeches' ? colors.warningText : colors.textSecondary }]}>
+                  {mode === 'leeches' ? 'Cartes difficiles' : 'Mode libre'}
+                </Text>
+              </View>
+            )}
+          </View>
           {!!item.course_nom && <Text style={styles.courseLabel}>{item.course_nom}</Text>}
           <Text style={styles.questionText} accessibilityRole="header">{item.question}</Text>
         </View>
@@ -490,6 +475,23 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 12,
       fontWeight: '700',
       color: colors.primaryText,
+    },
+    overlineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    modeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    modeChipText: {
+      fontSize: 12,
+      fontWeight: '600',
     },
     courseLabel: {
       fontSize: 13,

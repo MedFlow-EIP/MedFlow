@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
@@ -27,6 +26,7 @@ import {
   removeOffline,
   saveOffline,
 } from '../../utils/offlineCache';
+import { appAlert } from '../../utils/appAlert';
 
 type Stats = {
   totalCourses: number;
@@ -44,6 +44,13 @@ type CourseSummary = {
 };
 
 type DueItem = { course_id: string; course_nom: string };
+
+type ForecastDay = {
+  date: string;
+  count: number;
+  /** Détail par cours (API /api/revision/forecast). */
+  courses?: { course_id: string; course_nom: string; count: number }[];
+};
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -73,7 +80,7 @@ export function DashboardScreen() {
     totalSessions: 0,
     avgScore: null,
   });
-  const [forecast, setForecast] = useState<{ date: string; count: number }[]>([]);
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [selectedDay, setSelectedDay] = useState(0);
   const [dueToday, setDueToday] = useState<DueItem[]>([]);
   const [offline, setOffline] = useState(false);
@@ -177,7 +184,7 @@ export function DashboardScreen() {
   };
 
   const confirmDeleteCourse = (course: CourseSummary) => {
-    Alert.alert('Supprimer le cours', `« ${course.nom} » et ses flashcards seront supprimés.`, [
+    appAlert('Supprimer le cours', `« ${course.nom} » et ses flashcards seront supprimés.`, [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: () => deleteCourse(course.id) },
     ]);
@@ -218,6 +225,11 @@ export function DashboardScreen() {
           .replace('.', '')
           .replace(/^./, (c) => c.toUpperCase());
   const selected = forecast[selectedDay];
+  // Aujourd'hui : cartes dues réelles (nouvelles cartes incluses). Jours à venir : prévision SM-2 par cours.
+  const selectedGroups =
+    selectedDay === 0
+      ? dueByCourse
+      : (selected?.courses ?? []).map((c) => ({ id: c.course_id, nom: c.course_nom, count: c.count }));
 
   const kpis = [
     { icon: 'document-text-outline' as const, color: colors.primaryDark, value: String(stats.totalCourses), label: 'Cours' },
@@ -346,14 +358,22 @@ export function DashboardScreen() {
                 <Text style={styles.dayTitle}>
                   {selectedDay === 0 ? 'Aujourd’hui' : dayLabel(selected.date, selectedDay)} · {plural(selected.count, 'carte')}
                 </Text>
-                {selectedDay === 0 ? (
-                  dueByCourse.map((group, i) => (
+                {selectedGroups.length === 0 ? (
+                  <Text style={styles.dayHint}>Rien de prévu ce jour-là.</Text>
+                ) : (
+                  selectedGroups.map((group, i) => (
                     <TouchableOpacity
                       key={group.id}
                       style={styles.dueRow}
-                      onPress={() => navigation.navigate('Revision', { courseId: group.id })}
+                      // Jour à venir : entraînement libre, sans avancer le planning de répétition.
+                      onPress={() =>
+                        navigation.navigate(
+                          'Revision',
+                          selectedDay === 0 ? { courseId: group.id } : { courseId: group.id, startMode: 'practice' }
+                        )
+                      }
                       accessibilityRole="button"
-                      accessibilityLabel={`Réviser ${group.nom}, ${plural(group.count, 'carte')}`}
+                      accessibilityLabel={`${selectedDay === 0 ? 'Réviser' : 'S’entraîner sur'} ${group.nom}, ${plural(group.count, 'carte')}`}
                     >
                       <View style={[styles.dueDot, { backgroundColor: courseDotColors[i % courseDotColors.length] }]} />
                       <Text style={styles.dueName}>{group.nom}</Text>
@@ -361,10 +381,9 @@ export function DashboardScreen() {
                       <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
                   ))
-                ) : (
-                  <Text style={styles.dayHint}>
-                    Le détail par cours s’affichera le jour même dans « Réviser maintenant ».
-                  </Text>
+                )}
+                {selectedDay !== 0 && selectedGroups.length > 0 && (
+                  <Text style={styles.dayHint}>Touche un cours pour t’entraîner dessus en avance.</Text>
                 )}
               </>
             )}

@@ -7,7 +7,6 @@ import {
   TextInput,
   Image,
   Switch,
-  Alert,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
@@ -20,7 +19,6 @@ import {
 } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
 import { resetTutorial } from "../../utils/firstTime";
@@ -43,6 +41,8 @@ import { getAuthHeaders } from "../../utils/authHeaders";
 import { API_URL } from "@/services/api";
 import { useTutorial } from "../../context/TutorialContext";
 import { navigationRef } from "../../navigationRef";
+import { appAlert } from '../../utils/appAlert';
+import { useScreenInsets } from '../navigation/constants';
 
 export function SettingsScreen() {
   const navigation = useNavigation();
@@ -50,6 +50,7 @@ export function SettingsScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { show: showTutorial } = useTutorial();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, bottom } = useScreenInsets();
 
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [photo, setPhoto] = useState<string | null>(user?.photoURL || null);
@@ -82,7 +83,7 @@ export function SettingsScreen() {
       }
       const granted = await enableStreakReminders(lastActivity);
       if (!granted) {
-        Alert.alert(
+        appAlert(
           "Permission refusée",
           "Active les notifications pour MedFlow dans les réglages de ton téléphone pour utiliser cette fonctionnalité."
         );
@@ -113,7 +114,7 @@ export function SettingsScreen() {
       }
       const granted = await enableRevisionReminders(dueToday);
       if (!granted) {
-        Alert.alert(
+        appAlert(
           "Permission refusée",
           "Active les notifications pour MedFlow dans les réglages de ton téléphone pour utiliser cette fonctionnalité."
         );
@@ -152,9 +153,9 @@ export function SettingsScreen() {
   const handleTestNotification = async () => {
     const sent = await sendTestNotification();
     if (sent) {
-      Alert.alert("C'est parti", "Tu devrais recevoir une notification dans 5 secondes.");
+      appAlert("C'est parti", "Tu devrais recevoir une notification dans 5 secondes.");
     } else {
-      Alert.alert(
+      appAlert(
         "Permission refusée",
         "Active les notifications pour MedFlow dans les réglages de ton téléphone."
       );
@@ -164,9 +165,9 @@ export function SettingsScreen() {
   const handleTestRevisionNotification = async () => {
     const sent = await sendTestRevisionNotification();
     if (sent) {
-      Alert.alert("C'est parti", "Tu devrais recevoir une notification de révision dans 5 secondes.");
+      appAlert("C'est parti", "Tu devrais recevoir une notification de révision dans 5 secondes.");
     } else {
-      Alert.alert(
+      appAlert(
         "Permission refusée",
         "Active les notifications pour MedFlow dans les réglages de ton téléphone."
       );
@@ -248,7 +249,7 @@ export function SettingsScreen() {
       // qui sera persistée sur le profil Firebase (photoURL).
       setPhoto(data.avatarUrl);
     } catch (e: any) {
-      Alert.alert("Erreur", "Impossible d'uploader la photo : " + e.message);
+      appAlert("Erreur", "Impossible d'uploader la photo : " + e.message);
     } finally {
       setUploadingPhoto(false);
     }
@@ -266,9 +267,9 @@ export function SettingsScreen() {
         photoURL: photo,
       });
 
-      Alert.alert("Succès", "Profil mis à jour");
+      appAlert("Succès", "Profil mis à jour");
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      appAlert("Erreur", e.message);
     } finally {
       setLoading(false);
     }
@@ -279,12 +280,12 @@ export function SettingsScreen() {
     if (!user) return;
 
     if (!isPasswordValid) {
-      Alert.alert("Erreur", "Mot de passe non valide");
+      appAlert("Erreur", "Mot de passe non valide");
       return;
     }
 
     if (!passwordsMatch) {
-      Alert.alert("Erreur", "Les mots de passe ne correspondent pas");
+      appAlert("Erreur", "Les mots de passe ne correspondent pas");
       return;
     }
 
@@ -296,9 +297,9 @@ export function SettingsScreen() {
       setNewPassword("");
       setConfirmPassword("");
 
-      Alert.alert("Succès", "Mot de passe mis à jour");
+      appAlert("Succès", "Mot de passe mis à jour");
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      appAlert("Erreur", e.message);
     } finally {
       setLoading(false);
     }
@@ -314,7 +315,7 @@ export function SettingsScreen() {
   };
 
   const handleResetProgress = () => {
-    Alert.alert(
+    appAlert(
       "Réinitialiser la progression",
       "XP, streak, leçons, badges et activité seront remis à zéro. Cette action est irréversible.",
       [
@@ -330,9 +331,9 @@ export function SettingsScreen() {
                 headers: await getAuthHeaders(user),
               });
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              Alert.alert("C'est fait", "Ta progression a été réinitialisée.");
+              appAlert("C'est fait", "Ta progression a été réinitialisée.");
             } catch (e: any) {
-              Alert.alert("Erreur", "Impossible de réinitialiser : " + e.message);
+              appAlert("Erreur", "Impossible de réinitialiser : " + e.message);
             }
           },
         },
@@ -344,125 +345,221 @@ export function SettingsScreen() {
     try {
       await signOut(auth);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      appAlert("Erreur", e.message);
     }
   };
 
+  const passwordRules = [
+    { label: "8 caractères", ok: newPassword.length >= 8 },
+    { label: "1 majuscule", ok: /[A-Z]/.test(newPassword) },
+    { label: "1 minuscule", ok: /[a-z]/.test(newPassword) },
+    { label: "1 chiffre", ok: /\d/.test(newPassword) },
+    { label: "1 caractère spécial", ok: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword) },
+  ];
+
+  const renderRow = ({
+    icon,
+    tint,
+    iconColor,
+    title,
+    subtitle,
+    onPress,
+    right,
+    danger,
+    first,
+  }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    tint: string;
+    iconColor: string;
+    title: string;
+    subtitle?: string;
+    onPress?: () => void;
+    right?: React.ReactNode;
+    danger?: boolean;
+    first?: boolean;
+  }) => {
+    const content = (
+      <>
+        <View style={[styles.rowIcon, { backgroundColor: tint }]}>
+          <Ionicons name={icon} size={20} color={iconColor} />
+        </View>
+        <View style={styles.rowText}>
+          <Text style={[styles.rowTitle, danger && { color: colors.dangerText }]}>{title}</Text>
+          {!!subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+        </View>
+        {right ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} /> : null)}
+      </>
+    );
+    return onPress ? (
+      <TouchableOpacity
+        style={[styles.row, !first && styles.rowDivider]}
+        onPress={onPress}
+        accessibilityRole="button"
+      >
+        {content}
+      </TouchableOpacity>
+    ) : (
+      <View style={[styles.row, !first && styles.rowDivider]}>{content}</View>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: top, paddingBottom: bottom + 32 }]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Retour"
           accessibilityRole="button"
         >
-          <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle} accessibilityRole="header">Réglages</Text>
+      </View>
 
-        <Text style={styles.headerTitle} accessibilityRole="header">Paramètres</Text>
+      {/* PROFIL */}
+      <View style={styles.card}>
+        <View style={styles.profileTop}>
+          <View style={styles.avatarWrapper}>
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.avatar} accessibilityLabel="Photo de profil actuelle" />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "U"}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={pickImage}
+              disabled={uploadingPhoto}
+              style={styles.editAvatarButton}
+              accessibilityRole="button"
+              accessibilityLabel="Changer la photo de profil"
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color={colors.onAction} accessibilityLabel="Envoi de la photo en cours" />
+              ) : (
+                <Ionicons name="camera" size={16} color={colors.onAction} />
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={styles.profileText}>
+            <Text style={styles.profileName} numberOfLines={1}>{user?.displayName || "Utilisateur"}</Text>
+            <Text style={styles.profileEmail} numberOfLines={1}>{user?.email}</Text>
+          </View>
+        </View>
 
-        <View style={{ width: 26 }} />
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Nom</Text>
+          <TextInput
+            value={fullName}
+            onChangeText={setFullName}
+            accessibilityLabel="Nom"
+            style={styles.input}
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Email</Text>
+          <View style={[styles.input, styles.inputDisabled]}>
+            <Text style={styles.inputDisabledText} numberOfLines={1} accessibilityLabel="Email (non modifiable)">
+              {user?.email || ""}
+            </Text>
+            <Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} />
+          </View>
+        </View>
+
+        <TouchableOpacity onPress={handleSaveProfile} style={styles.primaryButton} accessibilityRole="button">
+          <Text style={styles.primaryButtonText}>Sauvegarder</Text>
+        </TouchableOpacity>
       </View>
 
       {/* APPARENCE */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Apparence</Text>
-        <View style={styles.appearanceToggle}>
-          {(
-            [
-              { key: 'system', label: 'Système', icon: 'phone-portrait-outline' },
-              { key: 'light', label: 'Clair', icon: 'sunny-outline' },
-              { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
-            ] as const
-          ).map((option) => {
-            const active = preference === option.key;
-            return (
-              <TouchableOpacity
-                key={option.key}
-                onPress={() => setPreference(option.key)}
-                style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
-              >
-                <Ionicons
-                  name={option.icon}
-                  size={16}
-                  color={active ? colors.primary : colors.textSecondary}
-                />
-                <Text style={[styles.appearanceText, active && styles.appearanceTextActive]}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* AIDE */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Aide</Text>
-        <TouchableOpacity onPress={handleReplayTutorial} style={styles.replayButton}>
-          <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.replayButtonText}>Revoir le tutoriel</Text>
-        </TouchableOpacity>
+      <Text style={styles.sectionLabel}>Apparence</Text>
+      <View style={styles.appearanceToggle} accessibilityRole="radiogroup">
+        {(
+          [
+            { key: 'system', label: 'Système', icon: 'phone-portrait-outline' },
+            { key: 'light', label: 'Clair', icon: 'sunny-outline' },
+            { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
+          ] as const
+        ).map((option) => {
+          const active = preference === option.key;
+          return (
+            <TouchableOpacity
+              key={option.key}
+              onPress={() => setPreference(option.key)}
+              style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: active }}
+            >
+              <Ionicons name={option.icon} size={16} color={active ? colors.primaryText : colors.textSecondary} />
+              <Text style={[styles.appearanceText, active && styles.appearanceTextActive]}>{option.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* NOTIFICATIONS */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Notifications</Text>
-        <View style={styles.notifRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.notifTitle}>Rappels de streak</Text>
-            <Text style={styles.notifSubtitle}>
-              Un rappel le soir si tu n'as pas encore révisé
-            </Text>
-          </View>
-          <Switch
-            value={streakRemindersOn}
-            onValueChange={handleToggleStreakReminders}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            accessibilityLabel="Rappels de série"
-            accessibilityRole="switch"
-            accessibilityState={{ checked: streakRemindersOn }}
-          />
-        </View>
-
-        <View style={styles.notifRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.notifTitle}>Rappels de révision</Text>
-            <Text style={styles.notifSubtitle}>
-              Un rappel à {reminderHour}h avec le nombre de cartes à réviser
-            </Text>
-          </View>
-          <Switch
-            value={revisionRemindersOn}
-            onValueChange={handleToggleRevisionReminders}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            accessibilityLabel="Rappels de révision"
-            accessibilityRole="switch"
-            accessibilityState={{ checked: revisionRemindersOn }}
-          />
-        </View>
-
+      <Text style={styles.sectionLabel}>Notifications</Text>
+      <View style={styles.listCard}>
+        {renderRow({
+          first: true,
+          icon: 'flame-outline',
+          tint: colors.tintWarning,
+          iconColor: colors.warning,
+          title: 'Rappels de streak',
+          subtitle: "Un rappel le soir si tu n'as pas encore révisé",
+          right: (
+            <Switch
+              value={streakRemindersOn}
+              onValueChange={handleToggleStreakReminders}
+              trackColor={{ false: colors.border, true: colors.action }}
+              thumbColor="#ffffff"
+              accessibilityLabel="Rappels de série"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: streakRemindersOn }}
+            />
+          ),
+        })}
+        {renderRow({
+          icon: 'school-outline',
+          tint: colors.tintPrimary,
+          iconColor: colors.primaryDark,
+          title: 'Rappels de révision',
+          subtitle: `Un rappel à ${reminderHour}h avec le nombre de cartes à réviser`,
+          right: (
+            <Switch
+              value={revisionRemindersOn}
+              onValueChange={handleToggleRevisionReminders}
+              trackColor={{ false: colors.border, true: colors.action }}
+              thumbColor="#ffffff"
+              accessibilityLabel="Rappels de révision"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: revisionRemindersOn }}
+            />
+          ),
+        })}
         {revisionRemindersOn && (
           <View style={styles.hourPickerRow}>
             {[7, 9, 12, 18, 21].map((hour) => (
               <TouchableOpacity
                 key={hour}
                 onPress={() => handleSelectReminderHour(hour)}
-                style={[
-                  styles.hourChip,
-                  reminderHour === hour && styles.hourChipActive,
-                ]}
+                style={[styles.hourChip, reminderHour === hour && styles.hourChipActive]}
                 accessibilityRole="button"
                 accessibilityLabel={`Rappel à ${hour} heures`}
                 accessibilityState={{ selected: reminderHour === hour }}
               >
-                <Text
-                  style={[
-                    styles.hourChipText,
-                    reminderHour === hour && styles.hourChipTextActive,
-                  ]}
-                >
+                <Text style={[styles.hourChipText, reminderHour === hour && styles.hourChipTextActive]}>
                   {hour}h
                 </Text>
               </TouchableOpacity>
@@ -471,197 +568,100 @@ export function SettingsScreen() {
         )}
       </View>
 
-      {/* DEBUG */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Debug</Text>
-        <TouchableOpacity onPress={handleResetProgress} style={styles.debugButton}>
-          <Ionicons name="refresh-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.debugButtonText}>Réinitialiser XP / progression</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleTestNotification}
-          style={[styles.debugButton, { marginTop: 10, backgroundColor: colors.tintPrimary }]}
-        >
-          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-          <Text style={[styles.debugButtonText, { color: colors.primary }]}>
-            Tester une notification (5s)
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleTestRevisionNotification}
-          style={[styles.debugButton, { marginTop: 10, backgroundColor: colors.tintWarning }]}
-        >
-          <Ionicons name="school-outline" size={20} color={colors.warning} />
-          <Text style={[styles.debugButtonText, { color: colors.warning }]}>
-            Tester une notification de révision (5s)
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* PROFILE CARD */}
-      <View style={styles.profileCenter}>
-        <View style={styles.avatarWrapper}>
-          {photo ? (
-            <Image
-              source={{ uri: photo }}
-              style={styles.avatar}
-              accessibilityLabel="Photo de profil actuelle"
-            />
-          ) : (
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              style={styles.avatar}
-            >
-              <Text style={styles.avatarText}>
-                {user?.displayName
-                  ? user.displayName.charAt(0).toUpperCase()
-                  : "U"}
-              </Text>
-            </LinearGradient>
-          )}
-
-          <TouchableOpacity
-            onPress={pickImage}
-            disabled={uploadingPhoto}
-            style={styles.editAvatarButton}
-          >
-            {uploadingPhoto ? (
-              <ActivityIndicator size="small" color={colors.onAccent} accessibilityLabel="Envoi de la photo en cours" />
-            ) : (
-              <Ionicons name="camera" size={16} color={colors.onAccent} />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.formSection}>
-        <Text style={styles.fieldLabel}>Nom</Text>
+      {/* SÉCURITÉ */}
+      <Text style={styles.sectionLabel}>Sécurité</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Changer de mot de passe</Text>
         <TextInput
-          value={fullName}
-          onChangeText={setFullName}
-          accessibilityLabel="Nom"
+          placeholder="Nouveau mot de passe"
+          placeholderTextColor={colors.textSecondary}
+          accessibilityLabel="Nouveau mot de passe"
+          secureTextEntry
+          value={newPassword}
+          onChangeText={setNewPassword}
           style={styles.input}
-          placeholderTextColor={colors.muted}
         />
-
-        <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Email</Text>
         <TextInput
-          value={user?.email || ""}
-          editable={false}
-          accessibilityLabel="Email (non modifiable)"
-          style={styles.inputDisabled}
+          placeholder="Confirmer le mot de passe"
+          placeholderTextColor={colors.textSecondary}
+          accessibilityLabel="Confirmer le nouveau mot de passe"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          style={styles.input}
         />
 
-        <TouchableOpacity onPress={handleSaveProfile} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Sauvegarder</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* SECURITY */}
-      <View style={styles.section}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sécurité</Text>
-
-          <TextInput
-            placeholder="Nouveau mot de passe"
-            placeholderTextColor={colors.muted}
-            accessibilityLabel="Nouveau mot de passe"
-            secureTextEntry
-            value={newPassword}
-            onChangeText={setNewPassword}
-            style={[styles.input, { marginBottom: 10 }]}
-          />
-
-          <TextInput
-            placeholder="Confirmer le mot de passe"
-            placeholderTextColor={colors.muted}
-            accessibilityLabel="Confirmer le nouveau mot de passe"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            style={styles.input}
-          />
-
-          {/* PASSWORD RULES */}
-          <View style={{ marginTop: 10 }}>
-            {[
-              { label: "8 caractères", ok: newPassword.length >= 8 },
-              { label: "1 majuscule", ok: /[A-Z]/.test(newPassword) },
-              { label: "1 minuscule", ok: /[a-z]/.test(newPassword) },
-              { label: "1 chiffre", ok: /\d/.test(newPassword) },
-              {
-                label: "1 caractère spécial",
-                ok: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
-              },
-            ].map((r, i) => (
-              <View key={i} style={styles.ruleRow}>
-                <Ionicons
-                  name={r.ok ? "checkmark-circle" : "close-circle"}
-                  size={18}
-                  color={r.ok ? colors.success : colors.danger}
-                />
-                <Text style={styles.ruleText}>{r.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            onPress={handleUpdatePassword}
-            style={[
-              styles.successButton,
-              !(isPasswordValid && passwordsMatch) && styles.buttonDisabled,
-            ]}
-            disabled={!isPasswordValid || !passwordsMatch}
-          >
-            <Text style={styles.successButtonText}>
-              Mettre à jour le mot de passe
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.rules}>
+          {passwordRules.map((r) => (
+            <View key={r.label} style={[styles.ruleChip, { backgroundColor: r.ok ? colors.tintSuccess : colors.surfaceAlt }]}>
+              <Ionicons
+                name={r.ok ? "checkmark-circle" : "ellipse-outline"}
+                size={14}
+                color={r.ok ? colors.successText : colors.textSecondary}
+              />
+              <Text style={[styles.ruleText, { color: r.ok ? colors.successText : colors.textSecondary }]}>{r.label}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* APP SETTINGS */}
-        {/* <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Application
-          </Text> */}
-
-          {/* DARK MODE */}
-          {/* <View style={styles.row}>
-            <Text style={{ color: colors.textPrimary }}>Mode sombre</Text>
-            <Switch value={darkMode} onValueChange={setDarkMode} />
-          </View> */}
-
-          {/* NOTIFICATIONS */}
-          {/* <View style={styles.row}>
-            <Text style={{ color: colors.textPrimary }}>Notifications</Text>
-            <Switch value={notifications} onValueChange={setNotifications} />
-          </View>
-        </View> */}
-
-        {/* SUBSCRIPTION */}
-        {/* <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Abonnement
-          </Text>
-
-          <Text style={{ marginTop: 6, color: colors.textSecondary }}>
-            Plan actuel : Gratuit
-          </Text>
-
-          <TouchableOpacity style={styles.premiumButton}>
-            <Text style={styles.primaryButtonText}>
-              Passer en Premium
-            </Text>
-          </TouchableOpacity>
-        </View> */}
-
-        {/* LOGOUT */}
-        <TouchableOpacity onPress={handleLogout} style={styles.dangerButton}>
-          <Text style={styles.primaryButtonText}>Se déconnecter</Text>
+        <TouchableOpacity
+          onPress={handleUpdatePassword}
+          style={[styles.primaryButton, !(isPasswordValid && passwordsMatch) && styles.buttonDisabled]}
+          disabled={!isPasswordValid || !passwordsMatch}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !isPasswordValid || !passwordsMatch }}
+        >
+          <Text style={styles.primaryButtonText}>Mettre à jour le mot de passe</Text>
         </TouchableOpacity>
       </View>
+
+      {/* AIDE */}
+      <Text style={styles.sectionLabel}>Aide</Text>
+      <View style={styles.listCard}>
+        {renderRow({
+          first: true,
+          icon: 'play-circle-outline',
+          tint: colors.tintPrimary,
+          iconColor: colors.primaryDark,
+          title: 'Revoir le tutoriel',
+          onPress: handleReplayTutorial,
+        })}
+      </View>
+
+      {/* AVANCÉ */}
+      <Text style={styles.sectionLabel}>Avancé</Text>
+      <View style={styles.listCard}>
+        {renderRow({
+          first: true,
+          icon: 'notifications-outline',
+          tint: colors.tintPrimary,
+          iconColor: colors.primaryDark,
+          title: 'Tester une notification (5s)',
+          onPress: handleTestNotification,
+        })}
+        {renderRow({
+          icon: 'school-outline',
+          tint: colors.tintWarning,
+          iconColor: colors.warning,
+          title: 'Tester une notification de révision (5s)',
+          onPress: handleTestRevisionNotification,
+        })}
+        {renderRow({
+          icon: 'refresh-circle-outline',
+          tint: colors.tintDanger,
+          iconColor: colors.danger,
+          title: 'Réinitialiser XP / progression',
+          subtitle: 'XP, série, leçons et badges remis à zéro',
+          onPress: handleResetProgress,
+          danger: true,
+        })}
+      </View>
+
+      {/* DÉCONNEXION */}
+      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} accessibilityRole="button">
+        <Ionicons name="log-out-outline" size={20} color={colors.dangerText} />
+        <Text style={styles.logoutText}>Se déconnecter</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -672,291 +672,276 @@ function makeStyles(colors: ThemeColors) {
       flex: 1,
       backgroundColor: colors.background,
     },
-
+    content: {
+      paddingHorizontal: 20,
+      gap: 12,
+    },
     header: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      padding: 20,
-      paddingTop: 40,
+      gap: 12,
+      marginBottom: 8,
     },
-
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     headerTitle: {
+      flex: 1,
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginTop: 12,
+      marginLeft: 4,
+    },
+    card: {
+      gap: 14,
+      padding: 18,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    listCard: {
+      paddingHorizontal: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      minHeight: 64,
+      paddingVertical: 12,
+    },
+    rowDivider: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    rowIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowText: {
+      flex: 1,
+      gap: 2,
+    },
+    rowTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    rowSubtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    profileTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+    },
+    avatarWrapper: {
+      width: 72,
+      height: 72,
+    },
+    avatar: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+    },
+    avatarPlaceholder: {
+      backgroundColor: colors.warning,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarText: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: "#ffffff",
+    },
+    editAvatarButton: {
+      position: "absolute",
+      right: -4,
+      bottom: -4,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      borderWidth: 3,
+      borderColor: colors.surface,
+      backgroundColor: colors.action,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    profileText: {
+      flex: 1,
+      gap: 2,
+    },
+    profileName: {
       fontSize: 18,
       fontWeight: "700",
       color: colors.textPrimary,
     },
-
-    section: {
-      padding: 20,
-      paddingTop: 0,
-    },
-
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '600',
+    profileEmail: {
+      fontSize: 14,
       color: colors.textSecondary,
-      marginBottom: 8,
-      textTransform: 'uppercase',
     },
-
+    field: {
+      gap: 6,
+    },
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    input: {
+      minHeight: 50,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+    inputDisabled: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.surfaceAlt,
+    },
+    inputDisabledText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    primaryButton: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: colors.action,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.onAction,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    rules: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    ruleChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    ruleText: {
+      fontSize: 12,
+      fontWeight: "600",
+    },
     appearanceToggle: {
       flexDirection: 'row',
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: 12,
-      padding: 4,
       gap: 4,
+      padding: 4,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceAlt,
     },
-
     appearanceOption: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      paddingVertical: 10,
-      borderRadius: 9,
-      backgroundColor: 'transparent',
+      minHeight: 44,
+      borderRadius: 11,
     },
-
     appearanceOptionActive: {
       backgroundColor: colors.surface,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 2,
     },
-
     appearanceText: {
-      fontSize: 13,
-      fontWeight: '400',
+      fontSize: 14,
+      fontWeight: '500',
       color: colors.textSecondary,
     },
-
     appearanceTextActive: {
       fontWeight: '600',
-      color: colors.textPrimary,
-    },
-
-    replayButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      padding: 14,
-    },
-
-    replayButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-
-    debugButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      backgroundColor: colors.tintDanger,
-      borderRadius: 12,
-      padding: 14,
-    },
-
-    debugButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.danger,
-    },
-
-    notifRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      padding: 14,
-      gap: 12,
-    },
-
-    notifTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-
-    notifSubtitle: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 2,
+      color: colors.primaryText,
     },
     hourPickerRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 8,
-      paddingTop: 4,
-      paddingBottom: 8,
+      paddingBottom: 14,
+      marginTop: -2,
     },
     hourChip: {
       flex: 1,
-      paddingVertical: 8,
-      borderRadius: 10,
-      alignItems: 'center',
+      minHeight: 40,
+      borderRadius: 12,
       backgroundColor: colors.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
     },
     hourChipActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
     },
     hourChipText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
     },
     hourChipTextActive: {
-      color: colors.onAccent,
+      color: colors.onAction,
     },
-
-    profileCenter: {
-      alignItems: "center",
-      marginBottom: 16,
-    },
-
-    avatar: {
-      width: 90,
-      height: 90,
-      borderRadius: 45,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    avatarText: {
-      fontSize: 34,
-      fontWeight: "700",
-      color: colors.onAccent,
-    },
-
-    avatarWrapper: {
-      position: "relative",
-    },
-
-    editAvatarButton: {
-      position: "absolute",
-      bottom: 0,
-      right: 0,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 2,
-      borderColor: colors.background,
-    },
-
-    formSection: {
-      padding: 20,
-      paddingTop: 0,
-    },
-
-    fieldLabel: {
-      color: colors.textPrimary,
-    },
-
-    input: {
-      backgroundColor: colors.surfaceAlt,
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 6,
-      color: colors.textPrimary,
-    },
-
-    inputDisabled: {
-      backgroundColor: colors.surfaceAlt,
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 6,
-      color: colors.textSecondary,
-      opacity: 0.7,
-    },
-
-    primaryButton: {
-      backgroundColor: colors.primary,
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 12,
-    },
-
-    primaryButtonText: {
-      color: colors.onAccent,
-      textAlign: "center",
-      fontWeight: "600",
-    },
-
-    card: {
-      backgroundColor: colors.surface,
-      padding: 16,
-      borderRadius: 16,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-
-    cardTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      marginBottom: 10,
-      color: colors.textPrimary,
-    },
-
-    ruleRow: {
+    logoutButton: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: 4,
+      justifyContent: "center",
+      gap: 10,
+      height: 52,
+      marginTop: 16,
+      borderRadius: 14,
+      backgroundColor: colors.tintDanger,
     },
-
-    ruleText: {
-      marginLeft: 8,
-      color: colors.textSecondary,
-    },
-
-    successButton: {
-      backgroundColor: colors.success,
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 12,
-    },
-
-    successButtonText: {
-      color: colors.onAccent,
-      textAlign: "center",
+    logoutText: {
+      fontSize: 16,
       fontWeight: "600",
-    },
-
-    buttonDisabled: {
-      backgroundColor: colors.muted,
-    },
-
-    dangerButton: {
-      backgroundColor: colors.danger,
-      padding: 14,
-      borderRadius: 12,
-    },
-
-    premiumButton: {
-      backgroundColor: colors.secondary,
-      padding: 14,
-      borderRadius: 12,
-      marginTop: 10,
-    },
-
-    link: {
-      color: colors.primary,
-      marginTop: 8,
-      fontWeight: "500",
-    },
-
-    row: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: 10,
+      color: colors.dangerText,
     },
   });
 }

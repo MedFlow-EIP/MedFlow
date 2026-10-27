@@ -132,7 +132,8 @@ describe('MasteredScreen — affichage des cartes maîtrisées', () => {
     render(<MasteredScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('Revient dans 30 jours · 6 bonnes réponses de suite')).toBeTruthy();
+      expect(screen.getByText('Dans 30 j')).toBeTruthy();
+      expect(screen.getByText('6× de suite')).toBeTruthy();
     });
   });
 
