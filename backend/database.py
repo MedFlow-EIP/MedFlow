@@ -542,6 +542,22 @@ class Database:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_exams_uid_date ON exams(uid, exam_date)")
 
+            # Examens blancs : questions tirées au départ, corrigées à la remise.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS mock_exams (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    questions TEXT NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    started_at TEXT NOT NULL,
+                    finished_at TEXT,
+                    score INTEGER,
+                    total INTEGER
+                )
+                """
+            )
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """

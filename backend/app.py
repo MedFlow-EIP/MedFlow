@@ -52,6 +52,7 @@ def create_app(config=None):
     from routes.friends import friends_bp
     from routes.exams import exams_bp
     from routes.quests import quests_bp
+    from routes.mock_exam import mock_exam_bp
     from services.ai import get_ai_provider
 
     app = Flask(__name__)
@@ -117,6 +118,7 @@ def create_app(config=None):
     app.register_blueprint(friends_bp)
     app.register_blueprint(exams_bp)
     app.register_blueprint(quests_bp)
+    app.register_blueprint(mock_exam_bp)
 
     # ------------------------------------------------------------------
     # Swagger / OpenAPI docs at /api/docs

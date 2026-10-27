@@ -440,7 +440,17 @@ export function AccountScreen() {
                     ]}
                   >
                     <Ionicons
-                      name={isBadge ? "trophy" : item.type.startsWith("streak_freeze") ? "shield-checkmark" : isQuest ? "flag" : "school"}
+                      name={
+                        isBadge
+                          ? "trophy"
+                          : item.type.startsWith("streak_freeze")
+                          ? "shield-checkmark"
+                          : item.type === "mock_exam"
+                          ? "timer"
+                          : isQuest
+                          ? "flag"
+                          : "school"
+                      }
                       size={22}
                       color={isBadge ? colors.warning : isQuest ? colors.success : colors.primaryDark}
                     />
