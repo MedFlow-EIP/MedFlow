@@ -232,7 +232,7 @@ export function UploadCourseScreen() {
           <>
             <View style={styles.savedBanner} accessibilityLiveRegion="polite">
               <View style={styles.savedIcon}>
-                <Ionicons name="checkmark" size={16} color="#ffffff" />
+                <Ionicons name="checkmark" size={16} color={colors.onAction} />
               </View>
               <View style={styles.savedText}>
                 <Text style={styles.savedTitle}>Cours enregistré</Text>

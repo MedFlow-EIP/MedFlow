@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { ProgressBar } from '../ui/progress';
 import { Ionicons } from '@expo/vector-icons';
@@ -119,12 +119,31 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
     }
   };
 
-  const quit = () => {
-    appAlert('Quitter la leçon ?', 'Ta progression dans cette leçon ne sera pas enregistrée.', [
-      { text: 'Rester', style: 'cancel' },
-      { text: 'Quitter', style: 'destructive', onPress: () => navigation.goBack() },
-    ]);
-  };
+  // Toute sortie en cours de leçon (croix, bouton retour Android, geste iOS)
+  // passe par cette confirmation ; l'écran de résultats sort librement.
+  const leavingAllowed = useRef(false);
+  leavingAllowed.current = showResults;
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener?.('beforeRemove', (e: any) => {
+      if (leavingAllowed.current) return;
+      e.preventDefault();
+      appAlert('Quitter la leçon ?', 'Ta progression dans cette leçon ne sera pas enregistrée.', [
+        { text: 'Rester', style: 'cancel' },
+        {
+          text: 'Quitter',
+          style: 'destructive',
+          onPress: () => {
+            leavingAllowed.current = true;
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const quit = () => navigation.goBack();
 
   const handleFinish = () => {
     navigation.goBack();

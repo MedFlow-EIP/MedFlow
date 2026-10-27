@@ -51,7 +51,7 @@ describe('ProgressScreen — pas d\'utilisateur connecté', () => {
     render(<ProgressScreen />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Votre progression')).toBeTruthy();
+      expect(screen.queryByText('Ta progression')).toBeTruthy();
     });
     // Aucun appel réseau ne doit avoir été tenté sans utilisateur.
     expect(global.fetch).not.toHaveBeenCalled();

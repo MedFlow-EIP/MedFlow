@@ -42,7 +42,7 @@ const DEBOUNCE_MS = 350;
 export function SearchScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { top: insetTop } = useScreenInsets();
+  const { top: insetTop, bottom: insetBottom } = useScreenInsets();
   const navigation = useNavigation<any>();
 
   const [query, setQuery] = useState('');
@@ -131,10 +131,12 @@ export function SearchScreen() {
       <FlatList
         data={groupedResults}
         keyExtractor={(g) => g.course_id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insetBottom + 16 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         renderItem={({ item: group }) => (
           <View style={styles.courseGroup}>
-            <Text style={styles.courseGroupTitle}>{group.course_nom}</Text>
+            <Text style={styles.courseGroupTitle} numberOfLines={2}>{group.course_nom}</Text>
             {group.items.map((r, idx) => (
               <TouchableOpacity
                 key={`${r.match_type}-${r.item_index ?? 'name'}-${idx}`}

@@ -17,6 +17,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { AvatarBubble } from '../../components/AvatarBubble';
 import { useScreenInsets } from '../navigation/constants';
+import { appAlert } from '../../utils/appAlert';
 
 type SearchResult = {
   uid: string;
@@ -42,7 +43,7 @@ type PendingRequest = {
 export function FriendsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { top: insetTop } = useScreenInsets();
+  const { top: insetTop, bottom: insetBottom } = useScreenInsets();
   const navigation = useNavigation();
 
   const [query, setQuery] = useState('');
@@ -153,13 +154,20 @@ export function FriendsScreen() {
     }
   };
 
+  const confirmRemoveFriend = (targetUid: string, name: string) => {
+    appAlert('Retirer cet ami ?', `${name} ne sera plus dans ta liste d'amis ni dans ton classement entre amis.`, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Retirer', style: 'destructive', onPress: () => removeFriend(targetUid) },
+    ]);
+  };
+
   const renderSearchButton = (result: SearchResult) => {
     switch (result.friendshipStatus) {
       case 'friends':
         return (
           <View style={styles.statusPill}>
-            <Ionicons name="checkmark" size={14} color={colors.success} />
-            <Text style={[styles.statusPillText, { color: colors.success }]}>Ami</Text>
+            <Ionicons name="checkmark" size={14} color={colors.successText} />
+            <Text style={[styles.statusPillText, { color: colors.successText }]}>Ami</Text>
           </View>
         );
       case 'request_sent':
@@ -173,13 +181,20 @@ export function FriendsScreen() {
           <TouchableOpacity
             style={styles.smallAcceptButton}
             onPress={() => respondRequest(result.uid, true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Accepter la demande de ${result.displayName}`}
           >
             <Text style={styles.smallAcceptButtonText}>Accepter</Text>
           </TouchableOpacity>
         );
       default:
         return (
-          <TouchableOpacity style={styles.addButton} onPress={() => sendRequest(result.uid)}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => sendRequest(result.uid)}
+            accessibilityRole="button"
+            accessibilityLabel={`Ajouter ${result.displayName} en ami`}
+          >
             <Ionicons name="person-add" size={16} color={colors.primary} />
           </TouchableOpacity>
         );
@@ -218,7 +233,7 @@ export function FriendsScreen() {
         <FlatList
           data={searchResults}
           keyExtractor={(item) => item.uid}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insetBottom + 16 }]}
           ListEmptyComponent={
             !searching ? <Text style={styles.emptyText}>Aucun résultat</Text> : null
           }
@@ -226,7 +241,7 @@ export function FriendsScreen() {
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <AvatarBubble uri={item.avatarUrl} displayName={item.displayName} size={34} />
-                <Text style={styles.rowName}>{item.displayName}</Text>
+                <Text style={styles.rowName} numberOfLines={1}>{item.displayName}</Text>
               </View>
               {renderSearchButton(item)}
             </View>
@@ -241,7 +256,7 @@ export function FriendsScreen() {
           data={[]}
           keyExtractor={() => 'x'}
           renderItem={null}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insetBottom + 16 }]}
           ListHeaderComponent={
             <>
               {received.length > 0 && (
@@ -251,18 +266,22 @@ export function FriendsScreen() {
                     <View key={r.uid} style={styles.row}>
                       <View style={styles.rowLeft}>
                         <AvatarBubble uri={r.avatarUrl} displayName={r.displayName} size={34} />
-                        <Text style={styles.rowName}>{r.displayName}</Text>
+                        <Text style={styles.rowName} numberOfLines={1}>{r.displayName}</Text>
                       </View>
                       <View style={styles.requestActions}>
                         <TouchableOpacity
                           style={styles.smallAcceptButton}
                           onPress={() => respondRequest(r.uid, true)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Accepter la demande de ${r.displayName}`}
                         >
                           <Text style={styles.smallAcceptButtonText}>Accepter</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.smallDeclineButton}
                           onPress={() => respondRequest(r.uid, false)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Refuser la demande de ${r.displayName}`}
                         >
                           <Ionicons name="close" size={16} color={colors.danger} />
                         </TouchableOpacity>
@@ -279,7 +298,7 @@ export function FriendsScreen() {
                     <View key={s.uid} style={styles.row}>
                       <View style={styles.rowLeft}>
                         <AvatarBubble uri={s.avatarUrl} displayName={s.displayName} size={34} />
-                        <Text style={styles.rowName}>{s.displayName}</Text>
+                        <Text style={styles.rowName} numberOfLines={1}>{s.displayName}</Text>
                       </View>
                       <View style={styles.statusPill}>
                         <Text style={styles.statusPillText}>En attente</Text>
@@ -302,14 +321,19 @@ export function FriendsScreen() {
                     <View key={f.uid} style={styles.row}>
                       <View style={styles.rowLeft}>
                         <AvatarBubble uri={f.avatarUrl} displayName={f.displayName} size={34} />
-                        <View>
-                          <Text style={styles.rowName}>{f.displayName}</Text>
+                        <View style={styles.rowTexts}>
+                          <Text style={styles.rowName} numberOfLines={1}>{f.displayName}</Text>
                           <Text style={styles.rowSubtext}>
                             {f.xp} XP · {f.streak}j de série
                           </Text>
                         </View>
                       </View>
-                      <TouchableOpacity onPress={() => removeFriend(f.uid)} hitSlop={8}>
+                      <TouchableOpacity
+                        onPress={() => confirmRemoveFriend(f.uid, f.displayName)}
+                        style={styles.removeButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Retirer ${f.displayName} de tes amis`}
+                      >
                         <Ionicons name="person-remove-outline" size={20} color={colors.danger} />
                       </TouchableOpacity>
                     </View>
@@ -397,16 +421,29 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: 12,
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
       paddingVertical: 12,
       paddingHorizontal: 14,
       marginBottom: 8,
     },
     rowName: {
+      flexShrink: 1,
       fontSize: 15,
       fontWeight: '600',
       color: colors.textPrimary,
+    },
+    rowTexts: {
+      flex: 1,
+    },
+    removeButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     rowLeft: {
       flexDirection: 'row',
@@ -426,9 +463,9 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 12,
     },
     addButton: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: colors.tintPrimary,
       alignItems: 'center',
       justifyContent: 'center',
@@ -454,8 +491,9 @@ function makeStyles(colors: ThemeColors) {
     },
     smallAcceptButton: {
       backgroundColor: colors.action,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
+      minHeight: 36,
+      justifyContent: 'center',
+      paddingHorizontal: 14,
       borderRadius: 10,
     },
     smallAcceptButtonText: {
@@ -464,9 +502,9 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '700',
     },
     smallDeclineButton: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: colors.tintDanger,
       alignItems: 'center',
       justifyContent: 'center',

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
+  ScrollView,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -29,7 +30,7 @@ type ProgressData = {
 export function ProgressScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { top: insetTop } = useScreenInsets();
+  const { top: insetTop, bottom: insetBottom } = useScreenInsets();
   const navigation = useNavigation();
 
   const [data, setData] = useState<ProgressData | null>(null);
@@ -104,7 +105,7 @@ export function ProgressScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title} accessibilityRole="header">Votre progression</Text>
+            <Text style={styles.title} accessibilityRole="header">Ta progression</Text>
             <Text style={styles.subtitle}>Suivi de tes leçons et de ton XP</Text>
           </View>
         </View>
@@ -156,7 +157,10 @@ export function ProgressScreen() {
       )}
 
       {!loading && !error && data && data.totalLessons > 0 && (
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insetBottom + 16 }]}
+          showsVerticalScrollIndicator={false}
+        >
           <ProgressDashboard
             totalLessons={data.totalLessons}
             completedLessons={data.completedLessons}
@@ -165,7 +169,7 @@ export function ProgressScreen() {
             weeklyGoal={data.weeklyGoal}
             weeklyProgress={data.weeklyProgress}
           />
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -206,6 +210,9 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
       color: colors.textSecondary,
       marginTop: 4,
+    },
+    scrollContent: {
+      padding: 20,
     },
     content: {
       flex: 1,

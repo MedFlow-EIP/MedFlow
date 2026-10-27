@@ -30,7 +30,7 @@ type Mode = 'global' | 'friends';
 export function LeaderboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { top: insetTop } = useScreenInsets();
+  const { top: insetTop, bottom: insetBottom } = useScreenInsets();
   const navigation = useNavigation();
 
   const [mode, setMode] = useState<Mode>('global');
@@ -97,7 +97,11 @@ export function LeaderboardScreen() {
     const isYou = item.uid === yourUid;
 
     return (
-      <View style={[styles.row, isYou && styles.rowHighlight]}>
+      <View
+        style={[styles.row, isYou && styles.rowHighlight]}
+        accessible
+        accessibilityLabel={`${position}e : ${item.displayName}${isYou ? ' (toi)' : ''}, ${item.xp} XP, série de ${item.streak} jours`}
+      >
         <View style={styles.rankContainer}>
           {position <= 3 ? (
             <Ionicons name="trophy" size={20} color={getRankColor(position)} />
@@ -147,6 +151,8 @@ export function LeaderboardScreen() {
           onPress={() => navigation.navigate('Friends' as never)}
           style={styles.backButton}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Gérer mes amis"
         >
           <Ionicons name="people-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -156,11 +162,14 @@ export function LeaderboardScreen() {
         <TouchableOpacity
           style={[styles.toggleOption, mode === 'global' && styles.toggleOptionActive]}
           onPress={() => setMode('global')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'global' }}
+          accessibilityLabel="Classement global"
         >
           <Ionicons
             name="earth"
             size={16}
-            color={mode === 'global' ? colors.primary : colors.textSecondary}
+            color={mode === 'global' ? colors.primaryText : colors.textSecondary}
           />
           <Text style={[styles.toggleText, mode === 'global' && styles.toggleTextActive]}>
             Global
@@ -169,11 +178,14 @@ export function LeaderboardScreen() {
         <TouchableOpacity
           style={[styles.toggleOption, mode === 'friends' && styles.toggleOptionActive]}
           onPress={() => setMode('friends')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'friends' }}
+          accessibilityLabel="Classement amis"
         >
           <Ionicons
             name="people"
             size={16}
-            color={mode === 'friends' ? colors.primary : colors.textSecondary}
+            color={mode === 'friends' ? colors.primaryText : colors.textSecondary}
           />
           <Text style={[styles.toggleText, mode === 'friends' && styles.toggleTextActive]}>
             Amis
@@ -229,12 +241,15 @@ export function LeaderboardScreen() {
             data={entries}
             keyExtractor={(item) => item.uid}
             renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: (!youAreInTopList && yourRank !== null ? 16 : insetBottom + 16) },
+            ]}
             showsVerticalScrollIndicator={false}
           />
 
           {!youAreInTopList && yourRank !== null && (
-            <View style={styles.yourRankBar}>
+            <View style={[styles.yourRankBar, { paddingBottom: insetBottom + 12 }]}>
               <Text style={styles.yourRankText}>
                 Ta position : #{yourRank}
               </Text>
@@ -333,6 +348,8 @@ function makeStyles(colors: ThemeColors) {
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 10,
+      minHeight: 44,
+      justifyContent: 'center',
     },
     retryText: {
       color: colors.onAction,

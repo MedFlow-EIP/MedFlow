@@ -584,7 +584,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 38,
       fontWeight: "700",
-      color: "#ffffff",
+      color: colors.onAction,
     },
 
     cameraBadge: {
@@ -704,7 +704,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     friendsBadgeText: {
-      color: "#ffffff",
+      color: colors.onAction,
       fontSize: 12,
       fontWeight: "700",
     },
