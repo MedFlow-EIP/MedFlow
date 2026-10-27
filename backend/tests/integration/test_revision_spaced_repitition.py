@@ -521,6 +521,23 @@ class TestRevisionForecast:
         assert forecast[1]["count"] == 1  # demain (index 1)
         assert forecast[0]["count"] == 0  # pas aujourd'hui
 
+    def test_forecast_details_cards_per_course_for_future_days(
+        self, client, auth_headers, seeded_course
+    ):
+        client.post(
+            "/api/revision/answer",
+            json={"course_id": seeded_course, "item_index": 0, "selected_option": "A"},
+            headers=auth_headers,
+        )
+
+        forecast = client.get("/api/revision/forecast", headers=auth_headers).get_json()["forecast"]
+        tomorrow = forecast[1]["courses"]
+        assert len(tomorrow) == 1
+        assert tomorrow[0]["course_id"] == seeded_course
+        assert tomorrow[0]["count"] == 1
+        assert tomorrow[0]["course_nom"]
+        assert forecast[0]["courses"] == []
+
     def test_overdue_cards_count_as_due_today_in_forecast(
         self, client, auth_headers, db, uid, seeded_course
     ):

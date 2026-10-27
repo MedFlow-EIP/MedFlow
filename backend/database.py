@@ -1459,29 +1459,44 @@ class Database:
         regroupe aussi tout ce qui est en retard — une carte en retard de 3
         jours est due aujourd'hui, pas seulement à sa date d'origine.
         N'inclut pas les cartes jamais vues (imprévisibles par nature :
-        elles deviennent dues dès qu'on les découvre)."""
+        elles deviennent dues dès qu'on les découvre).
+        Chaque jour contient aussi ``courses`` : le détail par cours
+        (``course_id``, ``course_nom``, ``count``), pour afficher ce qu'il y
+        aura à réviser un jour donné, pas seulement combien."""
         if not uid:
             raise ValueError("UID is required")
 
         today = date.today()
         with self.connection() as conn:
             rows = conn.execute(
-                "SELECT next_review_date, COUNT(*) as count FROM revision_schedule WHERE uid=? GROUP BY next_review_date",
+                """
+                SELECT next_review_date, course_id, COUNT(*) as count
+                FROM revision_schedule WHERE uid=?
+                GROUP BY next_review_date, course_id
+                """,
                 (uid,),
             ).fetchall()
 
-        counts_by_date = {row["next_review_date"]: row["count"] for row in rows}
+        course_names = {c.id: c.nom for c in self.fetch_courses(uid)}
 
         forecast: List[Dict] = []
         for i in range(days):
             d = today + timedelta(days=i)
-            if i == 0:
-                count = sum(
-                    c for date_str, c in counts_by_date.items() if date_str <= d.isoformat()
-                )
-            else:
-                count = counts_by_date.get(d.isoformat(), 0)
-            forecast.append({"date": d.isoformat(), "count": count})
+            day = d.isoformat()
+            per_course: Dict[str, int] = {}
+            for row in rows:
+                # Aujourd'hui regroupe aussi les cartes en retard.
+                if row["next_review_date"] == day or (i == 0 and row["next_review_date"] < day):
+                    per_course[row["course_id"]] = per_course.get(row["course_id"], 0) + row["count"]
+            courses = [
+                {
+                    "course_id": course_id,
+                    "course_nom": course_names.get(course_id) or "Cours supprimé",
+                    "count": count,
+                }
+                for course_id, count in sorted(per_course.items(), key=lambda kv: -kv[1])
+            ]
+            forecast.append({"date": day, "count": sum(per_course.values()), "courses": courses})
         return forecast
 
     def get_due_quiz_items(
