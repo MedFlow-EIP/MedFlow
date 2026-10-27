@@ -216,7 +216,7 @@ export function AIChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; icon: keyof typeof Ionicons.glyphMap } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Texte d'une réponse à transformer en flashcards (feuille ouverte si non nul).
   const [flashcardSource, setFlashcardSource] = useState<string | null>(null);
@@ -314,10 +314,10 @@ export function AIChatScreen() {
     }, 200);
   }, [currentConv?.messages.length, isTyping]);
 
-  const showToast = (message: string) => {
-    setToast(message);
+  const showToast = (message: string, icon: keyof typeof Ionicons.glyphMap = 'create-outline', duration = 2000) => {
+    setToast({ text: message, icon });
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2000);
+    toastTimer.current = setTimeout(() => setToast(null), duration);
   };
 
   useEffect(() => () => {
@@ -732,15 +732,6 @@ export function AIChatScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {toast && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.toastRow}>
-            <View style={styles.toast} accessibilityLiveRegion="polite">
-              <Ionicons name="create-outline" size={16} color={colors.background} />
-              <Text style={styles.toastText}>{toast}</Text>
-            </View>
-          </Animated.View>
-        )}
-
         {currentConv?.messages.length === 0 ? (
           <Animated.View key={currentConvId} entering={ZoomIn.duration(250)} style={styles.emptyState}>
             <View style={styles.emptyIcon}>
@@ -816,6 +807,15 @@ export function AIChatScreen() {
                       ) : (
                     <Markdown
                       key={partIndex}
+                      rules={{
+                        table: (node, children, _parent, mdStyles) => (
+                          <ScrollView key={node.key} horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
+                            <View style={[mdStyles._VIEW_SAFE_table, { minWidth: Math.min(width * 0.8, 520) - 48 }]}>
+                              {children}
+                            </View>
+                          </ScrollView>
+                        ),
+                      }}
                       style={{
                         body: {
                           color: colors.textPrimary,
@@ -827,10 +827,13 @@ export function AIChatScreen() {
                         heading3: { fontSize: 17, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
                         strong: { fontWeight: "700" },
                         bullet_list: { marginTop: 4 },
+                        // Séparateur « --- » de l'IA : une ligne discrète avec de l'air autour,
+                        // au lieu d'une barre grise collée au texte.
+                        hr: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 14 },
                         table: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginVertical: 4 },
                         thead: { backgroundColor: colors.surfaceAlt },
-                        th: { padding: 10, fontWeight: "600" },
-                        td: { padding: 10 },
+                        th: { padding: 10, fontWeight: "600", minWidth: 120 },
+                        td: { padding: 10, minWidth: 120 },
                         tr: { borderBottomWidth: 0 },
                         code_inline: {
                           backgroundColor: colors.surfaceAlt,
@@ -1044,12 +1047,30 @@ export function AIChatScreen() {
         </KeyboardAvoidingView>
       )}
 
+      {toast && (
+        <Animated.View
+          entering={FadeIn}
+          exiting={FadeOut}
+          style={[styles.toastRow, { bottom: tabBarHeight + 84 }]}
+          pointerEvents="none"
+        >
+          <View style={styles.toast} accessibilityLiveRegion="polite">
+            <Ionicons name={toast.icon} size={16} color={colors.background} />
+            <Text style={styles.toastText}>{toast.text}</Text>
+          </View>
+        </Animated.View>
+      )}
+
       <FlashcardsFromChatSheet
         text={flashcardSource}
         onClose={() => setFlashcardSource(null)}
         onAdded={(count, courseName) => {
           setFlashcardSource(null);
-          showToast(`${count} flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « ${courseName} »`);
+          showToast(
+            `${count} flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « ${courseName} »`,
+            'checkmark-circle',
+            4000
+          );
         }}
       />
     </View>
@@ -1214,10 +1235,15 @@ function makeStyles(colors: ThemeColors) {
     },
 
     toastRow: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
       alignItems: 'center',
+      zIndex: 20,
     },
 
     toast: {
+      maxWidth: '100%',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
@@ -1228,6 +1254,7 @@ function makeStyles(colors: ThemeColors) {
     },
 
     toastText: {
+      flexShrink: 1,
       fontSize: 14,
       fontWeight: '500',
       color: colors.background,

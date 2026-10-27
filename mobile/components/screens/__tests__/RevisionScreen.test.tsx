@@ -392,7 +392,7 @@ describe('RevisionScreen — mode pratique (reviser autant de fois que voulu)', 
     fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => {
-      expect(screen.getByText("Mode libre — ce résultat n'affecte pas ton planning de révision.")).toBeTruthy();
+      expect(screen.getByText("Mode libre : ce résultat n'affecte pas ton planning de révision.")).toBeTruthy();
     });
   });
 
@@ -594,7 +594,7 @@ describe('RevisionScreen — explication et carte difficile', () => {
     fireEvent.press(screen.getByText('186'));
 
     await waitFor(() => {
-      expect(screen.getByText('Carte difficile — retravaille-la plus souvent')).toBeTruthy();
+      expect(screen.getByText('Carte difficile : retravaille-la plus souvent')).toBeTruthy();
     });
   });
 
@@ -612,7 +612,7 @@ describe('RevisionScreen — explication et carte difficile', () => {
     fireEvent.press(screen.getByText('206'));
 
     await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
-    expect(screen.queryByText('Carte difficile — retravaille-la plus souvent')).toBeNull();
+    expect(screen.queryByText('Carte difficile : retravaille-la plus souvent')).toBeNull();
   });
 });
 

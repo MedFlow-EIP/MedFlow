@@ -33,8 +33,8 @@ describe('challengeStatusText', () => {
   it.each([
     [base, 'À toi de jouer'],
     [{ ...base, role: 'challenger', can_play: false, my_score: 3 }, 'En attente de Bob'],
-    [{ ...base, status: 'done', can_play: false, my_score: 4, their_score: 2, outcome: 'win' }, 'Gagné 4–2'],
-    [{ ...base, status: 'done', can_play: false, my_score: 1, their_score: 2, outcome: 'loss' }, 'Perdu 1–2'],
+    [{ ...base, status: 'done', can_play: false, my_score: 4, their_score: 2, outcome: 'win' }, 'Gagné 4 à 2'],
+    [{ ...base, status: 'done', can_play: false, my_score: 1, their_score: 2, outcome: 'loss' }, 'Perdu 1 à 2'],
     [{ ...base, status: 'expired', can_play: false }, 'Expiré'],
   ] as [Challenge, string][])('%#', (challenge, text) => {
     expect(challengeStatusText(challenge)).toBe(text);

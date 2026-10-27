@@ -124,7 +124,7 @@ describe('scheduleRevisionReminder', () => {
     await scheduleRevisionReminder(1);
 
     const call = mockedNotifications.scheduleNotificationAsync.mock.calls[0][0];
-    expect(call.content.body).toBe("Tu as 1 carte à réviser aujourd'hui — ça prend 2 minutes.");
+    expect(call.content.body).toBe("Tu as 1 carte à réviser aujourd'hui, ça prend 2 minutes.");
   });
 
   it('programme un rappel avec le bon nombre de cartes au pluriel', async () => {
@@ -135,7 +135,7 @@ describe('scheduleRevisionReminder', () => {
     await scheduleRevisionReminder(8);
 
     const call = mockedNotifications.scheduleNotificationAsync.mock.calls[0][0];
-    expect(call.content.body).toBe("Tu as 8 cartes à réviser aujourd'hui — ça prend quelques minutes.");
+    expect(call.content.body).toBe("Tu as 8 cartes à réviser aujourd'hui, ça prend quelques minutes.");
   });
 
   it('planifie pour ce matin si avant 9h', async () => {

@@ -96,17 +96,37 @@ def transcribe():
         return jsonify({"error": "Erreur interne de l'assistant"}), 500
 
 
-def _courses_context(db, uid: str) -> str:
+def _courses_context(db, uid: str, message: str = "") -> str:
     """Cours de l'étudiant pour le chat : leurs titres (20 plus récents) et le
-    résumé du dernier importé. Vide s'il n'en a pas."""
+    contenu d'un cours. Ce cours est celui que le message cite par son nom
+    (« Explique-moi » envoie « Cours : … »), sinon le dernier importé.
+    Vide s'il n'en a pas."""
     courses = sorted(db.fetch_courses(uid), key=lambda c: c.created_at or "", reverse=True)
     if not courses:
         return ""
-    latest = courses[0]
-    summary = re.sub(r"<[^>]+>", " ", latest.summary or "")
-    summary = re.sub(r"\s+", " ", summary).strip()[:2500]
+    lowered = message.lower()
+    cited = [c for c in courses if c.nom and c.nom.lower() in lowered]
+    focus = max(cited, key=lambda c: len(c.nom)) if cited else courses[0]
+
+    summary = re.sub(r"<[^>]+>", " ", focus.summary or "")
+    summary = re.sub(r"\s+", " ", summary).strip()[:5000]
+    # Les questions du cours avec leur bonne réponse : c'est souvent là que se
+    # trouve le détail sur lequel porte la question à expliquer.
+    questions = []
+    for q in (focus.quiz or [])[:30]:
+        answer = (q.get("options") or {}).get(q.get("correct"), "")
+        line = f"- {q.get('question', '')} Réponse : {answer}."
+        if q.get("explanation"):
+            line += f" {q['explanation']}"
+        questions.append(line)
+    quiz = "\n".join(questions)[:3000]
+
     names = "\n".join(f"- {c.nom}" for c in courses[:20])
-    return f"Cours importés (du plus récent au plus ancien) :\n{names}\n\nDernier cours : « {latest.nom} »\nRésumé : {summary}"
+    label = "Cours cité" if cited else "Dernier cours"
+    context = f"Cours importés (du plus récent au plus ancien) :\n{names}\n\n{label} : « {focus.nom} »\nRésumé : {summary}"
+    if quiz:
+        context += f"\nQuestions de ce cours :\n{quiz}"
+    return context
 
 
 @chat_bp.route("/chat", methods=["POST"])
@@ -176,7 +196,7 @@ def medical_chat():
             user_message=message,
             history=history,
             attachments=[(a["data"], a["mime_type"]) for a in attachments],
-            context=_courses_context(db, uid),
+            context=_courses_context(db, uid, message),
         )
 
         db.save_chat_message(
