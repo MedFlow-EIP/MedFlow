@@ -558,6 +558,27 @@ class Database:
                 """
             )
 
+            # Défis entre amis (F57) : questions copiées à la création.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS challenges (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    challenger_uid TEXT NOT NULL,
+                    opponent_uid TEXT NOT NULL,
+                    course_nom TEXT NOT NULL,
+                    questions TEXT NOT NULL,
+                    total INTEGER NOT NULL,
+                    status TEXT NOT NULL CHECK(status IN ('pending','done','declined')),
+                    challenger_score INTEGER,
+                    opponent_score INTEGER,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_challenges_challenger ON challenges(challenger_uid)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_challenges_opponent ON challenges(opponent_uid)")
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """
@@ -2209,6 +2230,14 @@ class Database:
             if friendships:
                 export["friendships"] = [as_dict(r) for r in friendships]
 
+            challenges = conn.execute(
+                "SELECT id, challenger_uid, opponent_uid, course_nom, total, status, challenger_score, "
+                "opponent_score, created_at FROM challenges WHERE challenger_uid = ? OR opponent_uid = ?",
+                (uid, uid),
+            ).fetchall()
+            if challenges:
+                export["challenges"] = [as_dict(r) for r in challenges]
+
         return export
 
     def fetch_courses_paginated(
@@ -2353,6 +2382,10 @@ class Database:
             )
             conn.execute(
                 "DELETE FROM friendships WHERE requester_uid = ? OR addressee_uid = ?",
+                (uid, uid),
+            )
+            conn.execute(
+                "DELETE FROM challenges WHERE challenger_uid = ? OR opponent_uid = ?",
                 (uid, uid),
             )
             tables = [
