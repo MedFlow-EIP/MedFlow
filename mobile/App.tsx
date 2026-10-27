@@ -8,6 +8,10 @@ import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { TutorialProvider } from './context/TutorialContext';
 import { navigationRef } from './navigationRef';
 import { AppDialogHost } from './components/ui/AppDialogHost';
+import { initSentry, withSentry } from './utils/sentry';
+
+// Avant tout rendu, pour capturer aussi les erreurs de démarrage.
+initSentry();
 
 /** Navigation et barre d'état aux couleurs du thème (sinon fond blanc
  * pendant les transitions et icônes noires sur fond sombre). */
@@ -39,7 +43,7 @@ function ThemedApp() {
   );
 }
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -52,3 +56,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default withSentry(App);
