@@ -3,7 +3,8 @@ services:
     build: ./backend
     container_name: medflow-backend
     ports:
-      - "8080:8080"
+      # Joignable seulement depuis la VM : le public passe par Caddy (HTTPS).
+      - "127.0.0.1:8080:8080"
     env_file:
       - ./backend/.env
     environment:
@@ -33,14 +34,6 @@ services:
       - backend
     restart: always
 
-  # frontend:
-  #   build: ./frontend
-  #   container_name: medflow-frontend
-  #   ports:
-  #     - "5173:80"
-  #   depends_on:
-  #     - backend
-  #   restart: always
 volumes:
   # Certificats Let's Encrypt conservés entre les redémarrages.
   caddy_data:
