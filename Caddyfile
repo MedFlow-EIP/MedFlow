@@ -1,0 +1,7 @@
+# HTTPS gratuit devant le backend : Caddy obtient et renouvelle tout seul un
+# certificat Let's Encrypt pour MEDFLOW_DOMAIN (par défaut 5-196-191-64.sslip.io,
+# un nom gratuit qui pointe vers l'IP de la VM). Ports 80 et 443 à ouvrir.
+{$MEDFLOW_DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8080
+}
