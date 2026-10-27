@@ -490,6 +490,21 @@ class Database:
                 """
             )
 
+            # Calendrier d'examens : les cours liés passent en priorité en révision.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS exams (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    exam_date TEXT NOT NULL,
+                    course_ids TEXT NOT NULL DEFAULT '[]',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_exams_uid_date ON exams(uid, exam_date)")
+
     @contextmanager
     def connection(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
@@ -1560,10 +1575,15 @@ class Database:
         }
 
         today = date.today().isoformat()
+        exams = self.get_exam_priorities(uid)
         due: List[Dict] = []
         new: List[Dict] = []
+        # Cartes pas encore dues, mais dont la prochaine révision tomberait
+        # après un examen proche : on les avance pour les revoir avant.
+        before_exam: List[Dict] = []
 
         for course in courses:
+            exam = exams.get(course.id)
             for idx, q in enumerate(course.quiz or []):
                 key = (course.id, idx)
                 schedule_row = schedule_by_key.get(key)
@@ -1576,6 +1596,8 @@ class Database:
                     "options": q.get("options"),
                     "is_leech": bool(schedule_row and schedule_row["lapses"] >= self.LEECH_THRESHOLD),
                 }
+                if exam:
+                    item["exam"] = {"title": exam["title"], "days_left": exam["days_left"]}
                 if scheduled_for is None:
                     new.append(item)
                 elif scheduled_for <= today:
@@ -1583,9 +1605,91 @@ class Database:
                         date.today() - date.fromisoformat(scheduled_for)
                     ).days
                     due.append(item)
+                elif exam and exam["days_left"] <= self.EXAM_CRAM_DAYS and scheduled_for > exam["exam_date"]:
+                    before_exam.append(item)
 
-        due.sort(key=lambda it: it["overdue_days"], reverse=True)
-        return (due + new)[:limit]
+        # Cours d'un examen proche d'abord (le plus proche en tête), puis le reste.
+        # Dans chaque groupe : en retard, jamais vues, puis avancées pour l'examen.
+        def priority(entry):
+            bucket, item = entry
+            exam_rank = item["exam"]["days_left"] if "exam" in item else self.EXAM_PRIORITY_DAYS + 1
+            return (exam_rank, bucket, -item.get("overdue_days", 0))
+
+        ranked = [(0, it) for it in due] + [(1, it) for it in new] + [(2, it) for it in before_exam]
+        ranked.sort(key=priority)
+        return [it for _, it in ranked][:limit]
+
+    # Un examen dans les 30 jours fait passer ses cours en priorité ; à 14 jours
+    # ou moins, les cartes prévues après l'examen sont avancées.
+    EXAM_PRIORITY_DAYS = 30
+    EXAM_CRAM_DAYS = 14
+    MAX_EXAMS = 50
+
+    def get_exam_priorities(self, uid: str) -> Dict[str, Dict]:
+        """Pour chaque cours lié à un examen à venir (≤ 30 jours), l'examen le plus proche."""
+        today = date.today()
+        horizon = (today + timedelta(days=self.EXAM_PRIORITY_DAYS)).isoformat()
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT title, exam_date, course_ids FROM exams WHERE uid=? AND exam_date>=? AND exam_date<=? "
+                "ORDER BY exam_date ASC",
+                (uid, today.isoformat(), horizon),
+            ).fetchall()
+
+        priorities: Dict[str, Dict] = {}
+        for row in rows:
+            try:
+                course_ids = json.loads(row["course_ids"] or "[]")
+            except json.JSONDecodeError:
+                course_ids = []
+            days_left = (date.fromisoformat(row["exam_date"]) - today).days
+            for cid in course_ids:
+                # Lignes triées par date : le premier examen trouvé est le plus proche.
+                priorities.setdefault(cid, {"title": row["title"], "exam_date": row["exam_date"], "days_left": days_left})
+        return priorities
+
+    def create_exam(self, uid: str, title: str, exam_date: str, course_ids: List[str]) -> int:
+        with self.transaction() as conn:
+            cur = conn.execute(
+                "INSERT INTO exams (uid, title, exam_date, course_ids) VALUES (?, ?, ?, ?)",
+                (uid, title, exam_date, json.dumps(course_ids, ensure_ascii=False)),
+            )
+        return cur.lastrowid
+
+    def count_exams(self, uid: str) -> int:
+        with self.connection() as conn:
+            return conn.execute("SELECT COUNT(*) FROM exams WHERE uid=?", (uid,)).fetchone()[0]
+
+    def fetch_exams(self, uid: str) -> List[Dict]:
+        """Examens de l'utilisateur, du plus proche au plus lointain, avec les cours liés."""
+        today = date.today()
+        names = {c.id: c.nom for c in self.fetch_courses(uid)}
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT id, title, exam_date, course_ids FROM exams WHERE uid=? ORDER BY exam_date ASC, id ASC",
+                (uid,),
+            ).fetchall()
+
+        exams = []
+        for row in rows:
+            try:
+                course_ids = json.loads(row["course_ids"] or "[]")
+            except json.JSONDecodeError:
+                course_ids = []
+            exams.append({
+                "id": row["id"],
+                "title": row["title"],
+                "exam_date": row["exam_date"],
+                "days_left": (date.fromisoformat(row["exam_date"]) - today).days,
+                # Un cours supprimé depuis disparaît simplement de la liste.
+                "courses": [{"id": cid, "nom": names[cid]} for cid in course_ids if cid in names],
+            })
+        return exams
+
+    def delete_exam(self, uid: str, exam_id: int) -> bool:
+        with self.transaction() as conn:
+            result = conn.execute("DELETE FROM exams WHERE uid=? AND id=?", (uid, exam_id))
+        return result.rowcount > 0
 
     LEECH_THRESHOLD = 3  # échecs consécutifs à partir desquels une carte est signalée "leech"
     MASTERED_INTERVAL_DAYS = 21  # même convention qu'Anki pour une carte "mature"/bien maîtrisée

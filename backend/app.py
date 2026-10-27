@@ -50,6 +50,7 @@ def create_app(config=None):
     from routes.sessions import sessions_bp
     from routes.chat import chat_bp
     from routes.friends import friends_bp
+    from routes.exams import exams_bp
     from services.ai import get_ai_provider
 
     app = Flask(__name__)
@@ -113,6 +114,7 @@ def create_app(config=None):
     app.register_blueprint(account_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(friends_bp)
+    app.register_blueprint(exams_bp)
 
     # ------------------------------------------------------------------
     # Swagger / OpenAPI docs at /api/docs
