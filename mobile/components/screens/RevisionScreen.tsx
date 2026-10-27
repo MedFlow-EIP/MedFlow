@@ -23,6 +23,8 @@ type DueItem = {
   question: string;
   options: Record<string, string>;
   lapses?: number;
+  /** Examen proche lié à ce cours : la carte passe en priorité. */
+  exam?: { title: string; days_left: number };
   /** Ordre d'affichage des réponses, tiré au chargement de la session. */
   optionOrder?: string[];
 };
@@ -321,6 +323,14 @@ export function RevisionScreen() {
             )}
           </View>
           {!!item.course_nom && <Text style={styles.courseLabel}>{item.course_nom}</Text>}
+          {!!item.exam && (
+            <View style={styles.examChip}>
+              <Ionicons name="calendar-outline" size={13} color={colors.warningText} />
+              <Text style={styles.examChipText} numberOfLines={1}>
+                {item.exam.title} · {item.exam.days_left === 0 ? "aujourd'hui" : item.exam.days_left === 1 ? 'demain' : `J-${item.exam.days_left}`}
+              </Text>
+            </View>
+          )}
           <Text style={styles.questionText} accessibilityRole="header">{item.question}</Text>
         </View>
 
@@ -643,6 +653,23 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
       lineHeight: 20,
       color: colors.successText,
+    },
+    examChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 5,
+      maxWidth: '100%',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.tintWarning,
+    },
+    examChipText: {
+      flexShrink: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.warningText,
     },
     answerError: {
       flexDirection: 'row',

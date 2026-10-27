@@ -43,6 +43,7 @@ import { UploadCourseScreen } from '../screens/UploadCourseScreen';
 import { PathScreen } from '../screens/PathScreen';
 import { LessonScreen } from '../screens/LessonScreen';
 import { CourseDetailScreen } from '../screens/CourseDetail';
+import { ExamsScreen } from '../screens/ExamsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
@@ -79,6 +80,7 @@ export type RootStackParamList = {
   Revision: { courseId?: string; startMode?: 'scheduled' | 'practice' | 'leeches' } | undefined;
   Search: undefined;
   Mastered: undefined;
+  Exams: undefined;
   Auth: undefined;
 };
 
@@ -340,6 +342,7 @@ export function AppNavigator() {
             <Stack.Screen name="Revision" component={RevisionScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="Mastered" component={MasteredScreen} />
+            <Stack.Screen name="Exams" component={ExamsScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

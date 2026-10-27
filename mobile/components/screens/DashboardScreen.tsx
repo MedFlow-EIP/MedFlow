@@ -27,6 +27,9 @@ import {
   saveOffline,
 } from '../../utils/offlineCache';
 import { appAlert } from '../../utils/appAlert';
+import { countdownLabel, syncExamReminders } from '../../utils/examReminders';
+import type { Exam } from './ExamsScreen';
+import { formatLongDate } from '../ui/DatePickerSheet';
 
 type Stats = {
   totalCourses: number;
@@ -84,6 +87,7 @@ export function DashboardScreen() {
   const [selectedDay, setSelectedDay] = useState(0);
   const [dueToday, setDueToday] = useState<DueItem[]>([]);
   const [offline, setOffline] = useState(false);
+  const [nextExam, setNextExam] = useState<Exam | null>(null);
 
   const applyDashboard = (data: any) => {
     if (Array.isArray(data?.cours)) {
@@ -143,6 +147,17 @@ export function DashboardScreen() {
         await scheduleRevisionReminder(dueTodayCount);
       } catch {
         // Silencieux : la prévision n'est pas critique pour l'écran.
+      }
+
+      // Prochain examen (et rappels à jour) : best-effort aussi.
+      try {
+        const examsRes = await fetch(`${API_URL}/api/exams`, { headers: await getAuthHeaders(user) });
+        const examsData = await examsRes.json();
+        const exams: Exam[] = Array.isArray(examsData?.exams) ? examsData.exams : [];
+        setNextExam(exams.find((e) => e.days_left >= 0) ?? null);
+        syncExamReminders(exams);
+      } catch {
+        // Silencieux : la carte examen n'est pas critique.
       }
 
       // Cartes dues aujourd'hui, regroupées par cours sous le graphique.
@@ -311,6 +326,46 @@ export function DashboardScreen() {
             <Text style={[styles.secondaryChipText, { color: colors.successText }]}>Cartes maîtrisées</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Prochain examen : ses cours passent en priorité dans les révisions. */}
+        <TouchableOpacity
+          style={styles.examCard}
+          onPress={() => navigation.navigate('Exams')}
+          accessibilityRole="button"
+          accessibilityLabel={
+            nextExam
+              ? `Prochain examen : ${nextExam.title}, ${countdownLabel(nextExam.days_left)}`
+              : 'Ajouter mes examens'
+          }
+        >
+          <View style={styles.examIcon}>
+            <Ionicons name="calendar" size={20} color={colors.primaryDark} />
+          </View>
+          <View style={styles.examText}>
+            {nextExam ? (
+              <>
+                <Text style={styles.examTitle} numberOfLines={1}>{nextExam.title}</Text>
+                <Text style={styles.examMeta} numberOfLines={1}>
+                  {formatLongDate(nextExam.exam_date)} · cours prioritaires en révision
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.examTitle}>Mes examens</Text>
+                <Text style={styles.examMeta}>Ajoute tes partiels pour réviser les bons cours en premier</Text>
+              </>
+            )}
+          </View>
+          {nextExam ? (
+            <View style={[styles.examBadge, nextExam.days_left <= 7 && { backgroundColor: colors.tintWarning }]}>
+              <Text style={[styles.examBadgeText, nextExam.days_left <= 7 && { color: colors.warningText }]}>
+                {countdownLabel(nextExam.days_left)}
+              </Text>
+            </View>
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          )}
+        </TouchableOpacity>
 
         {forecast.length > 0 && (
           <View style={styles.forecastCard}>
@@ -557,6 +612,48 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 12,
     },
 
+    examCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    examIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: colors.tintPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    examText: {
+      flex: 1,
+      gap: 2,
+    },
+    examTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    examMeta: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    examBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.tintPrimary,
+    },
+    examBadgeText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.primaryText,
+    },
     secondaryChipText: {
       fontSize: 13,
       fontWeight: '600',
