@@ -11,6 +11,7 @@ import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { ProgressBar } from '../ui/progress';
 import { shuffle } from '../../utils/shuffle';
 import { StateView } from '../ui/StateView';
+import { ReportErrorSheet, type ReportTarget } from '../ReportErrorSheet';
 import { logEvent } from '../../utils/analytics';
 import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -69,6 +70,7 @@ export function RevisionScreen() {
   // Pas de réseau : cartes de la copie locale, réponses corrigées sur le
   // téléphone puis envoyées au serveur au retour de la connexion.
   const [offlineMode, setOfflineMode] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const activeItemKeyRef = useRef<string | null>(null);
 
   const resetSession = (list: DueItem[]) => {
@@ -344,6 +346,12 @@ export function RevisionScreen() {
     (key) => [key, item.options[key]] as const
   );
   const correctText = answerResult ? (item.options || {})[answerResult.correct_answer] : undefined;
+  const reportCurrent = () =>
+    setReportTarget({
+      kind: 'quiz',
+      courseId: item.course_id,
+      excerpt: `${item.question}\nBonne réponse : ${correctText ?? ''}`,
+    });
 
   // Même bordure 2 px et même indicateur rond aligné à droite pour tous les états.
   const optionState = (key: string): 'idle' | 'pending' | 'correct' | 'incorrect' | 'dimmed' => {
@@ -481,7 +489,21 @@ export function RevisionScreen() {
             <Text style={styles.explainText}>Explique-moi cette carte</Text>
           </TouchableOpacity>
         )}
+
+        {answerResult && (
+          <TouchableOpacity
+            style={styles.reportLink}
+            onPress={reportCurrent}
+            accessibilityRole="button"
+            accessibilityLabel="Signaler une erreur dans cette question"
+          >
+            <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.reportLinkText}>Signaler une erreur</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      <ReportErrorSheet target={reportTarget} onClose={() => setReportTarget(null)} />
 
       {selectedOption && answerResult && (
         <TouchableOpacity
@@ -771,6 +793,18 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 15,
       fontWeight: '600',
       color: colors.primaryText,
+    },
+    reportLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      minHeight: 44,
+    },
+    reportLinkText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
     },
   });
 }

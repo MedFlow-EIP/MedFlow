@@ -41,6 +41,7 @@ import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/network';
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
+import { ReportErrorSheet, type ReportTarget } from '../ReportErrorSheet';
 import { useVoiceDictation } from '../../utils/voiceDictation';
 import { splitDiagrams, stripDiagrams } from '../../utils/diagrams';
 import { tableColumnWidth, worthFlashcards } from '../../utils/chatAnswers';
@@ -220,6 +221,7 @@ export function AIChatScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Texte d'une réponse à transformer en flashcards (feuille ouverte si non nul).
   const [flashcardSource, setFlashcardSource] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   // Question envoyée par un autre écran (« Explique-moi cette carte »).
   const route = useRoute<any>();
@@ -892,6 +894,18 @@ export function AIChatScreen() {
                 </TouchableOpacity>
               )}
 
+              {message.type === 'ai' && !message.error && message.text.length >= 40 && (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={() => setReportTarget({ kind: 'chat', excerpt: stripDiagrams(message.text) })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Signaler une erreur dans cette réponse"
+                >
+                  <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.messageActionText, { color: colors.textSecondary }]}>Signaler une erreur</Text>
+                </TouchableOpacity>
+              )}
+
               <Text style={[styles.messageTime, message.type === 'user' && styles.userTime]}>
                 {formatTime(message.timestamp)}
               </Text>
@@ -1073,6 +1087,8 @@ export function AIChatScreen() {
           </View>
         </Animated.View>
       )}
+
+      <ReportErrorSheet target={reportTarget} onClose={() => setReportTarget(null)} />
 
       <FlashcardsFromChatSheet
         text={flashcardSource}

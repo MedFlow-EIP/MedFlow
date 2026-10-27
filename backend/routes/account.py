@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import time
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request, send_from_directory
 
@@ -342,6 +343,36 @@ def log_event():
         return jsonify({"success": True})
     except Exception:
         logger.exception("Erreur analytics event")
+        return internal_error("Erreur interne")
+
+
+REPORT_KINDS = {"summary", "flashcard", "quiz", "chat", "case"}
+MAX_REPORTS_PER_HOUR = 20
+
+
+@account_bp.route("/api/reports", methods=["POST"])
+@require_auth
+def report_content_error():
+    """Un étudiant signale une erreur dans un contenu généré.
+    Body: {"kind": "quiz", "excerpt": "texte concerné", "comment": "…", "course_id": "…"}."""
+    try:
+        data = request.get_json(silent=True) or {}
+        kind = data.get("kind")
+        excerpt = str(data.get("excerpt") or "").strip()[:2000]
+        comment = str(data.get("comment") or "").strip()[:1000]
+        course_id = data.get("course_id")
+        if kind not in REPORT_KINDS or not excerpt:
+            return jsonify({"error": "Signalement incomplet"}), 400
+        db = current_app.db
+        since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        if db.count_recent_reports(g.uid, since) >= MAX_REPORTS_PER_HOUR:
+            return jsonify({"error": "Trop de signalements d'un coup. Réessaie plus tard."}), 429
+        db.save_content_report(g.uid, kind, excerpt, comment,
+                               course_id=str(course_id)[:100] if course_id else None)
+        db.log_analytics_event(g.uid, "error_reported", detail=kind)
+        return jsonify({"success": True}), 201
+    except Exception:
+        logger.exception("Erreur signalement")
         return internal_error("Erreur interne")
 
 

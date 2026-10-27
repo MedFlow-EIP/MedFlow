@@ -689,6 +689,22 @@ class Database:
                 except sqlite3.OperationalError:
                     pass
 
+            # Erreurs signalées par les étudiants dans le contenu généré
+            # (résumé, carte, question, réponse du chat) : mesure de confiance.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS content_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    course_id TEXT,
+                    excerpt TEXT NOT NULL,
+                    comment TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """
@@ -853,6 +869,22 @@ class Database:
                 }
                 for row in rows
             ]
+
+    def save_content_report(self, uid: str, kind: str, excerpt: str, comment: str = "",
+                            course_id: str | None = None) -> int:
+        with self.transaction() as conn:
+            cur = conn.execute(
+                "INSERT INTO content_reports (uid, kind, course_id, excerpt, comment, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, kind, course_id, excerpt, comment, datetime.now(timezone.utc).isoformat()),
+            )
+            return cur.lastrowid
+
+    def count_recent_reports(self, uid: str, since: str) -> int:
+        with self.connection() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM content_reports WHERE uid=? AND created_at>=?", (uid, since)
+            ).fetchone()[0]
 
     def log_analytics_event(
         self,

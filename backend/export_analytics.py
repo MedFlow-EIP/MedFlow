@@ -3,9 +3,10 @@
 À lancer sur la VM :
     docker compose exec -T backend python export_analytics.py [depuis AAAA-MM-JJ]
 
-Écrit deux fichiers CSV dans data/exports/ :
+Écrit trois fichiers CSV dans data/exports/ :
 - events-<date>.csv : un événement par ligne (utilisateur pseudonymisé) ;
-- summary-<date>.csv : par événement, le nombre total et le nombre de personnes.
+- summary-<date>.csv : par événement, le nombre total et le nombre de personnes ;
+- reports-<date>.csv : les erreurs de contenu signalées.
 """
 import csv
 import hashlib
@@ -61,8 +62,29 @@ def export(db_path: str, out_dir: str, since: str = "") -> tuple[str, str]:
     return events_path, summary_path
 
 
+def export_reports(db_path: str, out_dir: str, since: str = "") -> str:
+    """Erreurs de contenu signalées par les étudiants (mesure de confiance)."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT uid, kind, course_id, excerpt, comment, created_at FROM content_reports "
+        "WHERE created_at >= ? ORDER BY created_at",
+        (since,),
+    ).fetchall()
+    conn.close()
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"reports-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.csv")
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["personne", "type", "cours", "extrait", "commentaire", "date_utc"])
+        for r in rows:
+            writer.writerow([pseudonym(r["uid"]), r["kind"], r["course_id"] or "", r["excerpt"],
+                             r["comment"] or "", r["created_at"]])
+    return path
+
+
 if __name__ == "__main__":
     since = sys.argv[1] if len(sys.argv) > 1 else ""
     out = os.path.join(os.path.dirname(Config.DATABASE_PATH), "exports")
-    for path in export(Config.DATABASE_PATH, out, since):
+    for path in (*export(Config.DATABASE_PATH, out, since), export_reports(Config.DATABASE_PATH, out, since)):
         print("[export]", path)
