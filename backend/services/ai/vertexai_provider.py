@@ -27,8 +27,8 @@ class VertexAIProvider(AIProvider):
         self,
         project_id: str | None = None,
         location: str = "us-central1",
-        chat_model: str = "gemini-2.5-flash",
-        course_model: str = "gemini-2.5-flash",
+        chat_model: str = "gemini-2.5-pro",
+        course_model: str = "gemini-2.5-pro",
         max_output_tokens: int = 8192,
     ):
         self.chat_model = chat_model

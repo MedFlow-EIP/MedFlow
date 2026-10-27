@@ -21,8 +21,8 @@ def get_ai_provider(config) -> AIProvider:
     return VertexAIProvider(
         project_id=_setting(config, "GCP_PROJECT_ID", None),
         location=_setting(config, "GCP_LOCATION", "us-central1"),
-        chat_model=_setting(config, "AI_CHAT_MODEL", "gemini-2.5-flash"),
-        course_model=_setting(config, "AI_COURSE_MODEL", "gemini-2.5-flash"),
+        chat_model=_setting(config, "AI_CHAT_MODEL", "gemini-2.5-pro"),
+        course_model=_setting(config, "AI_COURSE_MODEL", "gemini-2.5-pro"),
         max_output_tokens=_setting(config, "AI_MAX_OUTPUT_TOKENS", 8192),
     )
 
