@@ -32,12 +32,14 @@ def get_account():
 
         with db.connection() as conn:
             row = conn.execute(
-                "SELECT xp, streak, last_activity FROM user_stats WHERE uid=?", (uid,)
+                "SELECT xp, streak, last_activity, streak_freezes FROM user_stats WHERE uid=?", (uid,)
             ).fetchone()
 
         xp = row["xp"] if row else 0
-        streak = row["streak"] if row else 0
         last_activity = row["last_activity"] if row else None
+        streak_freezes = row["streak_freezes"] if row else 0
+        # Série perdue (trop de jours manqués) : affichée à 0 sans attendre la prochaine leçon.
+        streak = db.displayed_streak(row["streak"] if row else 0, last_activity, streak_freezes)
         rank = db.get_user_rank(uid)
         league = db.get_league_for_xp(xp)
         weekly = db.get_weekly_progress(uid)
@@ -54,6 +56,8 @@ def get_account():
                 "quiz_sessions": session_stats["quiz_sessions"],
                 "xp": xp,
                 "streak": streak,
+                "streakFreezes": streak_freezes,
+                "maxStreakFreezes": db.MAX_STREAK_FREEZES,
                 "lastActivity": last_activity,
                 "rank": rank,
                 "league": league,
@@ -282,4 +286,4 @@ def log_screen_view():
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur screen-view")
-        return internal_error("Erreur interne")
+        return internal_error("Erreur interne")
