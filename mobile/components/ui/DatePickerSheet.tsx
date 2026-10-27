@@ -112,7 +112,7 @@ export function DatePickerSheet({
 
           <View style={styles.grid}>
             {WEEKDAYS.map((d, i) => (
-              <Text key={`w${i}`} style={styles.weekday} importantForAccessibility="no">{d}</Text>
+              <Text key={`w${i}`} style={styles.weekday} importantForAccessibility="no" maxFontSizeMultiplier={1.4}>{d}</Text>
             ))}
             {cells.map((day, i) => {
               if (!day) return <View key={`e${i}`} style={styles.cell} />;
@@ -130,7 +130,10 @@ export function DatePickerSheet({
                   accessibilityState={{ selected: active, disabled }}
                 >
                   <View style={[styles.day, active && styles.dayActive, iso === todayIso && !active && styles.dayToday]}>
-                    <Text style={[styles.dayText, disabled && styles.dayTextDisabled, active && styles.dayTextActive]}>
+                    <Text
+                      style={[styles.dayText, disabled && styles.dayTextDisabled, active && styles.dayTextActive]}
+                      maxFontSizeMultiplier={1.4}
+                    >
                       {day.getDate()}
                     </Text>
                   </View>

@@ -51,7 +51,7 @@ import { errorMessage } from '../../utils/network';
 export function SettingsScreen() {
   const navigation = useNavigation();
   const user = auth.currentUser;
-  const { colors, preference, setPreference } = useTheme();
+  const { colors, preference, setPreference, highContrast, setHighContrast } = useTheme();
   const { show: showTutorial } = useTutorial();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { top, bottom } = useScreenInsets();
@@ -540,6 +540,28 @@ export function SettingsScreen() {
               <Text style={[styles.appearanceText, active && styles.appearanceTextActive]}>{option.label}</Text>
             </TouchableOpacity>
           );
+        })}
+      </View>
+
+      <View style={[styles.listCard, { marginTop: 12 }]}>
+        {renderRow({
+          first: true,
+          icon: 'contrast-outline',
+          tint: colors.surfaceAlt,
+          iconColor: colors.textPrimary,
+          title: 'Contraste élevé',
+          subtitle: 'Textes et bordures plus marqués',
+          right: (
+            <Switch
+              value={!!highContrast}
+              onValueChange={(on) => setHighContrast?.(on)}
+              trackColor={{ false: colors.border, true: colors.action }}
+              thumbColor="#ffffff"
+              accessibilityLabel="Contraste élevé"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !!highContrast }}
+            />
+          ),
         })}
       </View>
 

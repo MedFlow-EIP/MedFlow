@@ -46,6 +46,41 @@ export type ThemeColors = {
   dangerText: string;
 };
 
+/**
+ * Mode contraste élevé (F60) : textes secondaires, bordures et icônes
+ * atténuées nettement plus marqués, pour une lecture plus facile.
+ */
+export function withHighContrast(base: ThemeColors, isDark: boolean): ThemeColors {
+  return isDark
+    ? {
+        ...base,
+        background: '#0b0c10',
+        surface: '#15171f',
+        textPrimary: '#ffffff',
+        textSecondary: '#e5e7eb',
+        border: '#9ca3af',
+        muted: '#cbd5e1',
+        primaryText: '#bfdbfe',
+        successText: '#a7f3d0',
+        warningText: '#fde68a',
+        dangerText: '#fecaca',
+      }
+    : {
+        ...base,
+        background: '#ffffff',
+        textPrimary: '#000000',
+        textSecondary: '#1f2937',
+        border: '#6b7280',
+        muted: '#374151',
+        primaryText: '#1e3a8a',
+        successText: '#14532d',
+        warningText: '#7c2d12',
+        dangerText: '#7f1d1d',
+        action: '#1d4ed8',
+        primaryDark: '#1d4ed8',
+      };
+}
+
 export const lightColors: ThemeColors = {
   background: '#f9fafb',
   surface: '#ffffff',

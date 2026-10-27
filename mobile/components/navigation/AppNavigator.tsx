@@ -177,11 +177,14 @@ function CustomTabBar({ state, navigation }: any) {
           />
           {tab.route === 'Account' && socialCount > 0 && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{socialCount > 9 ? '9+' : socialCount}</Text>
+              <Text style={styles.badgeText} maxFontSizeMultiplier={1.2}>{socialCount > 9 ? '9+' : socialCount}</Text>
             </View>
           )}
         </View>
-        <Text style={[styles.navText, focused && styles.navTextActive]}>{tab.label}</Text>
+        {/* Barre de hauteur fixe : le texte grandit avec la taille système, mais pas au point de déborder. */}
+        <Text style={[styles.navText, focused && styles.navTextActive]} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {tab.label}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -203,7 +206,7 @@ function CustomTabBar({ state, navigation }: any) {
           <View style={styles.addButton}>
             <Ionicons name="add" size={28} color={colors.onAction} />
           </View>
-          <Text style={styles.addText}>Ajouter</Text>
+          <Text style={styles.addText} maxFontSizeMultiplier={1.3} numberOfLines={1}>Ajouter</Text>
         </TouchableOpacity>
 
         {renderTab(TABS[2])}
