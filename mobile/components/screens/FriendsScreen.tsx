@@ -19,6 +19,7 @@ import { AvatarBubble } from '../../components/AvatarBubble';
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
 import { ChallengeSection } from '../challenge/ChallengeSection';
+import { checkSocialNotifications } from '../../utils/socialNotifications';
 import { ChallengeCreateSheet } from '../challenge/ChallengeCreateSheet';
 
 type SearchResult = {
@@ -77,6 +78,8 @@ export function FriendsScreen() {
       setFriends(Array.isArray(friendsData.friends) ? friendsData.friends : []);
       setReceived(Array.isArray(requestsData.received) ? requestsData.received : []);
       setSent(Array.isArray(requestsData.sent) ? requestsData.sent : []);
+      // Demande acceptée ou refusée : la pastille de l'onglet Compte suit.
+      checkSocialNotifications(user);
     } catch (err) {
       console.error('Erreur chargement amis:', err);
     } finally {

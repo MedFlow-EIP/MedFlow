@@ -11,6 +11,7 @@ import {
   Pressable,
   PanResponder,
   Animated as RNAnimated,
+  AppState,
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -58,6 +59,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { useTutorial } from '../../context/TutorialContext';
 import { navigationRef } from '../../navigationRef';
 import { isFirstTimeUser } from '../../utils/firstTime';
+import { checkSocialNotifications, resetSocialBadge, useSocialBadge } from '../../utils/socialNotifications';
 import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
 
 const { width, height } = Dimensions.get('window');
@@ -151,6 +153,8 @@ function CustomTabBar({ state, navigation }: any) {
   );
 
   const isFocused = (routeName: string) => state.routes[state.index].name === routeName;
+  // Demandes d'ami et défis en attente : pastille sur l'onglet Compte.
+  const socialCount = useSocialBadge();
 
   const renderTab = (tab: (typeof TABS)[number]) => {
     const focused = isFocused(tab.route);
@@ -161,7 +165,9 @@ function CustomTabBar({ state, navigation }: any) {
         onPress={() => navigation.navigate(tab.route)}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
-        accessibilityLabel={tab.a11y}
+        accessibilityLabel={
+          tab.route === 'Account' && socialCount > 0 ? `${tab.a11y}, ${socialCount} nouveauté${socialCount > 1 ? 's' : ''}` : tab.a11y
+        }
       >
         <View style={[styles.navIndicator, focused && styles.navIndicatorActive]}>
           <Ionicons
@@ -169,6 +175,11 @@ function CustomTabBar({ state, navigation }: any) {
             size={22}
             color={focused ? colors.onAction : colors.textSecondary}
           />
+          {tab.route === 'Account' && socialCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{socialCount > 9 ? '9+' : socialCount}</Text>
+            </View>
+          )}
         </View>
         <Text style={[styles.navText, focused && styles.navTextActive]}>{tab.label}</Text>
       </TouchableOpacity>
@@ -303,6 +314,26 @@ export function AppNavigator() {
     return unsubscribe;
   }, []);
 
+  // Demandes d'ami et défis : vérifiés au retour dans l'app et toutes les
+  // 2 minutes tant qu'elle est ouverte (pas de serveur de notifications push).
+  useEffect(() => {
+    if (!user) {
+      resetSocialBadge();
+      return;
+    }
+    checkSocialNotifications(user);
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') checkSocialNotifications(user);
+    }, 2 * 60 * 1000);
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') checkSocialNotifications(user);
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, [user]);
+
   // Vérifié une fois par session (au login), pas à chaque focus d'écran —
   // maintenant que TutorialScreen est monté ici et non plus dans HomeScreen,
   // ce composant ne re-render pas à chaque changement d'onglet.
@@ -408,6 +439,27 @@ function makeStyles(colors: ThemeColors) {
 
     navIndicatorActive: {
       backgroundColor: colors.action,
+    },
+
+    badge: {
+      position: 'absolute',
+      top: -4,
+      right: 8,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 4,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: colors.surface,
+      backgroundColor: colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    badgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: '#fff',
     },
 
     navText: {

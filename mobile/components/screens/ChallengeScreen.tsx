@@ -14,6 +14,7 @@ import { QuizRunner, type RunnerQuestion } from '../quiz/QuizRunner';
 import { QuizCorrection, type CorrectionItem } from '../quiz/QuizCorrection';
 import { StateView } from '../ui/StateView';
 import { challengeStatusText, type Challenge } from '../challenge/ChallengeSection';
+import { checkSocialNotifications } from '../../utils/socialNotifications';
 
 type Result = { challenge: Challenge; score: number; total: number; xp_gained: number; corrections: CorrectionItem[] };
 
@@ -77,6 +78,7 @@ export function ChallengeScreen() {
         body: JSON.stringify({ answers }),
       });
       setResult(await readJsonOrThrow<Result>(res, 'Copie non envoyée.'));
+      checkSocialNotifications(user);
     } catch (err) {
       appAlert('Copie non envoyée', errorMessage(err, 'Réessaie dans un instant.'));
     } finally {

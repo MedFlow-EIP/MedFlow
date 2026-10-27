@@ -272,3 +272,30 @@ def decline_challenge(challenge_id):
     except Exception:
         logger.exception("Erreur refus défi")
         return internal_error("Erreur défis")
+
+
+@challenges_bp.route("/api/notifications/summary", methods=["GET"])
+@require_auth
+def notifications_summary():
+    """Ce qui attend l'utilisateur côté social : demandes d'ami reçues et défis
+    à jouer. Sert à la pastille de l'onglet Compte et aux notifications."""
+    try:
+        db = current_app.db
+        requests = db.get_pending_requests(g.uid)["received"]
+        with db.connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM challenges WHERE opponent_uid=? AND status='pending' AND opponent_score IS NULL "
+                "AND expires_at>? ORDER BY created_at DESC",
+                (g.uid, _now().isoformat()),
+            ).fetchall()
+        names = _names(db, {r["challenger_uid"] for r in rows}) if rows else {}
+        return jsonify({
+            "friend_requests": [{"uid": r["uid"], "displayName": r["displayName"]} for r in requests],
+            "challenges": [
+                {"id": r["id"], "friend_name": names.get(r["challenger_uid"], "Un ami"), "course_nom": r["course_nom"]}
+                for r in rows
+            ],
+        })
+    except Exception:
+        logger.exception("Erreur résumé notifications")
+        return internal_error("Erreur notifications")
