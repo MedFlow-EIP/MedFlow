@@ -86,6 +86,74 @@ const LEGACY_STORAGE_KEY = "@ai_conversations";
 /** Historique stocké par utilisateur Firebase. */
 const storageKey = (uid: string) => `@ai_conversations:${uid}`;
 
+type ServerConversation = {
+  conversation_id: string;
+  title: string;
+  created_at: string;
+  messages: { sender: 'user' | 'ai'; content: string; attachments?: { name?: string; mime_type?: string }[]; created_at: string }[];
+};
+
+/** Dates SQLite (« 2026-10-27 14:03:00 », en UTC) → millisecondes. */
+const parseServerDate = (value: string) => {
+  const ms = Date.parse(value.replace(' ', 'T') + 'Z');
+  return Number.isNaN(ms) ? Date.now() : ms;
+};
+
+/** Conversations enregistrées sur le serveur, ou null hors ligne. */
+async function fetchServerConversations(): Promise<ServerConversation[] | null> {
+  try {
+    const user = auth.currentUser;
+    if (!user) return null;
+    const res = await fetch(`${API_URL}/chat/conversations`, { headers: await getAuthHeaders(user) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data?.conversations) ? data.conversations : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Le serveur fait foi pour les conversations qu'il connaît (même compte sur un
+ * autre téléphone). On garde la copie locale quand elle est à jour, car elle
+ * contient les aperçus des pièces jointes que le serveur ne stocke pas.
+ */
+function mergeWithServer(local: Conversation[], server: ServerConversation[] | null): Conversation[] {
+  if (!server) return local;
+  const serverIds = new Set(server.map((s) => s.conversation_id));
+  const byServerId = new Map(local.filter((c) => c.serverId).map((c) => [c.serverId as string, c]));
+
+  const fromServer = server.map((s): Conversation => {
+    const existing = byServerId.get(s.conversation_id);
+    if (existing && existing.messages.length >= s.messages.length) return existing;
+    return {
+      id: existing?.id ?? s.conversation_id,
+      serverId: s.conversation_id,
+      title: s.title || 'Conversation',
+      createdAt: parseServerDate(s.created_at),
+      messages: s.messages.map((m, i) => ({
+        type: m.sender,
+        text: m.content,
+        timestamp: parseServerDate(m.created_at),
+        attachments:
+          existing?.messages[i]?.attachments ??
+          (m.attachments?.length
+            ? m.attachments.map((a) => ({
+                type: a.mime_type?.startsWith('image/') ? ('image' as const) : ('file' as const),
+                uri: '',
+                name: a.name,
+              }))
+            : undefined),
+      })),
+    };
+  });
+
+  // Conversations pas encore envoyées (vides) : gardées. Celles supprimées
+  // depuis un autre appareil : retirées.
+  const localOnly = local.filter((c) => !c.serverId);
+  return [...fromServer, ...localOnly.filter((c) => !serverIds.has(c.id))];
+}
+
 const SUGGESTIONS = [
   "Résume les points clés de mon dernier cours",
   "Fais-moi un quiz sur les os du crâne",
@@ -157,14 +225,13 @@ export function AIChatScreen() {
       if (!uid) return;
       await AsyncStorage.removeItem(LEGACY_STORAGE_KEY);
       const stored = await AsyncStorage.getItem(storageKey(uid));
-      if (stored) {
-        const parsed: Conversation[] = JSON.parse(stored);
-        setConversations(parsed.sort((a, b) => b.createdAt - a.createdAt));
-        if (parsed.length > 0) {
-          setCurrentConvId(parsed[0].id);
-        } else {
-          createNewConversation();
-        }
+      // Affiche tout de suite la copie locale (aussi hors ligne)...
+      const local: Conversation[] = stored ? JSON.parse(stored) : [];
+      const merged = mergeWithServer(local, await fetchServerConversations());
+      const sorted = merged.sort((a, b) => b.createdAt - a.createdAt);
+      setConversations(sorted);
+      if (sorted.length > 0) {
+        setCurrentConvId((prev) => (prev && sorted.some((c) => c.id === prev) ? prev : sorted[0].id));
       } else {
         createNewConversation();
       }
@@ -343,6 +410,14 @@ export function AIChatScreen() {
           text: "Supprimer",
           style: "destructive",
           onPress: () => {
+            // Supprimée aussi côté serveur, sinon elle reviendrait à la prochaine synchro.
+            const serverId = conversations.find((c) => c.id === convId)?.serverId;
+            const user = auth.currentUser;
+            if (serverId && user) {
+              getAuthHeaders(user)
+                .then((headers) => fetch(`${API_URL}/chat/conversations/${serverId}`, { method: 'DELETE', headers }))
+                .catch(() => {});
+            }
             setConversations(prev => {
               const filtered = prev.filter(c => c.id !== convId);
 
@@ -602,7 +677,8 @@ export function AIChatScreen() {
               <View style={message.type === 'user' ? styles.userBubble : styles.aiBubble}>
                 {message.attachments?.map((att, idx) => (
                   <View key={idx} style={styles.attachmentPreview}>
-                    {att.type === 'image' ? (
+                    {/* Sans uri : pièce jointe venue d'un autre appareil, seul le nom est connu. */}
+                    {att.type === 'image' && !!att.uri ? (
                       <Image
                         source={{ uri: att.uri }}
                         style={styles.attachmentImage}
@@ -610,7 +686,7 @@ export function AIChatScreen() {
                       />
                     ) : (
                       <View style={styles.attachmentFile}>
-                        <Ionicons name="document-text" size={24} color={colors.primaryDark} />
+                        <Ionicons name={att.type === 'image' ? 'image-outline' : 'document-text'} size={24} color={colors.primaryDark} />
                         <Text style={styles.attachmentFileName}>{att.name}</Text>
                       </View>
                     )}
