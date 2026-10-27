@@ -47,6 +47,7 @@ import { CourseDetailScreen } from '../screens/CourseDetail';
 import { ExamsScreen } from '../screens/ExamsScreen';
 import { MockExamScreen } from '../screens/MockExamScreen';
 import { ChallengeScreen } from '../screens/ChallengeScreen';
+import { FlashcardReviewScreen } from '../screens/FlashcardReviewScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
@@ -90,6 +91,7 @@ export type RootStackParamList = {
   Exams: undefined;
   MockExam: undefined;
   Challenge: { challengeId: number };
+  FlashcardReview: { courseId?: string } | undefined;
   Auth: undefined;
 };
 
@@ -443,6 +445,7 @@ export function AppNavigator() {
             <Stack.Screen name="Exams" component={ExamsScreen} />
             <Stack.Screen name="MockExam" component={MockExamScreen} />
             <Stack.Screen name="Challenge" component={ChallengeScreen} />
+            <Stack.Screen name="FlashcardReview" component={FlashcardReviewScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

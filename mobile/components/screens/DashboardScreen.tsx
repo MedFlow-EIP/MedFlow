@@ -90,6 +90,7 @@ export function DashboardScreen() {
   const [dueToday, setDueToday] = useState<DueItem[]>([]);
   const [offline, setOffline] = useState(false);
   const [nextExam, setNextExam] = useState<Exam | null>(null);
+  const [flashcardsDue, setFlashcardsDue] = useState<number | null>(null);
   // Filtre « Mes cours » par spécialité (null = tous).
   const [tagFilter, setTagFilter] = useState<string | null>(null);
 
@@ -153,6 +154,15 @@ export function DashboardScreen() {
         await scheduleRevisionReminder(dueTodayCount);
       } catch {
         // Silencieux : la prévision n'est pas critique pour l'écran.
+      }
+
+      // Flashcards à revoir (répétition espacée) : best-effort.
+      try {
+        const fcRes = await fetch(`${API_URL}/api/flashcards/due`, { headers: await getAuthHeaders(user) });
+        const fcData = await fcRes.json();
+        setFlashcardsDue(typeof fcData?.total_due === 'number' ? fcData.total_due : null);
+      } catch {
+        // Silencieux : le compteur est un bonus.
       }
 
       // Prochain examen (et rappels à jour) : best-effort aussi.
@@ -313,6 +323,19 @@ export function DashboardScreen() {
         >
           <Ionicons name="flash-outline" size={20} color={colors.onAction} />
           <Text style={styles.reviseButtonText}>Réviser maintenant</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.mockExamButton}
+          onPress={() => navigation.navigate('FlashcardReview')}
+          accessibilityRole="button"
+          accessibilityLabel={`Réviser les flashcards${flashcardsDue ? `, ${flashcardsDue} à revoir` : ''}`}
+        >
+          <Ionicons name="albums-outline" size={20} color={colors.primaryText} />
+          <Text style={styles.mockExamText}>Flashcards</Text>
+          <Text style={styles.mockExamHint}>
+            {flashcardsDue ? `${flashcardsDue} à revoir` : 'répétition espacée'}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.secondaryButtonsRow}>
