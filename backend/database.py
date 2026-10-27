@@ -8,6 +8,7 @@ by the Flask application.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -544,6 +545,25 @@ class Database:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_rate_limits ON rate_limits(uid, kind, created_at)")
+
+            # Répétition espacée des flashcards (en plus du quiz). Une carte est
+            # identifiée par sa question : corriger la réponse garde son suivi.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS flashcard_schedule (
+                    uid TEXT NOT NULL,
+                    course_id TEXT NOT NULL,
+                    card_key TEXT NOT NULL,
+                    ease_factor REAL NOT NULL DEFAULT 2.5,
+                    interval_days INTEGER NOT NULL DEFAULT 0,
+                    repetitions INTEGER NOT NULL DEFAULT 0,
+                    lapses INTEGER NOT NULL DEFAULT 0,
+                    next_review_date TEXT NOT NULL,
+                    last_reviewed_at TEXT,
+                    PRIMARY KEY (uid, course_id, card_key)
+                )
+                """
+            )
 
             # Calendrier d'examens : les cours liés passent en priorité en révision.
             conn.execute(
@@ -1893,6 +1913,103 @@ class Database:
                 # Lignes triées par date : le premier examen trouvé est le plus proche.
                 priorities.setdefault(cid, {"title": row["title"], "exam_date": row["exam_date"], "days_left": days_left})
         return priorities
+
+    # Note donnée par l'utilisateur après avoir vu la réponse -> qualité SM-2.
+    FLASHCARD_GRADES = {"again": 1, "hard": 3, "good": 4, "easy": 5}
+
+    @staticmethod
+    def flashcard_key(question: str) -> str:
+        normalized = " ".join(str(question or "").lower().split())
+        return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+
+    def get_due_flashcards(self, uid: str, course_id: Optional[str] = None, limit: int = 20) -> List[Dict]:
+        """Flashcards à revoir aujourd'hui : en retard d'abord, puis jamais vues.
+        Les cours d'un examen proche passent devant (comme pour le quiz)."""
+        courses = [self.fetch_course(uid, course_id)] if course_id else self.fetch_courses(uid)
+        courses = [c for c in courses if c is not None]
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT course_id, card_key, next_review_date, interval_days FROM flashcard_schedule WHERE uid=?",
+                (uid,),
+            ).fetchall()
+        schedule = {(r["course_id"], r["card_key"]): r for r in rows}
+        exams = self.get_exam_priorities(uid)
+        today = date.today().isoformat()
+
+        due, new = [], []
+        for course in courses:
+            exam = exams.get(course.id)
+            seen = set()
+            for card in course.flashcards or []:
+                key = self.flashcard_key(card.get("question"))
+                if key in seen:
+                    continue  # question en double dans le cours : une seule carte
+                seen.add(key)
+                item = {
+                    "course_id": course.id,
+                    "course_nom": course.nom,
+                    "card_key": key,
+                    "question": card.get("question"),
+                    "answer": card.get("answer"),
+                }
+                if exam:
+                    item["exam"] = {"title": exam["title"], "days_left": exam["days_left"]}
+                row = schedule.get((course.id, key))
+                if row is None:
+                    new.append(item)
+                elif row["next_review_date"] <= today:
+                    item["overdue_days"] = (date.today() - date.fromisoformat(row["next_review_date"])).days
+                    due.append(item)
+
+        def priority(entry):
+            bucket, item = entry
+            exam_rank = item["exam"]["days_left"] if "exam" in item else self.EXAM_PRIORITY_DAYS + 1
+            return (exam_rank, bucket, -item.get("overdue_days", 0))
+
+        ranked = sorted([(0, it) for it in due] + [(1, it) for it in new], key=priority)
+        return [it for _, it in ranked][:limit]
+
+    def count_due_flashcards(self, uid: str) -> int:
+        return len(self.get_due_flashcards(uid, limit=10_000))
+
+    def record_flashcard_review(self, uid: str, course_id: str, card_key: str, grade: str) -> Dict:
+        """Enregistre la note de l'utilisateur et planifie la prochaine révision (SM-2)."""
+        if grade not in self.FLASHCARD_GRADES:
+            raise ValueError("Note invalide")
+        course = self.fetch_course(uid, course_id)
+        if not course or not any(self.flashcard_key(c.get("question")) == card_key for c in course.flashcards or []):
+            raise LookupError("Flashcard introuvable")
+
+        quality = self.FLASHCARD_GRADES[grade]
+        with self.transaction() as conn:
+            row = conn.execute(
+                "SELECT ease_factor, interval_days, repetitions, lapses FROM flashcard_schedule "
+                "WHERE uid=? AND course_id=? AND card_key=?",
+                (uid, course_id, card_key),
+            ).fetchone()
+            current = (
+                CardSchedule(row["ease_factor"], row["interval_days"], row["repetitions"]) if row else CardSchedule()
+            )
+            lapses = (row["lapses"] if row else 0) + (1 if grade == "again" else 0)
+            new_schedule = next_schedule(current, quality)
+            next_date = next_review_date(new_schedule)
+            conn.execute(
+                """
+                INSERT INTO flashcard_schedule
+                    (uid, course_id, card_key, ease_factor, interval_days, repetitions, lapses, next_review_date, last_reviewed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (uid, course_id, card_key) DO UPDATE SET
+                    ease_factor=excluded.ease_factor, interval_days=excluded.interval_days,
+                    repetitions=excluded.repetitions, lapses=excluded.lapses,
+                    next_review_date=excluded.next_review_date, last_reviewed_at=excluded.last_reviewed_at
+                """,
+                (uid, course_id, card_key, new_schedule.ease_factor, new_schedule.interval_days,
+                 new_schedule.repetitions, lapses, next_date.isoformat(), datetime.now(timezone.utc).isoformat()),
+            )
+            # Journal : compte pour les quêtes, le calendrier d'activité et les stats.
+            self._log_answer(conn, uid, course_id, -1, grade != "again", "flashcard")
+
+        return {"interval_days": new_schedule.interval_days, "next_review_date": next_date.isoformat()}
 
     def create_exam(self, uid: str, title: str, exam_date: str, course_ids: List[str]) -> int:
         with self.transaction() as conn:

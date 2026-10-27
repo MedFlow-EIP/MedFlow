@@ -229,6 +229,16 @@ export function CourseDetailScreen({ route }: Props) {
 
         {tab === 'resume' && <SummaryCard html={course.summary || ''} />}
 
+        {tab === 'flashcards' && flashcards.length > 0 && (
+          <TouchableOpacity
+            style={styles.flashcardsButton}
+            onPress={() => (navigation as any).navigate('FlashcardReview', { courseId })}
+            accessibilityRole="button"
+          >
+            <Ionicons name="albums-outline" size={20} color={colors.primaryText} />
+            <Text style={styles.flashcardsButtonText}>Réviser ces flashcards</Text>
+          </TouchableOpacity>
+        )}
         {tab === 'flashcards' && <FlashcardList cards={flashcards} />}
 
         {tab === 'quiz' && (
@@ -336,6 +346,22 @@ function makeStyles(colors: ThemeColors) {
     },
     tagText: {
       fontSize: 12,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+    flashcardsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      minHeight: 50,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.surface,
+    },
+    flashcardsButtonText: {
+      fontSize: 15,
       fontWeight: '600',
       color: colors.primaryText,
     },

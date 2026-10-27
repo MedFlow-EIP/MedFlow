@@ -56,6 +56,7 @@ def create_app(config=None):
     from routes.quests import quests_bp
     from routes.mock_exam import mock_exam_bp
     from routes.challenges import challenges_bp
+    from routes.flashcards import flashcards_bp
     from services.ai import get_ai_provider
     from services.monitoring import init_sentry
 
@@ -130,6 +131,7 @@ def create_app(config=None):
     app.register_blueprint(quests_bp)
     app.register_blueprint(mock_exam_bp)
     app.register_blueprint(challenges_bp)
+    app.register_blueprint(flashcards_bp)
 
     # ------------------------------------------------------------------
     # Swagger / OpenAPI docs at /api/docs (jamais en production : le schéma
