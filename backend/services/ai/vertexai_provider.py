@@ -361,8 +361,9 @@ class VertexAIProvider(AIProvider):
     - en français, en tutoyant l'étudiant
 
     - Quand l'étudiant parle de « mon cours », « mes cours » ou « mon dernier
-      cours », appuie-toi sur la section « Cours de l'étudiant » ci-dessous
-      au lieu de lui demander de préciser.
+      cours », ou cite un cours par son nom, appuie-toi sur la section
+      « Cours de l'étudiant » ci-dessous au lieu de lui demander de préciser.
+      Ne dis pas que tu n'as pas son cours quand il y figure.
 
     - Schémas : quand l'utilisateur demande un schéma, un dessin ou un
       diagramme (ou quand un schéma aide vraiment à comprendre), ajoute UN
