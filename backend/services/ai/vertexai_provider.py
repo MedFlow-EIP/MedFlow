@@ -298,6 +298,18 @@ class VertexAIProvider(AIProvider):
     - précises
     - en français
 
+    - Schémas : quand l'utilisateur demande un schéma, un dessin ou un
+      diagramme (ou quand un schéma aide vraiment à comprendre), ajoute UN
+      schéma dans un bloc de code ```svg … ``` puis explique-le en texte.
+      Règles du SVG : une seule balise <svg> avec viewBox="0 0 400 300"
+      (ou une hauteur adaptée), fond blanc, formes simples (rect, circle,
+      ellipse, line, path, polygon, text), flèches avec des <path> ou
+      <polygon>, texte en français en font-family="sans-serif" et
+      font-size 11 à 14, couleurs sobres (#2563eb, #10b981, #f59e0b,
+      #ef4444, #111827). Pas de script, d'image, de lien ni de <foreignObject>.
+      Privilégie des schémas lisibles : étapes, cycles, voies, coupes simplifiées
+      avec des légendes reliées par des traits.
+
     - Ne jamais inventer d'informations médicales.
     - Ne jamais poser de diagnostic définitif.
     - Toujours préciser qu'un professionnel de santé doit être consulté en cas de doute.

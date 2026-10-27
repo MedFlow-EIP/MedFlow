@@ -42,6 +42,8 @@ import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/network';
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
 import { useVoiceDictation } from '../../utils/voiceDictation';
+import { splitDiagrams, stripDiagrams } from '../../utils/diagrams';
+import { ChatDiagram } from '../chat/ChatDiagram';
 
 type Message = {
   type: "user" | "ai";
@@ -165,7 +167,7 @@ function mergeWithServer(local: Conversation[], server: ServerConversation[] | n
 const SUGGESTIONS = [
   "Résume les points clés de mon dernier cours",
   "Fais-moi un quiz sur les os du crâne",
-  "Explique le cycle cardiaque simplement",
+  "Fais-moi un schéma du cycle cardiaque",
 ];
 
 export function AIChatScreen() {
@@ -432,7 +434,7 @@ export function AIChatScreen() {
       );
 
       if (isAISpeaking && !error) {
-        Speech.speak(aiResponse, {
+        Speech.speak(stripDiagrams(aiResponse), {
           language: "fr",
           pitch: 1,
           rate: 0.9,
@@ -777,7 +779,12 @@ export function AIChatScreen() {
                       baseStyle={{ color: colors.textPrimary, fontSize: 15, lineHeight: 23 }}
                     />
                   ) : (
+                    splitDiagrams(message.text).map((part, partIndex) =>
+                      part.type === 'svg' ? (
+                        <ChatDiagram key={partIndex} xml={part.content} width={Math.min(width * 0.8, 520) - 48} />
+                      ) : (
                     <Markdown
+                      key={partIndex}
                       style={{
                         body: {
                           color: colors.textPrimary,
@@ -802,8 +809,10 @@ export function AIChatScreen() {
                         },
                       }}
                     >
-                      {message.text}
+                      {part.content}
                     </Markdown>
+                      )
+                    )
                   )
                 ) : (
                   <Text style={styles.userText}>{message.text}</Text>
@@ -826,7 +835,7 @@ export function AIChatScreen() {
               {message.type === 'ai' && !message.error && message.text.length >= 40 && (
                 <TouchableOpacity
                   style={styles.messageAction}
-                  onPress={() => setFlashcardSource(message.text)}
+                  onPress={() => setFlashcardSource(stripDiagrams(message.text))}
                   accessibilityRole="button"
                   accessibilityLabel="Créer des flashcards à partir de cette réponse"
                 >
