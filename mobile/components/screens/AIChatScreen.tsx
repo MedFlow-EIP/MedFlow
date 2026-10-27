@@ -827,6 +827,9 @@ export function AIChatScreen() {
                         heading3: { fontSize: 17, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
                         strong: { fontWeight: "700" },
                         bullet_list: { marginTop: 4 },
+                        // Séparateur « --- » de l'IA : une ligne discrète avec de l'air autour,
+                        // au lieu d'une barre grise collée au texte.
+                        hr: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 14 },
                         table: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginVertical: 4 },
                         thead: { backgroundColor: colors.surfaceAlt },
                         th: { padding: 10, fontWeight: "600", minWidth: 120 },
