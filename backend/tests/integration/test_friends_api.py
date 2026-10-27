@@ -42,6 +42,42 @@ class TestSearchUsers:
         assert resp.get_json()["results"] == []
 
 
+class TestUserDiscovery:
+    """Un compte doit être trouvable (recherche, classement) dès sa première
+    requête authentifiée, et par son email exact."""
+
+    def test_new_user_listed_after_any_request(self, client, db):
+        # Le compte n'a ouvert ni Compte ni Amis : une seule requête quelconque.
+        client.get("/api/paths", headers=_headers("newbie-1", "Nina Nouvelle"))
+
+        resp = client.get("/api/leaderboard?limit=50", headers=_headers("viewer", "Viewer"))
+        assert any(e["uid"] == "newbie-1" for e in resp.get_json()["entries"])
+
+        resp = client.get("/api/users/search?q=Nina", headers=_headers("viewer", "Viewer"))
+        assert any(r["uid"] == "newbie-1" for r in resp.get_json()["results"])
+
+    def test_finds_user_by_exact_email_case_insensitive(self, client, db):
+        client.get("/api/paths", headers={**_headers("carla-1", "Carla"), "X-User-Email": "Carla@Example.com"})
+
+        resp = client.get("/api/users/search?q=carla@example.COM", headers=_headers("viewer", "Viewer"))
+        results = resp.get_json()["results"]
+        assert [r["uid"] for r in results] == ["carla-1"]
+        assert "email" not in results[0]
+
+    def test_partial_email_does_not_match(self, client, db):
+        client.get("/api/paths", headers={**_headers("dan-1", "Daniel"), "X-User-Email": "dan@example.com"})
+
+        resp = client.get("/api/users/search?q=example.com", headers=_headers("viewer", "Viewer"))
+        assert not any(r["uid"] == "dan-1" for r in resp.get_json()["results"])
+
+    def test_missing_name_does_not_erase_known_name(self, client, db):
+        client.get("/api/paths", headers=_headers("eve-1", "Eve"))
+        client.get("/api/paths", headers={"X-User-UID": "eve-1"})
+
+        resp = client.get("/api/users/search?q=Eve", headers=_headers("viewer", "Viewer"))
+        assert any(r["uid"] == "eve-1" for r in resp.get_json()["results"])
+
+
 class TestFriendRequests:
     def test_send_request_creates_pending(self, client, db):
         client.get("/api/users/search?q=x", headers=_headers("u-a", "A"))

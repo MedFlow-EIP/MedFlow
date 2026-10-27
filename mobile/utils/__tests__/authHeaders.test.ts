@@ -65,13 +65,13 @@ describe('getAuthHeaders', () => {
     expect(headers['X-User-Avatar']).toBe('');
   });
 
-  it('renvoie exactement les 4 headers attendus, rien de plus', async () => {
+  it('renvoie exactement les 5 headers attendus, rien de plus', async () => {
     const user = makeMockUser();
 
     const headers = await getAuthHeaders(user);
 
     expect(Object.keys(headers).sort()).toEqual(
-      ['Authorization', 'X-User-Avatar', 'X-User-Name', 'X-User-UID'].sort()
+      ['Authorization', 'X-User-Avatar', 'X-User-Email', 'X-User-Name', 'X-User-UID'].sort()
     );
   });
 });

@@ -54,6 +54,9 @@ def _verify_firebase_token() -> str | None:
     try:
         import firebase_admin.auth as fb_auth
         decoded = fb_auth.verify_id_token(token)
+        # Email certifié par Firebase : seule source fiable pour la recherche
+        # d'amis par email (un header pourrait être falsifié).
+        g.token_email = decoded.get("email")
         return decoded.get("uid")
     except Exception as e:
         logger.warning("Firebase token verification failed: %s", e)
@@ -85,8 +88,33 @@ def require_auth(f):
         g.uid = uid
         g.display_name = request.headers.get("X-User-Name") or "Utilisateur"
         g.photo_url = request.headers.get("X-User-Avatar") or None
+        _register_user(uid)
         return f(*args, **kwargs)
     return decorated
+
+
+def _register_user(uid: str) -> None:
+    """Inscrit l'utilisateur dans user_stats dès sa première requête
+    authentifiée, pour qu'il apparaisse au classement et dans la recherche
+    d'amis même s'il n'a encore ouvert ni Compte ni Amis. Ne doit jamais
+    faire échouer la requête."""
+    display_name = request.headers.get("X-User-Name") or None
+    if current_app.config.get("FIREBASE_VERIFY", True):
+        email = getattr(g, "token_email", None)
+    else:
+        # Mode dev : pas de token vérifié, on accepte le header du client.
+        email = request.headers.get("X-User-Email") or None
+    profile = (display_name, email.lower() if email else None)
+    # Dernier (nom, email) écrit par UID, rattaché à l'app (et donc à sa
+    # base) : on n'écrit en base que lorsque quelque chose change.
+    registered = current_app.extensions.setdefault("registered_profiles", {})
+    if registered.get(uid) == profile:
+        return
+    try:
+        current_app.db.register_user(uid, profile[0], profile[1])
+        registered[uid] = profile
+    except Exception:
+        logger.exception("Enregistrement du profil impossible pour %s", uid)
 
 
 def build_user_response() -> dict:

@@ -259,6 +259,12 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            # Email (en minuscules) pour la recherche d'amis par adresse exacte.
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN email TEXT")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_badges (
@@ -820,6 +826,23 @@ class Database:
                 (uid, display_name),
             )
 
+    def register_user(self, uid: str, display_name: str | None, email: str | None) -> None:
+        """Crée la ligne user_stats de l'utilisateur s'il n'en a pas encore
+        (appelé dès sa première requête authentifiée) et met à jour son nom
+        et son email quand ils sont connus. Une valeur absente n'écrase
+        jamais une valeur déjà enregistrée."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_stats (uid, xp, streak, display_name, email)
+                VALUES (?, 0, 0, ?, ?)
+                ON CONFLICT(uid) DO UPDATE SET
+                    display_name = COALESCE(excluded.display_name, user_stats.display_name),
+                    email = COALESCE(excluded.email, user_stats.email)
+                """,
+                (uid, display_name, email),
+            )
+
     def set_avatar_url(self, uid: str, avatar_url: str) -> None:
         """Mémorise l'URL de l'avatar uploadé, pour pouvoir l'afficher dans
         le classement/liste d'amis sans requêter Firebase Admin à chaque
@@ -879,22 +902,29 @@ class Database:
     # -----------------------------------------------------------------
 
     def search_users(self, query: str, exclude_uid: str, limit: int = 20) -> List[Dict]:
-        """Recherche des utilisateurs par nom affiché, avec leur statut
-        d'amitié actuel vis-à-vis de exclude_uid (pour savoir quoi
-        afficher : Ajouter / Demande envoyée / Ami / Accepter)."""
+        """Recherche des utilisateurs par nom affiché (partiel) ou par email
+        (adresse exacte uniquement, pour ne pas permettre de lister les
+        comptes avec un bout d'adresse), avec leur statut d'amitié actuel
+        vis-à-vis de exclude_uid (Ajouter / Demande envoyée / Ami / Accepter).
+        L'email n'est jamais renvoyé dans les résultats."""
         if not query or not query.strip():
             return []
+        query = query.strip()
 
         with self.connection() as conn:
             rows = conn.execute(
                 """
                 SELECT uid, display_name, avatar_url
                 FROM user_stats
-                WHERE display_name LIKE ? AND uid != ? AND display_name IS NOT NULL
+                WHERE uid != ?
+                  AND (
+                    (display_name IS NOT NULL AND display_name LIKE ?)
+                    OR (email IS NOT NULL AND email = ?)
+                  )
                 ORDER BY display_name ASC
                 LIMIT ?
                 """,
-                (f"%{query.strip()}%", exclude_uid, limit),
+                (exclude_uid, f"%{query}%", query.lower(), limit),
             ).fetchall()
 
         results = []

@@ -206,7 +206,7 @@ export function FriendsScreen() {
         <TextInput
           value={query}
           onChangeText={runSearch}
-          placeholder="Rechercher un nom..."
+          placeholder="Nom ou email exact…"
           placeholderTextColor={colors.muted}
           accessibilityLabel="Rechercher un ami par nom"
           style={styles.searchInput}
