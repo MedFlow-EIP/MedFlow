@@ -2,12 +2,12 @@ import base64
 import binascii
 import logging
 import uuid
-from io import BytesIO
 
 from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.ai_quota import consume_ai_quota
 from middleware.auth import require_auth
+from services.pdf import pdf_page_count as _pdf_page_count
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +19,6 @@ MAX_ATTACHMENTS = 3
 MAX_ATTACHMENT_BYTES = 7 * 1024 * 1024  # 7 Mo par fichier, après décodage
 
 DEFAULT_ATTACHMENT_PROMPT = "Analyse ce document et explique-moi l'essentiel."
-
-
-def _pdf_page_count(data: bytes):
-    try:
-        from pypdf import PdfReader
-        return len(PdfReader(BytesIO(data)).pages)
-    except Exception:
-        return None
 
 
 def _parse_attachments(raw):

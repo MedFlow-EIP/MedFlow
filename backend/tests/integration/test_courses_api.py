@@ -116,7 +116,7 @@ class TestProcessDocument:
         assert resp.status_code == 400
 
     def test_process_wrong_extension_returns_400(self, client, auth_headers):
-        data = {"file": (io.BytesIO(b"not a pdf"), "document.docx")}
+        data = {"file": (io.BytesIO(b"not a pdf"), "document.txt")}
         resp = client.post(
             "/api/process",
             data=data,
@@ -124,7 +124,7 @@ class TestProcessDocument:
             content_type="multipart/form-data",
         )
         assert resp.status_code == 400
-        assert "PDF" in resp.get_json()["error"]
+        assert "Format non supporté" in resp.get_json()["error"]
 
     def test_process_requires_auth(self, client, minimal_pdf_bytes):
         data = {"file": (io.BytesIO(minimal_pdf_bytes), "test.pdf")}

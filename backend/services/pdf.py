@@ -18,3 +18,11 @@ def extract_text_from_pdf(pdf_file: bytes) -> str:
     except Exception as e:
         logger.error(f"Erreur extraction PDF: {str(e)}")
         raise
+
+
+def pdf_page_count(pdf_file: bytes):
+    """Nombre de pages, ou None si le PDF est illisible."""
+    try:
+        return len(PdfReader(BytesIO(pdf_file)).pages)
+    except Exception:
+        return None

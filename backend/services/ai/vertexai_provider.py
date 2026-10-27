@@ -204,6 +204,25 @@ class VertexAIProvider(AIProvider):
             logger.error("Erreur génération titre: %s", e)
             return os.path.splitext(filename)[0]
 
+    def transcribe_document(self, data: bytes, mime_type: str) -> str:
+        """Lit une photo de cours ou un PDF scanné et renvoie son texte."""
+        try:
+            prompt = """
+        Retranscris fidèlement tout le texte lisible de ce document de cours
+        (titres, paragraphes, listes, légendes de schémas, tableaux en lignes).
+        N'ajoute aucun commentaire, aucune explication, aucun Markdown.
+        S'il n'y a aucun texte lisible, réponds uniquement : AUCUN_TEXTE
+        """
+            response = self._model().generate_content(
+                [Part.from_data(data=data, mime_type=mime_type), prompt],
+                stream=False,
+            )
+            text = (response.text or "").strip()
+            return "" if text == "AUCUN_TEXTE" else text
+        except Exception as e:
+            logger.error("Erreur lecture document: %s", e)
+            return ""
+
     def medical_chat(
         self,
         user_message: str,

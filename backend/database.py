@@ -1832,6 +1832,90 @@ class Database:
             )
         return result.rowcount > 0
 
+    def update_course(
+        self,
+        uid: str,
+        course_id: str,
+        nom: Optional[str] = None,
+        flashcards: Optional[List[Dict]] = None,
+    ) -> bool:
+        """Renomme un cours et/ou remplace ses flashcards. Le quiz n'est pas
+        modifiable : le planning de révision repose sur l'ordre de ses questions."""
+        if not uid or not course_id:
+            raise ValueError("UID and course_id are required")
+
+        fields, values = [], []
+        if nom is not None:
+            fields.append("nom=?")
+            values.append(nom)
+        if flashcards is not None:
+            fields.append("flashcards=?")
+            values.append(json.dumps(flashcards, ensure_ascii=False))
+        if not fields:
+            return False
+
+        with self.transaction() as conn:
+            result = conn.execute(
+                f"UPDATE courses SET {', '.join(fields)}, updated_at=CURRENT_TIMESTAMP "
+                "WHERE uid=? AND course_id=?",
+                (*values, uid, course_id),
+            )
+        return result.rowcount > 0
+
+    def export_user_data(self, uid: str) -> Dict:
+        """Toutes les données d'un utilisateur, table par table (export RGPD).
+
+        Même parcours que ``delete_user_data`` : une table ajoutée plus tard
+        avec une colonne ``uid`` sera exportée elle aussi.
+        """
+        json_columns = {"flashcards", "quiz", "attachments", "metadata", "data"}
+
+        def as_dict(row) -> Dict:
+            item = dict(row)
+            for key, value in item.items():
+                if key in json_columns and isinstance(value, str):
+                    try:
+                        item[key] = json.loads(value)
+                    except json.JSONDecodeError:
+                        pass
+            return item
+
+        export: Dict[str, List[Dict]] = {}
+        with self.connection() as conn:
+            tables = [
+                row["name"]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                ).fetchall()
+            ]
+            for table in tables:
+                columns = {col["name"] for col in conn.execute(f'PRAGMA table_info("{table}")').fetchall()}
+                if "uid" in columns:
+                    rows = conn.execute(f'SELECT * FROM "{table}" WHERE uid = ?', (uid,)).fetchall()
+                    if rows:
+                        export[table] = [as_dict(r) for r in rows]
+
+            messages = conn.execute(
+                """
+                SELECT m.* FROM chat_messages m
+                JOIN chat_conversations c ON c.conversation_id = m.conversation_id
+                WHERE c.uid = ?
+                ORDER BY m.created_at ASC, m.rowid ASC
+                """,
+                (uid,),
+            ).fetchall()
+            if messages:
+                export["chat_messages"] = [as_dict(r) for r in messages]
+
+            friendships = conn.execute(
+                "SELECT * FROM friendships WHERE requester_uid = ? OR addressee_uid = ?",
+                (uid, uid),
+            ).fetchall()
+            if friendships:
+                export["friendships"] = [as_dict(r) for r in friendships]
+
+        return export
+
     def fetch_courses_paginated(
         self,
         uid: str,

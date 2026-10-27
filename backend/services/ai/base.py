@@ -23,3 +23,10 @@ class AIProvider(ABC):
     def generate_title(self, text: str, filename: str) -> str:
         """Generate a short descriptive course title (max 10 words)."""
         ...
+
+    def transcribe_document(self, data: bytes, mime_type: str) -> str:
+        """Retranscrit le texte d'une image ou d'un PDF scanné (OCR).
+
+        Renvoie une chaîne vide si le fournisseur ne sait pas lire les fichiers.
+        """
+        return ""

@@ -46,6 +46,10 @@ class Config:
     CHAT_MAX_MESSAGE_CHARS = 2000
     CHAT_HISTORY_MESSAGES = 12
     CHAT_MAX_PDF_PAGES = 30
+    # Photos et PDF scannés importés comme cours : lus page par page par l'IA.
+    PROCESS_MAX_SCANNED_PAGES = 30
+    # Texte d'une réponse du chat transformé en flashcards.
+    FLASHCARDS_FROM_TEXT_MAX_CHARS = 8000
 
 
 class DevelopmentConfig(Config):

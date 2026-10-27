@@ -115,9 +115,13 @@ class TestProcessQuota:
     def _pdf_has_text(self, monkeypatch):
         monkeypatch.setattr("routes.courses.extract_text_from_pdf", lambda _: "Le coeur a quatre cavités.")
 
-    def test_empty_pdf_does_not_consume_quota(self, client, app, minimal_pdf_bytes, monkeypatch):
+    def test_unreadable_pdf_does_not_consume_quota(self, client, app, minimal_pdf_bytes, monkeypatch):
         app.config["AI_PROCESS_PER_HOUR"] = 1
-        monkeypatch.setattr("routes.courses.extract_text_from_pdf", lambda _: "")
+
+        def broken(_):
+            raise ValueError("PDF corrompu")
+
+        monkeypatch.setattr("routes.courses.extract_text_from_pdf", broken)
         assert _upload(client, "u1", minimal_pdf_bytes).status_code == 400
         monkeypatch.setattr("routes.courses.extract_text_from_pdf", lambda _: "Le coeur a quatre cavités.")
         assert _upload(client, "u1", minimal_pdf_bytes).status_code == 200

@@ -35,6 +35,13 @@ class MockAIProvider(AIProvider):
     def __init__(self):
         # Derniers arguments reçus par medical_chat, pour vérifier ce qui part au modèle.
         self.last_chat_call = None
+        # Texte renvoyé par la « lecture » d'une image ou d'un PDF scanné.
+        self.transcription = "Texte lu sur la photo : le coeur a quatre cavités."
+        self.transcribe_calls = []
+
+    def transcribe_document(self, data: bytes, mime_type: str) -> str:
+        self.transcribe_calls.append(mime_type)
+        return self.transcription
 
     def medical_chat(self, user_message: str, history: list | None = None, attachments: list | None = None) -> str:
         self.last_chat_call = {"user_message": user_message, "history": history or [], "attachments": attachments or []}

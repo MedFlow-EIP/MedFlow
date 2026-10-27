@@ -250,6 +250,21 @@ def delete_account():
         return internal_error("Erreur interne")
 
 
+@account_bp.route("/api/account/export", methods=["GET"])
+@require_auth
+def export_account():
+    """Export RGPD : toutes les données du compte, en JSON."""
+    try:
+        return jsonify({
+            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "account": {"uid": g.uid, "email": getattr(g, "token_email", None), "display_name": g.display_name},
+            "data": current_app.db.export_user_data(g.uid),
+        })
+    except Exception:
+        logger.exception("Erreur export des données")
+        return internal_error("Erreur export")
+
+
 @account_bp.route("/api/analytics/screen-view", methods=["POST"])
 @require_auth
 def log_screen_view():

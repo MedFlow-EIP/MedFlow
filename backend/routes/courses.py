@@ -8,12 +8,29 @@ from werkzeug.utils import secure_filename
 
 from middleware.ai_quota import consume_ai_quota
 from middleware.auth import build_user_response, require_auth
-from services.pdf import extract_text_from_pdf
+from services.documents import (
+    DOCUMENT_TYPES,
+    IMAGE_EXTENSIONS,
+    DocumentError,
+    extract_text_from_docx,
+    extract_text_from_pptx,
+)
+from services.pdf import extract_text_from_pdf, pdf_page_count as _pdf_page_count
 from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
 courses_bp = Blueprint("courses", __name__)
+
+# En dessous, le document est considéré comme vide.
+MIN_TEXT_CHARS = 10
+MAX_COURSE_NAME_CHARS = 120
+MAX_FLASHCARDS = 200
+MAX_CARD_CHARS = 1000
+
+# Cours qui reçoit les flashcards créées depuis le chat.
+NOTES_COURSE_ID = "notes-assistant"
+NOTES_COURSE_NAME = "Notes de l'assistant"
 
 
 # ---------------------------------------------------------------------------
@@ -144,10 +161,87 @@ def delete_course(course_id):
         return internal_error("Erreur suppression")
 
 
+def _read_course_text(data: bytes, extension: str, mime_type: str):
+    """Texte du document. Renvoie (texte, besoin_ia, erreur, code HTTP).
+
+    ``besoin_ia`` : image ou PDF scanné, à faire lire par l'IA (compte dans le quota).
+    """
+    if extension in IMAGE_EXTENSIONS:
+        return "", True, None, None
+
+    if extension == ".pdf":
+        try:
+            text = extract_text_from_pdf(data)
+        except Exception:
+            return None, False, "PDF illisible ou corrompu", 400
+        if text and len(text.strip()) >= MIN_TEXT_CHARS:
+            return text, False, None, None
+        # Pas de texte : PDF scanné (photos de pages). L'IA le lit, mais
+        # chaque page est facturée : on limite le nombre de pages.
+        max_pages = current_app.config.get("PROCESS_MAX_SCANNED_PAGES", 30)
+        pages = _pdf_page_count(data)
+        if pages is None:
+            return None, False, "PDF illisible ou corrompu", 400
+        if pages > max_pages:
+            return None, False, f"PDF scanné trop long ({max_pages} pages maximum)", 413
+        return "", True, None, None
+
+    try:
+        if extension == ".docx":
+            text = extract_text_from_docx(data)
+        else:
+            text = extract_text_from_pptx(data)
+    except DocumentError as e:
+        return None, False, str(e), 400
+    if not text or len(text.strip()) < MIN_TEXT_CHARS:
+        return None, False, "Document vide : aucun texte à analyser", 400
+    return text, False, None, None
+
+
+def _clean_flashcards(cards) -> list:
+    """Garde les cartes valides (les fournisseurs IA renvoient une carte « Erreur » en cas d'échec)."""
+    if not isinstance(cards, list):
+        return []
+    return [
+        {"question": str(c["question"]).strip(), "answer": str(c["answer"]).strip()}
+        for c in cards
+        if isinstance(c, dict)
+        and str(c.get("question", "")).strip()
+        and str(c.get("answer", "")).strip()
+        and c.get("question") != "Erreur"
+    ]
+
+
+def _clean_quiz(questions) -> list:
+    if not isinstance(questions, list):
+        return []
+    return [
+        q for q in questions
+        if isinstance(q, dict)
+        and q.get("question") not in (None, "", "Erreur")
+        and isinstance(q.get("options"), dict)
+        and q.get("correct") in q["options"]
+    ]
+
+
+def _new_course_id(uid: str, filename: str) -> str:
+    """Identifiant libre : deux photos « image.jpg » ne s'écrasent plus."""
+    base = os.path.splitext(filename)[0] or "cours"
+    course_id, n = base, 2
+    while current_app.db.fetch_course(uid, course_id):
+        course_id = f"{base}-{n}"
+        n += 1
+    return course_id
+
+
 @courses_bp.route("/api/process", methods=["POST"])
 @require_auth
 def process_document():
-    """Upload a PDF and generate flashcards, summary, quiz and title in parallel."""
+    """Importe un cours (PDF, Word, PowerPoint ou photo) et génère titre,
+    résumé, flashcards et quiz en parallèle.
+
+    ``replace_course_id`` (facultatif) : régénère ce cours au lieu d'en créer un.
+    """
     logger.info("Starting document processing for uid=%s", g.uid)
 
     if "file" not in request.files:
@@ -157,9 +251,11 @@ def process_document():
     if not file or file.filename == "":
         return jsonify({"error": "Nom de fichier vide"}), 400
 
-    filename = secure_filename(file.filename)
-    if not filename.lower().endswith(".pdf"):
-        return jsonify({"error": "Format non supporté, PDF uniquement"}), 400
+    filename = secure_filename(file.filename) or "cours"
+    extension = os.path.splitext(filename)[1].lower()
+    mime_type = DOCUMENT_TYPES.get(extension)
+    if not mime_type:
+        return jsonify({"error": "Format non supporté : PDF, Word, PowerPoint ou photo (JPEG, PNG, WebP)"}), 400
 
     # Taille réelle du fichier reçu (sans le charger en mémoire).
     file.stream.seek(0, os.SEEK_END)
@@ -167,30 +263,40 @@ def process_document():
     file.stream.seek(0)
     max_bytes = current_app.config.get("MAX_PDF_BYTES", 20 * 1024 * 1024)
     if size > max_bytes:
-        return jsonify({"error": f"PDF trop lourd ({max_bytes // (1024 * 1024)} Mo maximum)"}), 413
+        return jsonify({"error": f"Fichier trop lourd ({max_bytes // (1024 * 1024)} Mo maximum)"}), 413
+    if size == 0:
+        return jsonify({"error": "Fichier vide"}), 400
 
     if current_app.ai is None:
         return jsonify({"error": "IA indisponible"}), 503
 
+    replace_id = (request.form.get("replace_course_id") or "").strip()
+    if replace_id and not current_app.db.fetch_course(g.uid, replace_id):
+        return jsonify({"error": "Cours introuvable"}), 404
+
     try:
-        # Le PDF n'est pas gardé sur le disque : seul le contenu généré est
+        # Le fichier n'est pas gardé sur le disque : seul le contenu généré est
         # conservé (évite que le dossier uploads/ grossisse sans fin).
-        pdf_content = file.read()
+        data = file.read()
 
-        text = extract_text_from_pdf(pdf_content)
-
-        if not text or len(text.strip()) < 10:
-            return jsonify({"error": "PDF vide ou illisible"}), 400
-
-        logger.info("Extracted text length: %d", len(text))
+        text, needs_reading, error, status = _read_course_text(data, extension, mime_type)
+        if error:
+            return jsonify({"error": error}), status
 
         # Quota compté seulement quand l'IA va vraiment être appelée.
         quota_error = consume_ai_quota("process")
         if quota_error:
             return quota_error
 
-        # Run all 4 AI generation tasks concurrently
         ai = current_app.ai
+        if needs_reading:
+            text = ai.transcribe_document(data, mime_type)
+            if not text or len(text.strip()) < MIN_TEXT_CHARS:
+                return jsonify({"error": "Aucun texte lisible sur ce document. Essaie une photo plus nette."}), 400
+
+        logger.info("Extracted text length: %d", len(text))
+
+        # Run all 4 AI generation tasks concurrently
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = {
                 executor.submit(ai.generate_title, text, filename): "nom",
@@ -203,13 +309,19 @@ def process_document():
                 key = futures[future]
                 results[key] = future.result()
 
-        course_id = os.path.splitext(filename)[0]
+        flashcards = _clean_flashcards(results["flashcards"])
+        quiz = _clean_quiz(results["quiz"])
+        if not flashcards and not quiz:
+            # Rien d'exploitable : on n'enregistre pas un cours vide.
+            return jsonify({"error": "La génération a échoué. Réessaie dans un instant."}), 502
+
+        course_id = replace_id or _new_course_id(g.uid, filename)
         output = {
             "id": course_id,
-            "nom": results["nom"],
-            "flashcards": results["flashcards"],
+            "nom": (results["nom"] or os.path.splitext(filename)[0])[:MAX_COURSE_NAME_CHARS],
+            "flashcards": flashcards,
             "summary": results["summary"],
-            "quiz": results["quiz"],
+            "quiz": quiz,
             "sessions": 0,
         }
 
@@ -222,3 +334,124 @@ def process_document():
     except Exception as e:
         logger.exception("Erreur traitement document")
         return internal_error("Erreur traitement")
+
+
+# ---------------------------------------------------------------------------
+# Modification d'un cours (F77)
+# ---------------------------------------------------------------------------
+
+def _validate_flashcards(raw):
+    """Cartes envoyées par l'app. Renvoie (cartes, erreur)."""
+    if not isinstance(raw, list):
+        return None, "Flashcards invalides"
+    if len(raw) > MAX_FLASHCARDS:
+        return None, f"{MAX_FLASHCARDS} flashcards maximum par cours"
+    cards = []
+    for card in raw:
+        if not isinstance(card, dict):
+            return None, "Flashcard invalide"
+        question = str(card.get("question") or "").strip()
+        answer = str(card.get("answer") or "").strip()
+        if not question or not answer:
+            return None, "Chaque flashcard doit avoir une question et une réponse"
+        if len(question) > MAX_CARD_CHARS or len(answer) > MAX_CARD_CHARS:
+            return None, f"Question et réponse : {MAX_CARD_CHARS} caractères maximum"
+        cards.append({"question": question, "answer": answer})
+    return cards, None
+
+
+@courses_bp.route("/api/course/<course_id>", methods=["PATCH"])
+@require_auth
+def update_course(course_id):
+    """Renomme un cours et/ou remplace ses flashcards (corrections de l'utilisateur)."""
+    try:
+        db = current_app.db
+        if not db.fetch_course(g.uid, course_id):
+            return jsonify({"error": "Cours introuvable"}), 404
+
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "Body JSON invalide"}), 400
+
+        nom = None
+        if "nom" in body:
+            nom = str(body.get("nom") or "").strip()
+            if not nom:
+                return jsonify({"error": "Le titre ne peut pas être vide"}), 400
+            if len(nom) > MAX_COURSE_NAME_CHARS:
+                return jsonify({"error": f"Titre trop long ({MAX_COURSE_NAME_CHARS} caractères maximum)"}), 400
+
+        flashcards = None
+        if "flashcards" in body:
+            flashcards, error = _validate_flashcards(body.get("flashcards"))
+            if error:
+                return jsonify({"error": error}), 400
+
+        if nom is None and flashcards is None:
+            return jsonify({"error": "Rien à modifier"}), 400
+
+        db.update_course(g.uid, course_id, nom=nom, flashcards=flashcards)
+        return jsonify(_course_to_response(db.fetch_course(g.uid, course_id)))
+    except Exception:
+        logger.exception("Erreur modification cours")
+        return internal_error("Erreur modification")
+
+
+# ---------------------------------------------------------------------------
+# Flashcards créées depuis un texte (réponse de l'assistant)
+# ---------------------------------------------------------------------------
+
+@courses_bp.route("/api/flashcards/from-text", methods=["POST"])
+@require_auth
+def flashcards_from_text():
+    """Transforme un texte (réponse du chat) en flashcards ajoutées à un cours.
+
+    ``course_id`` absent : les cartes vont dans le cours « Notes de l'assistant ».
+    """
+    try:
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "Body JSON invalide"}), 400
+
+        text = str(body.get("text") or "").strip()
+        if len(text) < MIN_TEXT_CHARS:
+            return jsonify({"error": "Texte trop court pour créer des flashcards"}), 400
+        max_chars = current_app.config.get("FLASHCARDS_FROM_TEXT_MAX_CHARS", 8000)
+        if len(text) > max_chars:
+            return jsonify({"error": f"Texte trop long ({max_chars} caractères maximum)"}), 400
+
+        db = current_app.db
+        course_id = (body.get("course_id") or "").strip() or NOTES_COURSE_ID
+        course = db.fetch_course(g.uid, course_id)
+        if course_id != NOTES_COURSE_ID and not course:
+            return jsonify({"error": "Cours introuvable"}), 404
+        if course and len(course.flashcards or []) >= MAX_FLASHCARDS:
+            return jsonify({"error": f"Ce cours a déjà {MAX_FLASHCARDS} flashcards"}), 400
+
+        if current_app.ai is None:
+            return jsonify({"error": "IA indisponible"}), 503
+        quota_error = consume_ai_quota("chat")
+        if quota_error:
+            return quota_error
+
+        cards = _clean_flashcards(current_app.ai.generate_flashcards(text, 3))
+        if not cards:
+            return jsonify({"error": "Impossible de créer des flashcards. Réessaie."}), 502
+
+        if course:
+            room = MAX_FLASHCARDS - len(course.flashcards or [])
+            cards = cards[:room]
+            db.update_course(g.uid, course_id, flashcards=[*(course.flashcards or []), *cards])
+        else:
+            db.save_course(g.uid, course_id, {
+                "nom": NOTES_COURSE_NAME,
+                "summary": "<p>Flashcards créées depuis tes conversations avec l’assistant.</p>",
+                "flashcards": cards,
+                "quiz": [],
+            })
+
+        updated = db.fetch_course(g.uid, course_id)
+        return jsonify({"course_id": course_id, "course_nom": updated.nom, "added": cards})
+    except Exception:
+        logger.exception("Erreur flashcards depuis texte")
+        return internal_error("Erreur création flashcards")
