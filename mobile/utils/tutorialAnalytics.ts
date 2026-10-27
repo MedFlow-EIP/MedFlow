@@ -28,7 +28,7 @@ async function appendEvent(event: TutorialEvent): Promise<void> {
     const events: TutorialEvent[] = raw ? JSON.parse(raw) : [];
     events.push(event);
     await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-    console.log('[tutorial analytics]', event);
+    if (__DEV__) console.log('[tutorial analytics]', event);
   } catch (error) {
     console.error('Erreur log analytics tutoriel:', error);
   }
@@ -136,4 +136,4 @@ export async function clearTutorialEvents(): Promise<void> {
   } catch (error) {
     console.error('Erreur reset analytics tutoriel:', error);
   }
-}
+}

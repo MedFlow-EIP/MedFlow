@@ -24,6 +24,7 @@ import { scheduleReminderIfNeeded } from "../../utils/streakNotifications";
 
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
+import { unregisterPushNotifications } from '../../utils/pushNotifications';
 
 type Badge = {
   id: string;
@@ -120,7 +121,7 @@ export function AccountScreen() {
   const handleLogout = async () => {
     appAlert(
       "Déconnexion",
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "Tu veux vraiment te déconnecter ?",
       [
         { text: "Annuler", style: "cancel" },
         { 
@@ -128,6 +129,8 @@ export function AccountScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              // Ce téléphone ne doit plus recevoir les notifications de ce compte.
+              if (auth.currentUser) await unregisterPushNotifications(auth.currentUser);
               await signOut(auth);
             } catch (error) {
               appAlert("Erreur", "Impossible de se déconnecter");

@@ -200,7 +200,7 @@ export function UploadCourseScreen() {
 
     const user = auth.currentUser;
     if (!user) {
-      appAlert("Erreur", "Vous devez être connecté");
+      appAlert("Session expirée", "Reconnecte-toi pour importer un cours.");
       return;
     }
 
