@@ -12,6 +12,7 @@ const LAST_SCHEDULED_COUNT_KEY = '@medflow_revision_reminder_last_count';
 // getRevisionReminderHour/setRevisionReminderHour ci-dessous).
 const DEFAULT_REMINDER_HOUR = 9;
 const REMINDER_HOUR_KEY = '@medflow_revision_reminder_hour';
+const REMINDER_MINUTE_KEY = '@medflow_revision_reminder_minute';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -33,8 +34,22 @@ export async function getRevisionReminderHour(): Promise<number> {
 }
 
 export async function setRevisionReminderHour(hour: number): Promise<void> {
-  const clamped = Math.max(0, Math.min(23, Math.round(hour)));
-  await AsyncStorage.setItem(REMINDER_HOUR_KEY, String(clamped));
+  await setRevisionReminderTime(hour, 0);
+}
+
+/** Heure et minutes du rappel (minutes à 0 si jamais choisies). */
+export async function getRevisionReminderTime(): Promise<{ hour: number; minute: number }> {
+  const hour = await getRevisionReminderHour();
+  const stored = await AsyncStorage.getItem(REMINDER_MINUTE_KEY);
+  const minute = stored ? parseInt(stored, 10) : 0;
+  return { hour, minute: Number.isFinite(minute) && minute >= 0 && minute <= 59 ? minute : 0 };
+}
+
+export async function setRevisionReminderTime(hour: number, minute: number): Promise<void> {
+  const h = Math.max(0, Math.min(23, Math.round(hour)));
+  const m = Math.max(0, Math.min(59, Math.round(minute)));
+  await AsyncStorage.setItem(REMINDER_HOUR_KEY, String(h));
+  await AsyncStorage.setItem(REMINDER_MINUTE_KEY, String(m));
   // L'heure a changé : force une replanification même si le nombre de
   // cartes dues, lui, n'a pas bougé (sinon le garde-fou "pas de
   // changement -> ne rien refaire" empêcherait la nouvelle heure de
@@ -103,10 +118,10 @@ export async function scheduleRevisionReminder(dueCount: number): Promise<void> 
 
   await cancelScheduledReminder();
 
-  const reminderHour = await getRevisionReminderHour();
+  const { hour: reminderHour, minute: reminderMinute } = await getRevisionReminderTime();
   const now = new Date();
   const target = new Date();
-  target.setHours(reminderHour, 0, 0, 0);
+  target.setHours(reminderHour, reminderMinute, 0, 0);
   if (target.getTime() <= now.getTime()) {
     target.setDate(target.getDate() + 1);
   }

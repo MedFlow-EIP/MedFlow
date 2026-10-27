@@ -21,5 +21,7 @@ export async function getAuthHeaders(user: User): Promise<Record<string, string>
     'X-User-UID': user.uid,
     'X-User-Name': user.displayName ?? '',
     'X-User-Avatar': user.photoURL ?? '',
+    // Lu seulement en mode dev (FIREBASE_VERIFY=False) ; en prod, l'email vient du token vérifié.
+    'X-User-Email': user.email ?? '',
   };
 }

@@ -173,7 +173,7 @@ function makeStyles(colors: ThemeColors) {
     progressPercentage: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.primaryText,
     },
     progressSubtext: {
       fontSize: 12,

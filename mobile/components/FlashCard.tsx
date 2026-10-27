@@ -129,7 +129,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 2,
     },
     cardBack: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
     },
     cardHeader: {
       marginBottom: 24,
@@ -179,7 +179,7 @@ function makeStyles(colors: ThemeColors) {
     },
     tapHint: {
       fontSize: 14,
-      color: colors.muted,
+      color: colors.textSecondary,
       textAlign: 'center',
     },
     tapHintWhite: {

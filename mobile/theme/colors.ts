@@ -20,6 +20,8 @@ export type ThemeColors = {
   tintSuccess: string;
   tintWarning: string;
   tintDanger: string;
+  /** Teinte bleue plus soutenue (barres non sélectionnées des graphiques). */
+  tintPrimaryStrong: string;
 
   muted: string;
 
@@ -30,6 +32,18 @@ export type ThemeColors = {
    * pastels clairs : du texte blanc dessus ne passe pas le contraste
    * WCAG AA (voir docs/audit-accessibilite.md). */
   onAccent: string;
+
+  /** Fond des actions principales (boutons pleins, onglet actif, FAB) et
+   * texte/icône posé dessus. Clair : blanc sur primaryDark (5,2:1). Sombre :
+   * texte foncé sur primary pastel, le blanc sur #3b82f6 n'atteignant que 3,7:1. */
+  action: string;
+  onAction: string;
+
+  /** Texte lisible sur les teintes claires (tint*) : chips, bulles, états actifs. */
+  primaryText: string;
+  successText: string;
+  warningText: string;
+  dangerText: string;
 };
 
 export const lightColors: ThemeColors = {
@@ -54,10 +68,19 @@ export const lightColors: ThemeColors = {
   tintSuccess: '#f0fdf4',
   tintWarning: '#fef3c7',
   tintDanger: '#fee2e2',
+  tintPrimaryStrong: '#bfdbfe',
 
   muted: '#7d96b4',
 
   onAccent: '#111827',
+
+  action: '#2563eb',
+  onAction: '#ffffff',
+
+  primaryText: '#1d4ed8',
+  successText: '#15803d',
+  warningText: '#c2410c',
+  dangerText: '#b91c1c',
 };
 
 export const darkColors: ThemeColors = {
@@ -82,8 +105,17 @@ export const darkColors: ThemeColors = {
   tintSuccess: '#14291f',
   tintWarning: '#2e2410',
   tintDanger: '#2c1a1a',
+  tintPrimaryStrong: '#1e3a5f',
 
   muted: '#5f6b7d',
 
   onAccent: '#15171f',
+
+  action: '#60a5fa',
+  onAction: '#15171f',
+
+  primaryText: '#93c5fd',
+  successText: '#6ee7b7',
+  warningText: '#fcd34d',
+  dangerText: '#fca5a5',
 };

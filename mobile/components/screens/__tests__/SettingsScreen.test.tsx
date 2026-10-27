@@ -61,8 +61,8 @@ jest.mock('../../../utils/revisionNotifications', () => ({
   enableRevisionReminders: jest.fn(),
   disableRevisionReminders: jest.fn(),
   sendTestRevisionNotification: jest.fn(),
-  getRevisionReminderHour: jest.fn().mockResolvedValue(9),
-  setRevisionReminderHour: jest.fn().mockResolvedValue(undefined),
+  getRevisionReminderTime: jest.fn().mockResolvedValue({ hour: 9, minute: 0 }),
+  setRevisionReminderTime: jest.fn().mockResolvedValue(undefined),
   scheduleRevisionReminder: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -73,7 +73,7 @@ function mockJsonResponse(body: any, ok = true) {
 beforeEach(() => {
   jest.clearAllMocks();
   (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(false);
-  (revisionNotifications.getRevisionReminderHour as jest.Mock).mockResolvedValue(9);
+  (revisionNotifications.getRevisionReminderTime as jest.Mock).mockResolvedValue({ hour: 9, minute: 0 });
   (streakNotifications.isStreakReminderEnabled as jest.Mock).mockResolvedValue(false);
   global.fetch = jest.fn().mockResolvedValue(mockJsonResponse({ forecast: [{ date: '2026-08-14', count: 3 }] }));
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -137,62 +137,71 @@ describe('SettingsScreen — bouton de test des notifications de révision', () 
 });
 
 describe('SettingsScreen — selecteur d\'heure du rappel', () => {
-  it('ne montre pas les creneaux d\'heure quand les rappels sont desactives', async () => {
+  it('ne montre pas l\'heure du rappel quand les rappels sont desactives', async () => {
     (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(false);
 
     render(<SettingsScreen />);
     await waitFor(() => expect(screen.getByText('Rappels de révision')).toBeTruthy());
 
-    expect(screen.queryByText('7h')).toBeNull();
+    expect(screen.queryByText('Heure du rappel')).toBeNull();
   });
 
-  it('montre les 5 creneaux quand les rappels sont actives', async () => {
+  it('affiche l\'heure actuelle quand les rappels sont actives', async () => {
     (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(true);
 
     render(<SettingsScreen />);
 
-    await waitFor(() => {
-      expect(screen.getByText('7h')).toBeTruthy();
-    });
-    expect(screen.getByText('9h')).toBeTruthy();
-    expect(screen.getByText('12h')).toBeTruthy();
-    expect(screen.getByText('18h')).toBeTruthy();
-    expect(screen.getByText('21h')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Heure du rappel')).toBeTruthy());
+    expect(screen.getByText('09:00')).toBeTruthy();
   });
 
-  it('appelle setRevisionReminderHour avec la bonne heure au clic sur un creneau', async () => {
+  async function chooseTime(hour: number, minute: number) {
+    render(<SettingsScreen />);
+    await waitFor(() => expect(screen.getByText('Heure du rappel')).toBeTruthy());
+    fireEvent.press(screen.getByText('Heure du rappel'));
+    fireEvent.press(screen.getByLabelText(hour + ' heures'));
+    fireEvent.press(screen.getByLabelText(minute + ' minutes'));
+    fireEvent.press(screen.getByText('Valider'));
+  }
+
+  it('enregistre l\'heure et les minutes choisies', async () => {
     (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(true);
 
-    render(<SettingsScreen />);
-    await waitFor(() => expect(screen.getByText('18h')).toBeTruthy());
-
-    fireEvent.press(screen.getByText('18h'));
+    await chooseTime(18, 45);
 
     await waitFor(() => {
-      expect(revisionNotifications.setRevisionReminderHour).toHaveBeenCalledWith(18);
+      expect(revisionNotifications.setRevisionReminderTime).toHaveBeenCalledWith(18, 45);
     });
   });
 
   it('met a jour le sous-titre apres avoir choisi une nouvelle heure', async () => {
     (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(true);
 
-    render(<SettingsScreen />);
-    await waitFor(() => expect(screen.getByText('21h')).toBeTruthy());
-
-    fireEvent.press(screen.getByText('21h'));
+    await chooseTime(21, 30);
 
     await waitFor(() => {
-      expect(screen.getByText('Un rappel à 21h avec le nombre de cartes à réviser')).toBeTruthy();
+      expect(screen.getByText('Un rappel à 21h30 avec le nombre de cartes à réviser')).toBeTruthy();
+    });
+  });
+
+  it('un raccourci (Soir) preremplit 19:00', async () => {
+    (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(true);
+
+    render(<SettingsScreen />);
+    await waitFor(() => expect(screen.getByText('Heure du rappel')).toBeTruthy());
+    fireEvent.press(screen.getByText('Heure du rappel'));
+    fireEvent.press(screen.getByLabelText('Soir, 19h'));
+    fireEvent.press(screen.getByText('Valider'));
+
+    await waitFor(() => {
+      expect(revisionNotifications.setRevisionReminderTime).toHaveBeenCalledWith(19, 0);
     });
   });
 
   it('replanifie le rappel avec le nombre de cartes dues apres un changement d\'heure', async () => {
     (revisionNotifications.isRevisionReminderEnabled as jest.Mock).mockResolvedValue(true);
 
-    render(<SettingsScreen />);
-    await waitFor(() => expect(screen.getByText('12h')).toBeTruthy());
-
-    fireEvent.press(screen.getByText('12h'));
+    await chooseTime(12, 0);
 
     await waitFor(() => {
       expect(revisionNotifications.scheduleRevisionReminder).toHaveBeenCalledWith(3);

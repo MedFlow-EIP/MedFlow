@@ -80,7 +80,14 @@ def get_dashboard():
         paginated = all_courses[start: start + per_page]
 
         cours = [
-            {"nom": c.nom or "Sans nom", "id": c.id, "sessions": c.sessions or 0}
+            {
+                "nom": c.nom or "Sans nom",
+                "id": c.id,
+                "sessions": c.sessions or 0,
+                "flashcards": len(c.flashcards or []),
+                "quiz": len(c.quiz or []),
+                "created_at": c.created_at,
+            }
             for c in paginated
         ]
 

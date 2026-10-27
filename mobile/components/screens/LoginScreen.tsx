@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { appAlert } from '../../utils/appAlert';
 
 export function LoginScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
@@ -30,7 +30,7 @@ export function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      appAlert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
 
@@ -50,7 +50,7 @@ export function LoginScreen({ navigation }: any) {
           errorMessage = 'Mot de passe incorrect';
           break;
       }
-      Alert.alert('Erreur de connexion', errorMessage);
+      appAlert('Erreur de connexion', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -77,10 +77,10 @@ export function LoginScreen({ navigation }: any) {
           style={styles.header}
         >
           <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
+            colors={[colors.action, colors.action]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color={colors.onAccent} />
+            <Ionicons name="medical" size={40} color={colors.onAction} />
           </LinearGradient>
           <Text style={styles.title} accessibilityRole="header">Bienvenue</Text>
           <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
@@ -97,7 +97,7 @@ export function LoginScreen({ navigation }: any) {
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -111,7 +111,7 @@ export function LoginScreen({ navigation }: any) {
             <TextInput
               style={styles.input}
               placeholder="Mot de passe"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -150,7 +150,7 @@ export function LoginScreen({ navigation }: any) {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[colors.action, colors.action]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.buttonGradient}
@@ -160,7 +160,7 @@ export function LoginScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>Se connecter</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />
+                  <Ionicons name="arrow-forward" size={20} color={colors.onAction} />
                 </>
               )}
             </LinearGradient>
@@ -251,7 +251,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
     },
     forgotPasswordText: {
       fontSize: 13,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '500',
     },
     button: {
@@ -274,7 +274,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       opacity: 0.7,
     },
     buttonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -287,7 +287,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       fontSize: 14,
     },
     linkTextBold: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '600',
     },
     divider: {
@@ -303,7 +303,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
     dividerText: {
       marginHorizontal: 16,
       fontSize: 14,
-      color: colors.muted,
+      color: colors.textSecondary,
     },
     biometricButton: {
       flexDirection: 'row',

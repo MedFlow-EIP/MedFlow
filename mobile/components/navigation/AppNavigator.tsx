@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  Pressable,
+  PanResponder,
+  Animated as RNAnimated,
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,7 +20,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { auth } from '../../firebaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -53,6 +55,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { useTutorial } from '../../context/TutorialContext';
 import { navigationRef } from '../../navigationRef';
 import { isFirstTimeUser } from '../../utils/firstTime';
+import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
 
 const { width, height } = Dimensions.get('window');
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -73,7 +76,7 @@ export type RootStackParamList = {
   Progress: undefined;
   Leaderboard: undefined;
   Friends: undefined;
-  Revision: { courseId?: string; startMode?: 'scheduled' | 'leeches' } | undefined;
+  Revision: { courseId?: string; startMode?: 'scheduled' | 'practice' | 'leeches' } | undefined;
   Search: undefined;
   Mastered: undefined;
   Auth: undefined;
@@ -86,16 +89,32 @@ type MainTabParamList = {
   Account: undefined;
 };
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
-  const { colors, isDark } = useTheme();
+const TABS: {
+  route: keyof MainTabParamList;
+  label: string;
+  a11y: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconActive: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { route: 'Home', label: 'Accueil', a11y: 'Accueil', icon: 'home-outline', iconActive: 'home' },
+  { route: 'AIChat', label: 'IA Chat', a11y: 'Assistant IA', icon: 'chatbubble-ellipses-outline', iconActive: 'chatbubble-ellipses' },
+  { route: 'Dashboard', label: 'Stats', a11y: 'Stats', icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+  { route: 'Account', label: 'Compte', a11y: 'Compte', icon: 'person-outline', iconActive: 'person' },
+];
+
+const SHEET_DISMISS_DISTANCE = 80;
+
+function CustomTabBar({ state, navigation }: any) {
+  const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { bottom, tabBarHeight } = useScreenInsets();
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const addButtonScale = useSharedValue(1);
-  const modalOpacity = useSharedValue(0);
+  const sheetOffset = useRef(new RNAnimated.Value(0)).current;
 
   const openAddModal = () => {
+    sheetOffset.setValue(0);
     setAddModalVisible(true);
   };
 
@@ -108,192 +127,126 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     stackNavigation.navigate('UploadCourse');
   };
 
-  const isFocused = (routeName: string) => {
-    const route = state.routes[state.index];
-    return route.name === routeName;
+  // Glisser la feuille vers le bas pour la fermer (poignée en haut).
+  const sheetPan = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_, g) => sheetOffset.setValue(Math.max(0, g.dy)),
+        onPanResponderRelease: (_, g) => {
+          if (g.dy > SHEET_DISMISS_DISTANCE || g.vy > 1.2) {
+            closeAddModal();
+          } else {
+            RNAnimated.spring(sheetOffset, { toValue: 0, useNativeDriver: true }).start();
+          }
+        },
+      }),
+    [sheetOffset]
+  );
+
+  const isFocused = (routeName: string) => state.routes[state.index].name === routeName;
+
+  const renderTab = (tab: (typeof TABS)[number]) => {
+    const focused = isFocused(tab.route);
+    return (
+      <TouchableOpacity
+        key={tab.route}
+        style={styles.navItem}
+        onPress={() => navigation.navigate(tab.route)}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+        accessibilityLabel={tab.a11y}
+      >
+        <View style={[styles.navIndicator, focused && styles.navIndicatorActive]}>
+          <Ionicons
+            name={focused ? tab.iconActive : tab.icon}
+            size={22}
+            color={focused ? colors.onAction : colors.textSecondary}
+          />
+        </View>
+        <Text style={[styles.navText, focused && styles.navTextActive]}>{tab.label}</Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
     <>
-      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={styles.bottomNav}>
-        {/* Accueil */}
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isFocused('Home') }}
-          accessibilityLabel="Accueil"
-        >
-          <View style={[
-            styles.navIconContainer,
-            isFocused('Home') && styles.navIconActive
-          ]}>
-            <Ionicons 
-              name={isFocused('Home') ? "home" : "home-outline"} 
-              size={22} 
-              color={isFocused('Home') ? colors.onAccent : colors.textSecondary} 
-            />
-          </View>
-          <Text style={[
-            styles.navText,
-            isFocused('Home') && styles.navTextActive
-          ]}>
-            Accueil
-          </Text>
-        </TouchableOpacity>
-
-        {/* IA Chat */}
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('AIChat')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isFocused('AIChat') }}
-          accessibilityLabel="Assistant IA"
-        >
-          <View style={[
-            styles.navIconContainer,
-            isFocused('AIChat') && styles.navIconActive
-          ]}>
-            <Ionicons 
-              name={isFocused('AIChat') ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} 
-              size={22} 
-              color={isFocused('AIChat') ? colors.onAccent : colors.textSecondary} 
-            />
-          </View>
-          <Text style={[
-            styles.navText,
-            isFocused('AIChat') && styles.navTextActive
-          ]}>
-            IA Chat
-          </Text>
-        </TouchableOpacity>
+      <View style={[styles.bottomNav, { height: tabBarHeight, paddingBottom: bottom }]}>
+        {renderTab(TABS[0])}
+        {renderTab(TABS[1])}
 
         {/* Bouton Ajouter central */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={openAddModal}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Ajouter du contenu"
         >
-          <View style={styles.addButtonContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.addButton}
-            >
-              <Ionicons name="add" size={28} color={colors.onAccent} />
-            </LinearGradient>
+          <View style={styles.addButton}>
+            <Ionicons name="add" size={28} color={colors.onAction} />
           </View>
-          <Text style={styles.navText}>Ajouter</Text>
+          <Text style={styles.addText}>Ajouter</Text>
         </TouchableOpacity>
 
-        {/* Dashboard */}
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Dashboard')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isFocused('Dashboard') }}
-          accessibilityLabel="Dashboard"
-        >
-          <View style={[
-            styles.navIconContainer,
-            isFocused('Dashboard') && styles.navIconActive
-          ]}>
-            <Ionicons 
-              name={isFocused('Dashboard') ? "grid" : "grid-outline"} 
-              size={22} 
-              color={isFocused('Dashboard') ? colors.onAccent : colors.textSecondary} 
-            />
-          </View>
-          <Text style={[
-            styles.navText,
-            isFocused('Dashboard') && styles.navTextActive
-          ]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
-
-        {/* Compte */}
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Account')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isFocused('Account') }}
-          accessibilityLabel="Compte"
-        >
-          <View style={[
-            styles.navIconContainer,
-            isFocused('Account') && styles.navIconActive
-          ]}>
-            <Ionicons 
-              name={isFocused('Account') ? "person" : "person-outline"} 
-              size={22} 
-              color={isFocused('Account') ? colors.onAccent : colors.textSecondary} 
-            />
-          </View>
-          <Text style={[
-            styles.navText,
-            isFocused('Account') && styles.navTextActive
-          ]}>
-            Compte
-          </Text>
-        </TouchableOpacity>
-      </BlurView>
+        {renderTab(TABS[2])}
+        {renderTab(TABS[3])}
+      </View>
 
       <Modal
         visible={addModalVisible}
         transparent
-        animationType="none"
+        animationType="slide"
         onRequestClose={closeAddModal}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          onPress={closeAddModal} 
-          activeOpacity={1}
-        >
-          <View style={styles.addModalContent}>
-            <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.modalBlur}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Ajouter du contenu</Text>
-                <TouchableOpacity
-                  onPress={closeAddModal}
-                  style={styles.modalClose}
-                  accessibilityLabel="Fermer"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.optionButton} 
-                onPress={goToUploadCourse}
+        <View style={styles.modalOverlay}>
+          {/* Toucher n'importe où sur la zone assombrie ferme le menu */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeAddModal}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer le menu"
+          />
+          <RNAnimated.View
+            style={[styles.sheet, { paddingBottom: bottom + 22, transform: [{ translateY: sheetOffset }] }]}
+            {...sheetPan.panHandlers}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ajouter du contenu</Text>
+              <TouchableOpacity
+                onPress={closeAddModal}
+                style={styles.modalClose}
+                accessibilityLabel="Fermer"
+                accessibilityRole="button"
               >
-                <LinearGradient
-                  colors={[colors.tintPrimary, colors.tintPrimary]}
-                  style={styles.optionIcon}
-                >
-                  <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
-                </LinearGradient>
-                <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionTitle}>Uploader un cours</Text>
-                  <Text style={styles.optionDescription}>
-                    Importez vos cours PDF ou documents
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+            </View>
 
-              <View style={styles.modalFooter}>
-                <Text style={styles.modalFooterText}>
-                  Créez votre propre parcours d'apprentissage
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={goToUploadCourse}
+              accessibilityRole="button"
+              accessibilityLabel="Uploader un cours"
+            >
+              <View style={styles.optionIcon}>
+                <Ionicons name="cloud-upload-outline" size={26} color={colors.primaryDark} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>Uploader un cours</Text>
+                <Text style={styles.optionDescription}>
+                  Importez vos cours PDF ou documents
                 </Text>
               </View>
-            </BlurView>
-          </View>
-        </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <Text style={styles.modalFooterText}>
+              Créez votre propre parcours d’apprentissage
+            </Text>
+          </RNAnimated.View>
+        </View>
       </Modal>
     </>
   );
@@ -359,10 +312,10 @@ export function AppNavigator() {
     return (
       <View style={styles.loadingContainer}>
         <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
+          colors={[colors.action, colors.action]}
           style={styles.loadingGradient}
         >
-          <ActivityIndicator size="large" color={colors.onAccent} accessibilityLabel="Chargement de l'application" />
+          <ActivityIndicator size="large" color={colors.onAction} accessibilityLabel="Chargement de l'application" />
           <Text style={styles.loadingText}>Chargement...</Text>
         </LinearGradient>
       </View>
@@ -413,11 +366,15 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     bottomNav: {
       flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      paddingVertical: 8,
+      paddingTop: 8,
       paddingHorizontal: 8,
-      height: 70,
+      // height / paddingBottom : calculés depuis les safe areas (useScreenInsets).
+      height: TAB_BAR_HEIGHT,
       position: 'absolute',
       bottom: 0,
       left: 0,
@@ -425,52 +382,54 @@ function makeStyles(colors: ThemeColors) {
     },
 
     navItem: {
-      flex: 1,
+      width: 72,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 4,
     },
 
-    navIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    navIndicator: {
+      width: 56,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 2,
       backgroundColor: 'transparent',
     },
 
-    navIconActive: {
-      backgroundColor: colors.primary,
+    navIndicatorActive: {
+      backgroundColor: colors.action,
     },
 
     navText: {
-      fontSize: 10,
+      fontSize: 12,
       color: colors.textSecondary,
       fontWeight: '500',
     },
 
     navTextActive: {
-      color: colors.primary,
+      color: colors.action,
       fontWeight: '600',
-    },
-
-    addButtonContainer: {
-      marginTop: -20,
-      marginBottom: 4,
     },
 
     addButton: {
       width: 52,
       height: 52,
       borderRadius: 26,
+      backgroundColor: colors.action,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: colors.primaryDark,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
-      shadowRadius: 8,
+      shadowRadius: 12,
       elevation: 5,
+    },
+
+    addText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
 
     modalOverlay: {
@@ -479,22 +438,29 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'flex-end',
     },
 
-    addModalContent: {
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      overflow: 'hidden',
-      backgroundColor: 'transparent',
+    // Feuille opaque plutôt que BlurView : meilleur contraste en clair comme en sombre.
+    sheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingTop: 10,
+      paddingHorizontal: 20,
+      gap: 18,
+      alignItems: 'center',
     },
 
-    modalBlur: {
-      padding: 20,
+    sheetHandle: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.border,
     },
 
     modalHeader: {
+      alignSelf: 'stretch',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 20,
     },
 
     modalTitle: {
@@ -513,53 +479,48 @@ function makeStyles(colors: ThemeColors) {
     },
 
     optionButton: {
+      alignSelf: 'stretch',
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 12,
+      gap: 14,
+      padding: 16,
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      marginBottom: 8,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 18,
     },
 
     optionIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: colors.tintPrimary,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 16,
     },
 
     optionTextContainer: {
       flex: 1,
+      gap: 3,
     },
 
     optionTitle: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.textPrimary,
-      marginBottom: 4,
     },
 
     optionDescription: {
-      fontSize: 13,
+      fontSize: 14,
+      lineHeight: 20,
       color: colors.textSecondary,
     },
 
-    modalFooter: {
-      marginTop: 16,
-      alignItems: 'center',
-    },
-
     modalFooterText: {
-      fontSize: 12,
-      color: colors.muted,
+      alignSelf: 'stretch',
+      textAlign: 'center',
+      fontSize: 13,
+      color: colors.textSecondary,
     },
 
     loadingContainer: {
@@ -575,7 +536,7 @@ function makeStyles(colors: ThemeColors) {
 
     loadingText: {
       fontSize: 16,
-      color: colors.onAccent,
+      color: colors.onAction,
       fontWeight: '500',
     },
   });

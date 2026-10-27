@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, Animated, Easing } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { StepFeedback, StepOption, StepOverline, StepPrimaryButton, makeStepStyles } from "./StepShared";
 
 interface Option {
   id: string;
@@ -14,220 +15,136 @@ interface Props {
   options: Option[];
   correctId: string;
   timeLimit: number;
+  explanation?: string;
   onComplete: (correct: boolean) => void;
 }
 
-export function SpeedChallengeStep({
-  question,
-  options,
-  correctId,
-  timeLimit,
-  onComplete,
-}: Props) {
+export function SpeedChallengeStep({ question, options, correctId, timeLimit, explanation, onComplete }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const step = useMemo(() => makeStepStyles(colors), [colors]);
 
   const [time, setTime] = useState(timeLimit);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const bar = useRef(new Animated.Value(1)).current;
+
+  const answered = selectedId !== null || timedOut;
 
   useEffect(() => {
-    if (answered) return;
+    if (answered) {
+      bar.stopAnimation();
+      return;
+    }
+    Animated.timing(bar, {
+      toValue: 0,
+      duration: time * 1000,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
 
     const timer = setInterval(() => {
       setTime((t) => {
         if (t <= 1) {
           clearInterval(timer);
-          setAnswered(true);
-          setShowFeedback(true);
-          
-          setTimeout(() => {
-            onComplete(false);
-          }, 1500);
-          
+          setTimedOut(true);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-
-    return () => {
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [answered]);
 
-  const select = (id: string) => {
-    if (answered) return;
-    
-    setSelectedId(id);
-    setAnswered(true);
-    setShowFeedback(true);
-
-    const correct = id === correctId;
-    
-    setTimeout(() => {
-      onComplete(correct);
-    }, 1500);
-  };
-
-  const timerColor = time <= 3 ? colors.danger : colors.textPrimary;
+  const isCorrect = selectedId === correctId;
+  const correctText = options.find((o) => o.id === correctId)?.text;
+  const urgent = time <= 3 && !answered;
 
   return (
-    <View style={styles.container}>
-      {/* Timer dans une card */}
-      <View style={styles.card}>
-        <Text style={[styles.timer, { color: timerColor }]}>⏱ {time}s</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={step.scroll} showsVerticalScrollIndicator={false}>
+        <StepOverline icon="flash-outline" label="DÉFI CHRONO" />
 
-      {/* Question dans une card */}
-      <View style={[styles.card, { marginTop: 12, marginBottom: 20 }]}>
-        <Text style={styles.question}>⚡ {question}</Text>
-      </View>
-
-      {/* Options */}
-      <View style={styles.optionsContainer}>
-        {options.map((o) => {
-          const isSelected = selectedId === o.id;
-          const isCorrect = o.id === correctId;
-
-          let borderColor = colors.border;
-          let backgroundColor = colors.surface;
-          let textColor = colors.textPrimary;
-          
-          if (answered) {
-            if (isCorrect) {
-              borderColor = colors.success;
-              backgroundColor = colors.tintSuccess;
-            } else if (isSelected && !isCorrect) {
-              borderColor = colors.danger;
-              backgroundColor = colors.tintDanger;
-            }
-          }
-
-          return (
-            <Pressable
-              key={o.id}
+        <View style={styles.timerRow} accessible accessibilityLabel={`${time} secondes restantes`}>
+          <Ionicons name="timer-outline" size={22} color={urgent ? colors.dangerText : colors.textPrimary} />
+          <Text style={[styles.timerText, urgent && { color: colors.dangerText }]}>{time} s</Text>
+          <View style={styles.timerTrack}>
+            <Animated.View
               style={[
-                styles.option,
-                { 
-                  borderColor,
-                  backgroundColor,
-                }
+                styles.timerFill,
+                {
+                  backgroundColor: urgent ? colors.danger : colors.warning,
+                  width: bar.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                },
               ]}
-              onPress={() => select(o.id)}
-              disabled={answered}
-              accessibilityRole="button"
-              accessibilityLabel={o.text}
-              accessibilityState={{ disabled: answered, selected: isSelected }}
-            >
-              <View style={styles.optionContent}>
-                <Text style={[styles.optionText, { color: textColor }]}>
-                  {o.text}
-                </Text>
-                {answered && isCorrect && (
-                  <Text style={styles.checkIcon}>✓</Text>
-                )}
-                {answered && isSelected && !isCorrect && (
-                  <Text style={styles.crossIcon}>✗</Text>
-                )}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Feedback */}
-      {showFeedback && selectedId && (
-        <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.feedback}>
-          <View style={[
-            styles.feedbackCard,
-            { backgroundColor: selectedId === correctId ? colors.success : colors.danger }
-          ]}>
-            <Text style={styles.feedbackText}>
-              {selectedId === correctId ? "✓ Correct !" : "✗ Try again!"}
-            </Text>
-            {selectedId !== correctId && (
-              <Text style={[styles.feedbackText, { fontSize: 14, marginTop: 8, opacity: 0.9 }]}>
-                {options.find(o => o.id === correctId)?.text}
-              </Text>
-            )}
+            />
           </View>
-        </Animated.View>
-      )}
+        </View>
+
+        <Text style={step.question} accessibilityRole="header">{question}</Text>
+
+        <View style={step.options}>
+          {options.map((o) => (
+            <StepOption
+              key={o.id}
+              text={o.text}
+              disabled={answered}
+              onPress={() => setSelectedId(o.id)}
+              state={
+                !answered ? "idle" : o.id === correctId ? "correct" : o.id === selectedId ? "incorrect" : "dimmed"
+              }
+            />
+          ))}
+        </View>
+
+        {answered && (
+          <StepFeedback
+            correct={isCorrect}
+            title={
+              timedOut
+                ? `Temps écoulé ! Réponse : ${correctText}`
+                : isCorrect
+                ? `Bonne réponse, en ${timeLimit - time} s !`
+                : `Bonne réponse : ${correctText}`
+            }
+            explanation={explanation}
+          />
+        )}
+      </ScrollView>
+
+      {answered && <StepPrimaryButton label="Continuer" onPress={() => onComplete(isCorrect)} />}
     </View>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    container: { 
-      flex: 1,
-      padding: 20,
-      justifyContent: "center",
-      backgroundColor: colors.background,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      padding: 20,
+    timerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      padding: 14,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      alignItems: "center",
-    },
-    timer: {
-      fontSize: 48,
-      fontWeight: "700",
-    },
-    question: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      textAlign: "center",
-    },
-    optionsContainer: {
-      gap: 12,
-      marginBottom: 8,
-    },
-    option: {
-      padding: 16,
-      borderRadius: 12,
-      borderWidth: 1,
       backgroundColor: colors.surface,
     },
-    optionContent: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
+    timerText: {
+      width: 44,
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
     },
-    optionText: {
-      fontSize: 16,
-      fontWeight: "500",
+    timerTrack: {
       flex: 1,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.border,
+      overflow: "hidden",
     },
-    checkIcon: {
-      fontSize: 20,
-      color: colors.success,
-      fontWeight: "700",
-    },
-    crossIcon: {
-      fontSize: 20,
-      color: colors.danger,
-      fontWeight: "700",
-    },
-    feedback: {
-      marginTop: 20,
-    },
-    feedbackCard: {
-      padding: 16,
-      borderRadius: 12,
-      alignItems: "center",
-    },
-    feedbackText: {
-      color: colors.onAccent,
-      fontWeight: "600",
-      fontSize: 16,
-      textAlign: "center",
+    timerFill: {
+      height: "100%",
+      borderRadius: 4,
     },
   });
 }

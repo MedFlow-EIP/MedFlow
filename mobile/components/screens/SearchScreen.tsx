@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
@@ -16,6 +15,7 @@ import { API_URL } from '@/services/api';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
+import { useScreenInsets } from '../navigation/constants';
 
 type SearchResult = {
   course_id: string;
@@ -42,6 +42,7 @@ const DEBOUNCE_MS = 350;
 export function SearchScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top: insetTop } = useScreenInsets();
   const navigation = useNavigation<any>();
 
   const [query, setQuery] = useState('');
@@ -93,7 +94,7 @@ export function SearchScreen() {
   }, [results]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insetTop }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Retour">
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -108,7 +109,7 @@ export function SearchScreen() {
           value={query}
           onChangeText={onChangeQuery}
           placeholder="Rechercher dans tes cours, flashcards, quiz..."
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={colors.textSecondary}
           accessibilityLabel="Rechercher"
           style={styles.searchInput}
           autoFocus
@@ -149,7 +150,7 @@ export function SearchScreen() {
           </View>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -221,7 +222,7 @@ function makeStyles(colors: ThemeColors) {
     },
     resultType: {
       fontSize: 11,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '600',
       marginBottom: 2,
     },

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { ProgressDashboard } from '../../components/ProgressDashboard';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
+import { useScreenInsets } from '../navigation/constants';
 
 type ProgressData = {
   totalLessons: number;
@@ -29,6 +29,7 @@ type ProgressData = {
 export function ProgressScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top: insetTop } = useScreenInsets();
   const navigation = useNavigation();
 
   const [data, setData] = useState<ProgressData | null>(null);
@@ -90,7 +91,7 @@ export function ProgressScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insetTop }]}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -129,12 +130,12 @@ export function ProgressScreen() {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
+                colors={[colors.action, colors.action]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.retryGradient}
               >
-                <Ionicons name="refresh" size={18} color={colors.onAccent} />
+                <Ionicons name="refresh" size={18} color={colors.onAction} />
                 <Text style={styles.retryText}>Réessayer</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -166,7 +167,7 @@ export function ProgressScreen() {
           />
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -253,7 +254,7 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 12,
     },
     retryText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 15,
       fontWeight: '600',
     },

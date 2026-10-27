@@ -259,6 +259,12 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            # Email (en minuscules) pour la recherche d'amis par adresse exacte.
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN email TEXT")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_badges (
@@ -820,6 +826,23 @@ class Database:
                 (uid, display_name),
             )
 
+    def register_user(self, uid: str, display_name: str | None, email: str | None) -> None:
+        """Crée la ligne user_stats de l'utilisateur s'il n'en a pas encore
+        (appelé dès sa première requête authentifiée) et met à jour son nom
+        et son email quand ils sont connus. Une valeur absente n'écrase
+        jamais une valeur déjà enregistrée."""
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_stats (uid, xp, streak, display_name, email)
+                VALUES (?, 0, 0, ?, ?)
+                ON CONFLICT(uid) DO UPDATE SET
+                    display_name = COALESCE(excluded.display_name, user_stats.display_name),
+                    email = COALESCE(excluded.email, user_stats.email)
+                """,
+                (uid, display_name, email),
+            )
+
     def set_avatar_url(self, uid: str, avatar_url: str) -> None:
         """Mémorise l'URL de l'avatar uploadé, pour pouvoir l'afficher dans
         le classement/liste d'amis sans requêter Firebase Admin à chaque
@@ -879,22 +902,29 @@ class Database:
     # -----------------------------------------------------------------
 
     def search_users(self, query: str, exclude_uid: str, limit: int = 20) -> List[Dict]:
-        """Recherche des utilisateurs par nom affiché, avec leur statut
-        d'amitié actuel vis-à-vis de exclude_uid (pour savoir quoi
-        afficher : Ajouter / Demande envoyée / Ami / Accepter)."""
+        """Recherche des utilisateurs par nom affiché (partiel) ou par email
+        (adresse exacte uniquement, pour ne pas permettre de lister les
+        comptes avec un bout d'adresse), avec leur statut d'amitié actuel
+        vis-à-vis de exclude_uid (Ajouter / Demande envoyée / Ami / Accepter).
+        L'email n'est jamais renvoyé dans les résultats."""
         if not query or not query.strip():
             return []
+        query = query.strip()
 
         with self.connection() as conn:
             rows = conn.execute(
                 """
                 SELECT uid, display_name, avatar_url
                 FROM user_stats
-                WHERE display_name LIKE ? AND uid != ? AND display_name IS NOT NULL
+                WHERE uid != ?
+                  AND (
+                    (display_name IS NOT NULL AND display_name LIKE ?)
+                    OR (email IS NOT NULL AND email = ?)
+                  )
                 ORDER BY display_name ASC
                 LIMIT ?
                 """,
-                (f"%{query.strip()}%", exclude_uid, limit),
+                (exclude_uid, f"%{query}%", query.lower(), limit),
             ).fetchall()
 
         results = []
@@ -1429,29 +1459,44 @@ class Database:
         regroupe aussi tout ce qui est en retard — une carte en retard de 3
         jours est due aujourd'hui, pas seulement à sa date d'origine.
         N'inclut pas les cartes jamais vues (imprévisibles par nature :
-        elles deviennent dues dès qu'on les découvre)."""
+        elles deviennent dues dès qu'on les découvre).
+        Chaque jour contient aussi ``courses`` : le détail par cours
+        (``course_id``, ``course_nom``, ``count``), pour afficher ce qu'il y
+        aura à réviser un jour donné, pas seulement combien."""
         if not uid:
             raise ValueError("UID is required")
 
         today = date.today()
         with self.connection() as conn:
             rows = conn.execute(
-                "SELECT next_review_date, COUNT(*) as count FROM revision_schedule WHERE uid=? GROUP BY next_review_date",
+                """
+                SELECT next_review_date, course_id, COUNT(*) as count
+                FROM revision_schedule WHERE uid=?
+                GROUP BY next_review_date, course_id
+                """,
                 (uid,),
             ).fetchall()
 
-        counts_by_date = {row["next_review_date"]: row["count"] for row in rows}
+        course_names = {c.id: c.nom for c in self.fetch_courses(uid)}
 
         forecast: List[Dict] = []
         for i in range(days):
             d = today + timedelta(days=i)
-            if i == 0:
-                count = sum(
-                    c for date_str, c in counts_by_date.items() if date_str <= d.isoformat()
-                )
-            else:
-                count = counts_by_date.get(d.isoformat(), 0)
-            forecast.append({"date": d.isoformat(), "count": count})
+            day = d.isoformat()
+            per_course: Dict[str, int] = {}
+            for row in rows:
+                # Aujourd'hui regroupe aussi les cartes en retard.
+                if row["next_review_date"] == day or (i == 0 and row["next_review_date"] < day):
+                    per_course[row["course_id"]] = per_course.get(row["course_id"], 0) + row["count"]
+            courses = [
+                {
+                    "course_id": course_id,
+                    "course_nom": course_names.get(course_id) or "Cours supprimé",
+                    "count": count,
+                }
+                for course_id, count in sorted(per_course.items(), key=lambda kv: -kv[1])
+            ]
+            forecast.append({"date": day, "count": sum(per_course.values()), "courses": courses})
         return forecast
 
     def get_due_quiz_items(

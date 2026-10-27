@@ -74,6 +74,22 @@ jest.mock('../../../components/steps/QuickQuizzCardsStep', () => {
   };
 });
 
+// Contenu figé (une étape de chaque type) : les tests ne dépendent pas des
+// textes des leçons, qui évoluent.
+jest.mock('../../../content/lessons', () => {
+  const quiz = { question: 'Q', options: [{ id: 'a', text: 'A' }], correctId: 'a' };
+  return {
+    getLessonSteps: () => [
+      { type: 'explanation', data: { title: 'T', explanation: 'E' } },
+      { type: 'swipe', data: { title: 'S', cards: [{ id: '1', concept: 'C', detail: 'D' }] } },
+      { type: 'visualQuiz', data: { ...quiz, image: 1, aspectRatio: 1, parts: [] } },
+      { type: 'speed', data: { ...quiz, timeLimit: 5 } },
+      { type: 'quickQuiz', data: quiz },
+    ],
+    isGradedStep: (s: any) => ['speed', 'quickQuiz', 'visualQuiz'].includes(s.type),
+  };
+});
+
 function mockJsonResponse(body: any, ok = true, status = 200) {
   return { ok, status, json: async () => body } as any;
 }

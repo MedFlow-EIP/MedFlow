@@ -22,6 +22,8 @@ import {
   sendTestRevisionNotification,
   getRevisionReminderHour,
   setRevisionReminderHour,
+  getRevisionReminderTime,
+  setRevisionReminderTime,
 } from '../revisionNotifications';
 
 const mockedNotifications = Notifications as jest.Mocked<typeof Notifications>;
@@ -252,6 +254,29 @@ describe('getRevisionReminderHour / setRevisionReminderHour', () => {
   it('arrondit une valeur non entiere', async () => {
     await setRevisionReminderHour(14.7);
     expect(await getRevisionReminderHour()).toBe(15);
+  });
+});
+
+describe('getRevisionReminderTime / setRevisionReminderTime', () => {
+  it('renvoie 9:00 par defaut', async () => {
+    expect(await getRevisionReminderTime()).toEqual({ hour: 9, minute: 0 });
+  });
+
+  it('memorise heure et minutes', async () => {
+    await setRevisionReminderTime(21, 45);
+    expect(await getRevisionReminderTime()).toEqual({ hour: 21, minute: 45 });
+    expect(await getRevisionReminderHour()).toBe(21);
+  });
+
+  it('bloque les minutes hors 0-59', async () => {
+    await setRevisionReminderTime(8, 75);
+    expect(await getRevisionReminderTime()).toEqual({ hour: 8, minute: 59 });
+  });
+
+  it('setRevisionReminderHour remet les minutes a 0', async () => {
+    await setRevisionReminderTime(7, 30);
+    await setRevisionReminderHour(18);
+    expect(await getRevisionReminderTime()).toEqual({ hour: 18, minute: 0 });
   });
 });
 
