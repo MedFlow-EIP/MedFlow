@@ -24,9 +24,12 @@ import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
 import { useScreenInsets } from '../navigation/constants';
 import { StateView } from '../ui/StateView';
+import { startBackgroundCase, useCaseJobs } from '../../utils/caseJobs';
 
 type CaseSummary = {
   id: number;
+  status: 'generating' | 'ready' | 'error';
+  error?: string | null;
   title: string;
   source_label: string;
   total_steps: number;
@@ -43,8 +46,6 @@ const DIFFICULTIES = [
   { value: 'difficile', label: 'Difficile' },
 ] as const;
 
-// Génération d'un cas complet : jusqu'à ~1 min avec le modèle Pro.
-const CREATE_TIMEOUT_MS = 120_000;
 
 /** Liste des cas cliniques (à reprendre / terminés) et création d'un nouveau cas. */
 export function ClinicalCasesScreen() {
@@ -58,6 +59,8 @@ export function ClinicalCasesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [presetCourse, setPresetCourse] = useState<string | undefined>(undefined);
+  // Un cas prêt pendant qu'on est sur l'écran : la liste se met à jour.
+  const finishedJobs = useCaseJobs().filter((j) => j.status !== 'generating').length;
 
   const load = async () => {
     const user = auth.currentUser;
@@ -74,7 +77,7 @@ export function ClinicalCasesScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [])
+    }, [finishedJobs])
   );
 
   // Ouvert depuis un cours : création directe sur ce cours.
@@ -149,33 +152,49 @@ export function ClinicalCasesScreen() {
             </View>
           }
           ListEmptyComponent={<Text style={styles.empty}>Aucun cas pour l’instant : crée le premier.</Text>}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('ClinicalCase', { caseId: item.id })}
-              onLongPress={() => remove(item)}
-              accessibilityRole="button"
-              accessibilityHint="Appui long pour supprimer"
-            >
-              <View style={[styles.rowIcon, item.finished && styles.rowIconDone]}>
-                <Ionicons
-                  name={item.finished ? 'checkmark' : 'play'}
-                  size={18}
-                  color={item.finished ? colors.onAction : colors.primaryDark}
-                />
-              </View>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.rowMeta} numberOfLines={1}>
-                  {item.source_label} ·{' '}
-                  {item.finished
-                    ? `${item.score}/${item.total_steps} bonnes décisions`
-                    : `étape ${item.answered + 1}/${item.total_steps}`}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const generating = item.status === 'generating';
+            const failed = item.status === 'error';
+            return (
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() =>
+                  failed ? remove(item) : !generating && navigation.navigate('ClinicalCase', { caseId: item.id })
+                }
+                onLongPress={() => remove(item)}
+                disabled={generating}
+                accessibilityRole="button"
+                accessibilityHint={failed ? 'Toucher pour supprimer' : 'Appui long pour supprimer'}
+              >
+                <View style={[styles.rowIcon, item.finished && styles.rowIconDone, failed && styles.rowIconFailed]}>
+                  {generating ? (
+                    <ActivityIndicator size="small" color={colors.primaryDark} />
+                  ) : (
+                    <Ionicons
+                      name={failed ? 'alert' : item.finished ? 'checkmark' : 'play'}
+                      size={18}
+                      color={failed ? colors.dangerText : item.finished ? colors.onAction : colors.primaryDark}
+                    />
+                  )}
+                </View>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle} numberOfLines={2}>{item.title}</Text>
+                  <Text style={[styles.rowMeta, failed && { color: colors.dangerText }]} numberOfLines={2}>
+                    {generating
+                      ? `${item.source_label} · en préparation, on te prévient quand c’est prêt`
+                      : failed
+                      ? item.error || 'Le cas n’a pas pu être créé.'
+                      : `${item.source_label} · ${
+                          item.finished
+                            ? `${item.score}/${item.total_steps} bonnes décisions`
+                            : `étape ${item.answered + 1}/${item.total_steps}`
+                        }`}
+                  </Text>
+                </View>
+                {!generating && <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />}
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
 
@@ -193,10 +212,14 @@ export function ClinicalCasesScreen() {
           setCreating(false);
           setPresetCourse(undefined);
         }}
-        onCreated={(caseId) => {
+        onCreated={() => {
           setCreating(false);
           setPresetCourse(undefined);
-          navigation.navigate('ClinicalCase', { caseId });
+          load();
+          appAlert(
+            'Cas en préparation',
+            'Ça prend environ 30 secondes. Continue ce que tu veux dans l’app : une notification te prévient quand le cas est prêt.'
+          );
         }}
       />
     </View>
@@ -251,17 +274,13 @@ function NewCaseSheet({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetchWithTimeout(
-        `${API_URL}/api/cases`,
-        {
-          method: 'POST',
-          headers: { ...(await getAuthHeaders(user)), 'Content-Type': 'application/json' },
-          body: JSON.stringify(courseId ? { course_id: courseId, difficulty } : { topic: topic.trim(), difficulty }),
-        },
-        CREATE_TIMEOUT_MS
+      const label = courseId ? courses?.find((c) => c.id === courseId)?.nom ?? 'Cours' : topic.trim();
+      const caseId = await startBackgroundCase(
+        user,
+        courseId ? { course_id: courseId, difficulty } : { topic: topic.trim(), difficulty },
+        label
       );
-      const data = await readJsonOrThrow<{ id: number }>(res, 'Le cas n’a pas pu être créé.');
-      onCreated(data.id);
+      onCreated(caseId);
     } catch (err) {
       setError(errorMessage(err, 'Le cas n’a pas pu être créé.'));
     } finally {
@@ -287,7 +306,7 @@ function NewCaseSheet({
             {busy ? (
               <View style={styles.busy} accessibilityLiveRegion="polite">
                 <ActivityIndicator size="large" color={colors.primaryDark} />
-                <Text style={styles.busyText}>Préparation du patient… (environ 30 secondes)</Text>
+                <Text style={styles.busyText}>Lancement…</Text>
               </View>
             ) : (
               <>
@@ -415,6 +434,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     rowIconDone: { backgroundColor: colors.success },
+    rowIconFailed: { backgroundColor: colors.tintDanger },
     rowText: { flex: 1, gap: 2 },
     rowTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
     rowMeta: { fontSize: 13, color: colors.textSecondary },

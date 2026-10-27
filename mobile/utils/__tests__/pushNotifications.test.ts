@@ -16,3 +16,7 @@ describe('notificationTarget', () => {
     expect(notificationTarget(data)).toEqual(target);
   });
 });
+
+it('ouvre un cas clinique prêt', () => {
+  expect(notificationTarget({ screen: 'ClinicalCase', caseId: 3 })).toEqual({ screen: 'ClinicalCase', params: { caseId: 3 } });
+});

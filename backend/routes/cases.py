@@ -8,7 +8,8 @@ réponse seulement après le choix. Chaque choix a son propre retour.
 import json
 import logging
 import re
-from datetime import datetime, timezone
+import threading
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request
 
@@ -16,6 +17,7 @@ from middleware.ai_quota import consume_ai_quota
 from middleware.auth import require_auth
 from routes.errors import internal_error
 from services.ai.base import QUIZ_DIFFICULTY
+from services.push import notify_user
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,11 @@ MAX_TOPIC_CHARS = 150
 MATERIAL_MAX_CHARS = 12000
 XP_PER_GOOD_DECISION = 5
 XP_COMPLETION = 10
+# Au-delà, un cas encore « en préparation » est considéré comme interrompu
+# (serveur redémarré pendant la génération).
+GENERATION_TIMEOUT = timedelta(minutes=10)
+GENERATION_FAILED = "Le cas n'a pas pu être créé. Réessaie dans un instant."
+_EMPTY_CASE = json.dumps({"title": "", "context": "", "steps": [], "debrief": []})
 
 
 def _clean_case(raw) -> dict | None:
@@ -70,8 +77,35 @@ def _public_step(step: dict, index: int) -> dict:
     return {"index": index, "situation": step["situation"], "question": step["question"], "options": step["options"]}
 
 
+def _status(row):
+    """(statut, erreur), un cas bloqué en préparation étant signalé comme interrompu."""
+    status = row["status"] if "status" in row.keys() else "ready"
+    error = row["error"] if "error" in row.keys() else None
+    if status == "generating" and datetime.now(timezone.utc) - datetime.fromisoformat(row["created_at"]) > GENERATION_TIMEOUT:
+        return "error", "La préparation a été interrompue. Relance un cas."
+    return status, error
+
+
 def _state(row) -> dict:
     """État d'un cas pour l'app : étapes jouées (avec retours), étape en cours ou débriefing."""
+    status, error = _status(row)
+    if status != "ready":
+        return {
+            "id": row["id"],
+            "status": status,
+            "error": error,
+            "title": row["title"],
+            "source_label": row["source_label"],
+            "course_id": row["course_id"],
+            "context": "",
+            "total_steps": 0,
+            "played": [],
+            "current": None,
+            "finished": False,
+            "score": 0,
+            "debrief": [],
+            "created_at": row["created_at"],
+        }
     data = json.loads(row["data"])
     answers = json.loads(row["answers"] or "[]")
     steps = data["steps"]
@@ -89,6 +123,8 @@ def _state(row) -> dict:
     finished = len(answers) >= len(steps)
     return {
         "id": row["id"],
+        "status": "ready",
+        "error": None,
         "title": row["title"],
         "source_label": row["source_label"],
         "course_id": row["course_id"],
@@ -106,6 +142,30 @@ def _state(row) -> dict:
 def _fetch(uid: str, case_id: int):
     with current_app.db.connection() as conn:
         return conn.execute("SELECT * FROM clinical_cases WHERE id=? AND uid=?", (case_id, uid)).fetchone()
+
+
+def _generate_in_background(app, uid: str, case_id: int, material: str, difficulty: str) -> None:
+    with app.app_context():
+        try:
+            case = _clean_case(app.ai.generate_clinical_case(material, difficulty))
+        except Exception:
+            logger.exception("Erreur génération cas clinique en arrière-plan")
+            case = None
+        with app.db.transaction() as conn:
+            if case:
+                conn.execute(
+                    "UPDATE clinical_cases SET title=?, data=?, status='ready', error=NULL WHERE id=? AND uid=?",
+                    (case["title"], json.dumps(case, ensure_ascii=False), case_id, uid),
+                )
+            else:
+                conn.execute(
+                    "UPDATE clinical_cases SET status='error', error=? WHERE id=? AND uid=?",
+                    (GENERATION_FAILED, case_id, uid),
+                )
+        if case:
+            notify_user(app, uid, "🩺 Cas clinique prêt", case["title"], {"screen": "ClinicalCase", "caseId": case_id})
+        else:
+            notify_user(app, uid, "Cas clinique non créé", GENERATION_FAILED)
 
 
 @cases_bp.route("/api/cases", methods=["POST"])
@@ -144,15 +204,30 @@ def create_case():
         if quota_error:
             return quota_error
 
+        now = datetime.now(timezone.utc).isoformat()
+        if body.get("background"):
+            # Réponse immédiate : l'utilisateur continue dans l'app, une
+            # notification le prévient quand le cas est prêt.
+            with db.transaction() as conn:
+                cur = conn.execute(
+                    "INSERT INTO clinical_cases (uid, course_id, source_label, title, data, status, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, 'generating', ?)",
+                    (g.uid, course_id, label[:150], "Cas clinique en préparation", _EMPTY_CASE, now),
+                )
+            app = current_app._get_current_object()
+            threading.Thread(
+                target=_generate_in_background, args=(app, g.uid, cur.lastrowid, material, difficulty), daemon=True
+            ).start()
+            return jsonify({"id": cur.lastrowid, "status": "generating"}), 202
+
         case = _clean_case(current_app.ai.generate_clinical_case(material, difficulty))
         if not case:
-            return jsonify({"error": "Le cas n'a pas pu être créé. Réessaie dans un instant."}), 502
+            return jsonify({"error": GENERATION_FAILED}), 502
 
         with db.transaction() as conn:
             cur = conn.execute(
                 "INSERT INTO clinical_cases (uid, course_id, source_label, title, data, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (g.uid, course_id, label[:150], case["title"], json.dumps(case, ensure_ascii=False),
-                 datetime.now(timezone.utc).isoformat()),
+                (g.uid, course_id, label[:150], case["title"], json.dumps(case, ensure_ascii=False), now),
             )
         return jsonify(_state(_fetch(g.uid, cur.lastrowid))), 201
     except Exception:
@@ -166,7 +241,7 @@ def list_cases():
     try:
         with current_app.db.connection() as conn:
             rows = conn.execute(
-                "SELECT id, title, source_label, data, answers, score, finished_at, created_at FROM clinical_cases "
+                "SELECT * FROM clinical_cases "
                 "WHERE uid=? ORDER BY created_at DESC",
                 (g.uid,),
             ).fetchall()
@@ -174,6 +249,8 @@ def list_cases():
             "cases": [
                 {
                     "id": r["id"],
+                    "status": _status(r)[0],
+                    "error": _status(r)[1],
                     "title": r["title"],
                     "source_label": r["source_label"],
                     "total_steps": len(json.loads(r["data"])["steps"]),
@@ -211,6 +288,8 @@ def answer_case(case_id):
             row = conn.execute("SELECT * FROM clinical_cases WHERE id=? AND uid=?", (case_id, g.uid)).fetchone()
             if not row:
                 return jsonify({"error": "Cas introuvable"}), 404
+            if _status(row)[0] != "ready":
+                return jsonify({"error": "Ce cas n'est pas encore prêt"}), 409
             data = json.loads(row["data"])
             answers = json.loads(row["answers"] or "[]")
             if len(answers) >= len(data["steps"]):

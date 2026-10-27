@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -17,6 +17,8 @@ type PlayedStep = Step & { choice: string; correct: string; is_correct: boolean;
 
 export type CaseState = {
   id: number;
+  status?: 'generating' | 'ready' | 'error';
+  error?: string | null;
   title: string;
   source_label: string;
   context: string;
@@ -63,9 +65,16 @@ export function ClinicalCaseScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!state) load();
+      if (!state || state.status === 'generating') load();
     }, [caseId])
   );
+
+  // Cas encore en préparation (ouvert depuis la liste ou une notification) : on attend.
+  useEffect(() => {
+    if (state?.status !== 'generating') return;
+    const timer = setTimeout(load, 4000);
+    return () => clearTimeout(timer);
+  }, [state]);
 
   const submit = async () => {
     const user = auth.currentUser;
@@ -110,6 +119,32 @@ export function ClinicalCaseScreen() {
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={colors.primaryDark} accessibilityLabel="Chargement du cas" />
       </View>
+    );
+  }
+
+  if (state.status === 'generating') {
+    return (
+      <StateView
+        icon="medkit-outline"
+        tone="primary"
+        title="Cas en préparation"
+        subtitle="Ça prend environ 30 secondes. Tu peux quitter cet écran : une notification te prévient quand le cas est prêt."
+        primary={{ label: 'Continuer ailleurs', onPress: () => navigation.goBack() }}
+        onClose={() => navigation.goBack()}
+      />
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <StateView
+        icon="alert-circle-outline"
+        tone="danger"
+        title="Cas non créé"
+        subtitle={state.error || 'Réessaie dans un instant.'}
+        primary={{ label: 'Retour', onPress: () => navigation.goBack() }}
+        onClose={() => navigation.goBack()}
+      />
     );
   }
 

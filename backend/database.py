@@ -676,6 +676,12 @@ class Database:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_clinical_cases_uid ON clinical_cases(uid, created_at)")
+            # Génération en arrière-plan : 'generating' puis 'ready' (ou 'error').
+            for column in ("status TEXT NOT NULL DEFAULT 'ready'", "error TEXT"):
+                try:
+                    conn.execute(f"ALTER TABLE clinical_cases ADD COLUMN {column}")
+                except sqlite3.OperationalError:
+                    pass
 
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
