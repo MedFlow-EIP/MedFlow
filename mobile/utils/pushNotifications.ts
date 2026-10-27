@@ -70,6 +70,9 @@ export function notificationTarget(data: any): { screen: string; params?: object
   if (data.screen === 'Challenge' && typeof data.challengeId === 'number') {
     return { screen: 'Challenge', params: { challengeId: data.challengeId } };
   }
+  if (data.screen === 'ClinicalCase' && typeof data.caseId === 'number') {
+    return { screen: 'ClinicalCase', params: { caseId: data.caseId } };
+  }
   if (data.screen === 'Friends') return { screen: 'Friends' };
   return null;
 }

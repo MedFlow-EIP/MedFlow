@@ -8,7 +8,7 @@ import { useTheme } from '../theme/ThemeContext';
 import type { ThemeColors } from '../theme/colors';
 import { getAuthHeaders } from '../utils/authHeaders';
 
-type CaseSummary = { id: number; title: string; finished: boolean; answered: number; total_steps: number };
+type CaseSummary = { id: number; title: string; status?: string; finished: boolean; answered: number; total_steps: number };
 
 /** Carte d'accueil : reprendre le cas clinique en cours, ou en commencer un. */
 export function ClinicalCaseCard() {
@@ -28,7 +28,7 @@ export function ClinicalCaseCard() {
           if (!res.ok) return;
           const data = await res.json();
           const list: CaseSummary[] = Array.isArray(data?.cases) ? data.cases : [];
-          if (active) setOngoing(list.find((c) => !c.finished) ?? null);
+          if (active) setOngoing(list.find((c) => !c.finished && (c.status ?? 'ready') === 'ready') ?? null);
         } catch {
           // Carte secondaire : affichée sans « reprendre » hors ligne.
         }

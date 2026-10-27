@@ -65,6 +65,7 @@ import { navigationRef } from '../../navigationRef';
 import { isFirstTimeUser } from '../../utils/firstTime';
 import { checkSocialNotifications, resetSocialBadge, useSocialBadge } from '../../utils/socialNotifications';
 import { resetImportJobs, resumeImportJobs, useImportJobs } from '../../utils/importJobs';
+import { resetCaseJobs, resumeCaseJobs, useCaseJobs } from '../../utils/caseJobs';
 import * as Notifications from 'expo-notifications';
 import { notificationTarget, registerForPushNotifications } from '../../utils/pushNotifications';
 import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
@@ -172,6 +173,15 @@ function CustomTabBar({ state, navigation }: any) {
   const socialCount = useSocialBadge();
   // Imports de cours en cours de génération (on peut naviguer pendant ce temps).
   const importing = useImportJobs().filter((j) => j.status === 'processing');
+  const preparingCases = useCaseJobs().filter((j) => j.status === 'generating');
+  const backgroundLabel =
+    importing.length + preparingCases.length > 1
+      ? `${importing.length + preparingCases.length} générations en cours…`
+      : importing.length === 1
+      ? `Génération de « ${importing[0].fileName} »…`
+      : preparingCases.length === 1
+      ? 'Préparation d’un cas clinique…'
+      : '';
 
   const renderTab = (tab: (typeof TABS)[number]) => {
     const focused = isFocused(tab.route);
@@ -208,13 +218,11 @@ function CustomTabBar({ state, navigation }: any) {
 
   return (
     <>
-      {importing.length > 0 && (
+      {!!backgroundLabel && (
         <View style={[styles.importPill, { bottom: tabBarHeight + 10 }]} accessibilityLiveRegion="polite" pointerEvents="none">
           <ActivityIndicator size="small" color={colors.onAction} />
           <Text style={styles.importPillText} numberOfLines={1}>
-            {importing.length > 1
-              ? `Génération de ${importing.length} cours…`
-              : `Génération de « ${importing[0].fileName} »…`}
+            {backgroundLabel}
           </Text>
         </View>
       )}
@@ -392,9 +400,11 @@ export function AppNavigator() {
     if (!user) {
       resetSocialBadge();
       resetImportJobs();
+      resetCaseJobs();
       return;
     }
     resumeImportJobs(user);
+    resumeCaseJobs(user);
     registerForPushNotifications(user);
     checkSocialNotifications(user);
     const interval = setInterval(() => {
