@@ -40,6 +40,27 @@ class MockAIProvider(AIProvider):
         self.transcription = "Texte lu sur la photo : le coeur a quatre cavités."
         self.transcribe_calls = []
 
+    def generate_clinical_case(self, material: str, difficulty: str = "normal"):
+        self.last_case_material = material
+        if getattr(self, "case_fails", False):
+            return None
+        return {
+            "title": "Douleur thoracique chez un homme de 58 ans",
+            "context": "Homme de 58 ans, fumeur, douleur thoracique constrictive depuis 40 minutes.",
+            "steps": [
+                {
+                    "situation": f"Étape {i + 1} : nouveaux éléments.",
+                    "question": f"Décision {i + 1} ?",
+                    "options": {"A": "Choix A", "B": "Choix B", "C": "Choix C", "D": "Choix D"},
+                    "correct": "B",
+                    "feedback": {k: f"Retour {k}{i}" for k in "ABCD"},
+                    "explanation": f"Raisonnement {i + 1}.",
+                }
+                for i in range(4)
+            ],
+            "debrief": ["Point clé 1", "Point clé 2", "Point clé 3"],
+        }
+
     def transcribe_audio(self, data: bytes, mime_type: str) -> str:
         self.audio_calls = getattr(self, "audio_calls", []) + [mime_type]
         return getattr(self, "audio_transcription", "Quels sont les signes d'un infarctus ?")

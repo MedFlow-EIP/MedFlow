@@ -48,6 +48,9 @@ class Config:
     AI_CHAT_PER_DAY = int(os.getenv("AI_CHAT_PER_DAY", "60"))
     AI_PROCESS_PER_HOUR = int(os.getenv("AI_PROCESS_PER_HOUR", "5"))
     AI_PROCESS_PER_DAY = int(os.getenv("AI_PROCESS_PER_DAY", "10"))
+    # Cas cliniques générés par l'IA (F43).
+    AI_CASE_PER_HOUR = int(os.getenv("AI_CASE_PER_HOUR", "5"))
+    AI_CASE_PER_DAY = int(os.getenv("AI_CASE_PER_DAY", "15"))
     # Plafond global sur 24 h (tous comptes confondus) : coupe-circuit si
     # quelqu'un crée des comptes en masse pour contourner les quotas.
     AI_GLOBAL_PER_DAY = int(os.getenv("AI_GLOBAL_PER_DAY", "2000"))
@@ -90,6 +93,8 @@ class TestingConfig(Config):
     AI_CHAT_PER_DAY = 1000
     AI_PROCESS_PER_HOUR = 1000
     AI_PROCESS_PER_DAY = 1000
+    AI_CASE_PER_HOUR = 1000
+    AI_CASE_PER_DAY = 1000
     AI_GLOBAL_PER_DAY = 100000
     SEARCH_PER_MINUTE = 1000
     FRIEND_REQUESTS_PER_DAY = 1000

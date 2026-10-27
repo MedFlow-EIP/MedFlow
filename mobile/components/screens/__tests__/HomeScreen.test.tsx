@@ -17,6 +17,10 @@ jest.mock('../../QuestsCard', () => ({
   QuestsCard: () => null,
 }));
 
+jest.mock('../../ClinicalCaseCard', () => ({
+  ClinicalCaseCard: () => null,
+}));
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
 }));

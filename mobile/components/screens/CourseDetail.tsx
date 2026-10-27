@@ -261,6 +261,15 @@ export function CourseDetailScreen({ route }: Props) {
           <Text style={styles.reviseButtonText}>Réviser ce cours</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.flashcardsButton}
+          onPress={() => (navigation as any).navigate('ClinicalCases', { courseId })}
+          accessibilityRole="button"
+        >
+          <Ionicons name="medkit-outline" size={20} color={colors.primaryText} />
+          <Text style={styles.flashcardsButtonText}>Cas clinique sur ce cours</Text>
+        </TouchableOpacity>
+
         {tab === 'resume' && <SummaryCard html={course.summary || ''} />}
 
         {tab === 'flashcards' && flashcards.length > 0 && (

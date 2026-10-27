@@ -18,6 +18,7 @@ import { getAuthHeaders } from '@/utils/authHeaders';
 import { useScreenInsets } from '../navigation/constants';
 import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 import { QuestsCard } from '../QuestsCard';
+import { ClinicalCaseCard } from '../ClinicalCaseCard';
 import { StreakSheet } from '../StreakSheet';
 
 interface HomeScreenProps {
@@ -154,6 +155,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         <EmailVerificationBanner />
 
         <QuestsCard />
+
+        <ClinicalCaseCard />
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           Parcours d'apprentissage
