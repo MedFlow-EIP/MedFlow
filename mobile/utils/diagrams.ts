@@ -46,6 +46,11 @@ export function sanitizeSvg(raw: string): string | null {
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
     .replace(/\s(xlink:)?href\s*=\s*("[^"]*"|'[^']*')/gi, (attr, _x, value) =>
       /^["']#/.test(value) ? attr : ''
+    )
+    // react-native-svg ne lit que orient="auto" ou un angle : toute autre
+    // valeur (ex. « auto-start-reverse ») fait planter l'app en natif.
+    .replace(/\sorient\s*=\s*("[^"]*"|'[^']*')/gi, (attr, value) =>
+      /^["']\s*(auto|-?\d+(\.\d+)?(deg)?)\s*["']$/i.test(value) ? attr : ' orient="auto"'
     );
   return svg;
 }

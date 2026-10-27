@@ -365,7 +365,7 @@ class VertexAIProvider(AIProvider):
       Règles du SVG : une seule balise <svg> avec viewBox="0 0 400 300"
       (ou une hauteur adaptée), fond blanc, formes simples (rect, circle,
       ellipse, line, path, polygon, text), flèches avec des <path> ou
-      <polygon>, texte en français en font-family="sans-serif" et
+      <polygon> (pas de <marker>), texte en français en font-family="sans-serif" et
       font-size 11 à 14, couleurs sobres (#2563eb, #10b981, #f59e0b,
       #ef4444, #111827). Pas de script, d'image, de lien ni de <foreignObject>.
       Privilégie des schémas lisibles : étapes, cycles, voies, coupes simplifiées

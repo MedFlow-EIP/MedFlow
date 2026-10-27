@@ -38,6 +38,14 @@ describe('schémas du chat', () => {
     expect(clean).toContain('<text>lien</text>');
   });
 
+  it('remplace les orientations de flèche que l’app ne sait pas dessiner', () => {
+    const svg =
+      '<svg><marker id="a" orient="auto-start-reverse"/><marker id="b" orient="auto"/><marker id="c" orient=\'45\'/></svg>';
+    expect(sanitizeSvg(svg)).toBe(
+      '<svg><marker id="a" orient="auto"/><marker id="b" orient="auto"/><marker id="c" orient=\'45\'/></svg>'
+    );
+  });
+
   it('refuse un SVG démesuré', () => {
     expect(sanitizeSvg(`<svg>${'x'.repeat(50_000)}</svg>`)).toBeNull();
   });
