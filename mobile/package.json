@@ -69,5 +69,9 @@
     "setupFiles": [
       "./jest.setup.js"
     ]
+  },
+  "overrides": {
+    "postcss": "^8.5.32",
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

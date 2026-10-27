@@ -46,8 +46,6 @@ Thumbs.db
 
 # Node
 node_modules/
-frontend/dist/
-frontend/build/
 mobile/node_modules/
 
 # Expo

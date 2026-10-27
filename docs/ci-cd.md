@@ -1,95 +1,32 @@
-# CI/CD - Intégration et déploiement continus
+# CI/CD
 
-## Pipeline GitHub Actions
+## `ci.yml` — à chaque push sur `main` et chaque pull request vers `main`
 
-Fichier : `.github/workflows/ci.yml`
+| Job | Étapes |
+|-----|--------|
+| `build-and-test` | Python 3.11, dépendances, `pytest` (backend) |
+| `mobile-test` | Node 20, `npm ci`, `tsc --noEmit`, `jest` (mobile) |
+| `docker-build` | Sur `main` uniquement : construit l’image et vérifie que le backend démarre (`/health`). Caddy n’est pas lancé ici : il demanderait le certificat de la VM depuis le runner. |
 
-### Objectif
+Les modifications limitées à `docs/` ou aux fichiers Markdown ne déclenchent pas la CI.
 
-Valider automatiquement le backend Python et le frontend web à chaque push ou pull request sur `main`.
+## `deploy.yml` — déploiement du backend
 
----
+- Se lance quand `CI MedFlow` réussit sur un push sur `main`, ou à la main (*Run workflow*) avec le nom d’une branche.
+- Se connecte en SSH à la VM et exécute `bash deploy.sh <branche>`.
+- Secrets : `VM_HOST`, `VM_USER`, `VM_SSH_KEY` (clé privée **sans** phrase de passe, dédiée au déploiement), `VM_PORT` et `VM_SSH_PASSPHRASE` optionnels.
 
-## Étapes du workflow
+## `deploy.sh` — sur la VM
 
-1. `checkout` du dépôt
-2. installation Python et dépendances backend
-3. installation Node.js et dépendances frontend
-4. build du frontend
-5. build Docker sur branche `main`
-6. test de démarrage des conteneurs Docker
+1. Sauvegarde `backend/.env` et `.env` dans `backups/`.
+2. Refuse de continuer si la VM a des modifications non commitées.
+3. Récupère la branche demandée (`main` par défaut).
+4. Vérifie la présence des variables `GCP_*` et `FIREBASE_*`.
+5. Reconstruit l’image backend (`--no-cache`), récupère Caddy, redémarre.
+6. Vérifie que Firebase Admin s’est initialisé.
+7. Importe les comptes Firebase dans le classement.
 
----
+## Autres workflows
 
-## Contenu du workflow
-
-```yaml
-name: CI MedFlow
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - name: Install Python dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-      - name: Install Node dependencies and build
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Create credentials.json
-        run: |
-          echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > backend/credentials.json
-      - name: Create .env file for Docker
-        run: |
-          cat > backend/.env << EOF
-          GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
-          EOF
-      - name: Build Docker images
-        run: |
-          docker compose build
-      - name: Test Docker startup
-        run: |
-          docker compose up -d
-          sleep 15
-          docker ps
-          docker compose logs
-          docker compose down
-      - name: Upload Docker logs on failure
-        if: failure()
-        run: |
-          docker compose logs
-```
-
----
-
-## Notes
-
-- Le workflow utilise `docker compose` pour builder et vérifier les conteneurs.
-- Les credentials Google Cloud sont fournis via `secrets.GCP_CREDENTIALS_JSON`.
+- `mobile-build.yml` : build APK via EAS (manuel).
+- `mirror.yml` : miroir de `main` vers le dépôt Epitech.

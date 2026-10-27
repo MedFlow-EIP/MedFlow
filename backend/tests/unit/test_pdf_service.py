@@ -6,9 +6,8 @@ from services.pdf import extract_text_from_pdf
 
 def _make_pdf_bytes(text: str = "Hello PDF") -> bytes:
     """Build a minimal valid PDF containing the given text string."""
-    # We use PyPDF2 to create a real in-memory PDF for testing.
-    import PyPDF2
-    from PyPDF2 import PdfWriter
+    # We use pypdf to create a real in-memory PDF for testing.
+    from pypdf import PdfWriter
     writer = PdfWriter()
     # Add a blank page — we can't easily add text without reportlab,
     # but we can test the extraction path even with an empty page.

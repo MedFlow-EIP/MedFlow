@@ -1,123 +1,27 @@
-# Docker - MedFlow
+# Docker
 
-## Objectif
+## Services (`docker-compose.yml`)
 
-Ce guide explique comment exécuter **MedFlow** en mode conteneurisé avec **Docker Compose**.
+| Service | Rôle | Ports |
+|---------|------|-------|
+| `backend` | API Flask, toujours en `FLASK_ENV=production` | `127.0.0.1:8080` (VM uniquement) |
+| `caddy` | HTTPS devant le backend, certificat Let’s Encrypt automatique | `80`, `443` |
 
----
+- Domaine : `MEDFLOW_DOMAIN` (par défaut `5-196-191-64.sslip.io`, nom gratuit qui pointe vers l’IP de la VM).
+- Volumes : `backend/uploads` et `backend/data` (données), `caddy_data` et `caddy_config` (certificats).
+- Le backend lit ses secrets dans `backend/.env` (jamais commité).
 
-## Architecture Docker actuelle
-
-Le projet expose deux services principaux :
-
-| Service | Rôle | Port |
-|---------|------|------|
-| backend | API Flask, traitement IA, extraction PDF | `8080` |
-| frontend | Application web React servie via Nginx | `5173` |
-
-Le mobile n’est pas conteneurisé dans ce dépôt ; son environnement est géré via Expo.
-
----
-
-## `docker-compose.yml`
-
-Le fichier Docker Compose actuel contient :
-
-- `backend` : build depuis `./backend`
-- `frontend` : build depuis `./frontend`
-
-Il monte également :
-
-- `./backend/uploads:/app/uploads`
-- `./backend/data:/app/data`
-
-Et expose :
-
-- backend `8080`
-- frontend `5173`
-
----
-
-## Lancement du projet
-
-### 1. Construire les images
+## Commandes utiles (sur la VM, dans `~/MedFlow`)
 
 ```bash
-docker-compose build
+bash deploy.sh main                        # déploiement complet
+docker compose ps                          # état des conteneurs
+docker compose logs backend --tail=50
+docker compose logs caddy --tail=50        # certificat : "certificate obtained successfully"
+curl https://5-196-191-64.sslip.io/health  # depuis n'importe où
+curl http://localhost:8080/health          # depuis la VM
 ```
 
-### 2. Démarrer les conteneurs
+## Prérequis réseau
 
-```bash
-docker-compose up
-```
-
-### 3. Démarrer en arrière-plan
-
-```bash
-docker-compose up -d
-```
-
-### 4. Arrêter les services
-
-```bash
-docker-compose down
-```
-
----
-
-## Vérifier les services
-
-| Service | URL | Note |
-|---------|-----|------|
-| backend | `http://localhost:8080` | API Flask |
-| frontend | `http://localhost:5173` | Application web |
-
----
-
-## Credentials Google Cloud
-
-Le backend utilise des variables d’environnement Google Cloud.
-
-- Le fichier `backend/.env` doit contenir les clés Google Cloud.
-- Le fichier `backend/credentials.json` doit être présent si vous utilisez le mode de key file.
-
-**Ne pas versionner** `backend/credentials.json`.
-
----
-
-## CI/CD Docker
-
-Le pipeline GitHub Actions inclut une étape Docker sur `main` :
-
-- construction des images
-- démarrage des services
-- vérification des logs
-
-Le workflow utilise :
-
-- `docker/setup-buildx-action@v3`
-- `docker compose build`
-- `docker compose up -d`
-
----
-
-## Astuces
-
-- Reconstruire après une modification :
-
-```bash
-docker-compose up --build
-```
-
-- Voir les logs :
-
-```bash
-docker-compose logs -f
-```
-
-- Redémarrer uniquement le backend :
-
-```bash
-docker-compose restart backend
-```
+Ports 80 et 443 ouverts vers la VM (pare-feu de la VM et de l’hébergeur) : Let’s Encrypt valide le domaine sur le port 80.
