@@ -94,3 +94,15 @@ class TestProdModeAuth:
                 headers={"Authorization": "Bearer bad-token"},
             )
         assert resp.status_code == 400
+
+
+class TestUidValidation:
+    """L'uid sert à construire des chemins de fichiers : refuser tout ce qui n'est pas un uid Firebase."""
+
+    def test_rejects_path_traversal_uid(self, client):
+        resp = client.get("/api/account", headers={"X-User-UID": "../../etc"})
+        assert resp.status_code == 400
+
+    def test_accepts_firebase_like_uid(self, client):
+        resp = client.get("/api/account", headers={"X-User-UID": "Ab3_dE-9xYz"})
+        assert resp.status_code == 200

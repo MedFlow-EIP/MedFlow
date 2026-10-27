@@ -54,3 +54,6 @@ mobile/node_modules/
 .expo/
 credentials.json
 node_modules/
+# Clés de comptes de service (écrites par la CI, jamais commitées)
+*credentials*.json
+*.pem
