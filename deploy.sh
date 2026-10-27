@@ -22,7 +22,7 @@
 #      SANS erreur "aud" — le bug qu'on a chassé plusieurs fois cette
 #      session, maintenant détecté automatiquement à chaque déploiement.
 #
-# Usage : ./deploy.sh
+# Usage : ./deploy.sh [branche]   (main par défaut)
 
 set -euo pipefail
 
@@ -58,8 +58,11 @@ fi
 
 # --- 3. Pull + vérification des credentials ---------------------------
 
-info "git pull origin main..."
-git pull origin main
+BRANCH="${1:-main}"
+info "Déploiement de la branche $BRANCH..."
+git fetch origin "$BRANCH"
+git checkout "$BRANCH"
+git pull --ff-only origin "$BRANCH"
 
 check_env_vars() {
   local file="$1"
@@ -105,4 +108,14 @@ if ! echo "$LOGS" | grep -q "Firebase Admin SDK initialised"; then
 fi
 
 info "Firebase Admin SDK initialisé correctement."
+
+# --- 6. Importe les comptes Firebase dans le classement -------------------
+# Un compte jamais utilisé avec ce backend n'apparaîtrait ni au classement
+# ni dans la recherche d'amis. Non bloquant.
+if docker compose exec -T backend python sync_firebase_users.py; then
+  info "Comptes Firebase synchronisés."
+else
+  warn "Synchronisation des comptes Firebase impossible (non bloquant)."
+fi
+
 info "Déploiement terminé avec succès."
