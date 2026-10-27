@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Modal,
   Animated,
-  Easing,
+  FlatList,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { markTutorialCompleted } from '../../utils/firstTime';
@@ -19,95 +21,65 @@ import {
 } from '../../utils/tutorialAnalytics';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { useScreenInsets } from '../navigation/constants';
 
-const { width, height } = Dimensions.get('window');
+type Tone = 'primary' | 'success' | 'warning';
 
-// Doit correspondre exactement a AppNavigator.tsx (styles.bottomNav.height)
-import { TAB_BAR_HEIGHT, useScreenInsets } from '../navigation/constants';
-
-export { TAB_BAR_HEIGHT };
-
-// Ordre reel des 5 items dans CustomTabBar (AppNavigator.tsx), chacun flex:1
-// sur la largeur totale de l'ecran.
-export const TAB_ORDER = ['home-tab', 'aichat-tab', 'add-tab', 'dashboard-tab', 'account-tab'] as const;
-export type TabKey = (typeof TAB_ORDER)[number];
-
-type TutorialStep = {
+export type TutorialSlide = {
   id: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  tone: Tone;
   title: string;
-  description: string;
-  highlightTab?: TabKey;
-  highlightElement?: 'paths-section';
-  // Badge affiché en haut du tooltip pour toujours savoir où on se trouve
-  // dans l'app, sans dépendre de la tab bar réelle (parfois masquée, comme
-  // sur l'écran Upload qui n'est pas un onglet).
-  sectionLabel?: string;
-  sectionIcon?: keyof typeof Ionicons.glyphMap;
-  // Si renseigne, on navigue reellement vers cet ecran en arrivant sur l'etape,
-  // et le tooltip flotte par-dessus l'ecran REEL (pas de voile sombre qui le
-  // cacherait) plutot que de juste pointer l'icone depuis Accueil.
-  navigateTo?: { screen: string; nested?: string };
+  text: string;
+  /** Petites étiquettes autour de l'illustration (formats, exemples…). */
+  chips?: string[];
+  /** Où retrouver la fonctionnalité dans l'app. */
+  where?: { icon: keyof typeof Ionicons.glyphMap; label: string };
 };
 
-const tutorialSteps: TutorialStep[] = [
+// Accueil en quelques cartes, sans quitter l'écran : on présente ce que
+// l'app apporte, puis on propose d'importer tout de suite un premier cours.
+export const TUTORIAL_SLIDES: TutorialSlide[] = [
   {
-    id: '1',
+    id: 'welcome',
+    icon: 'medkit',
+    tone: 'primary',
     title: 'Bienvenue sur MedFlow',
-    description: "Votre application d'apprentissage medical intelligent. Suivez ce guide pour decouvrir toutes les fonctionnalites.",
+    text: 'Tes cours de médecine deviennent des résumés, des flashcards et des quiz. Tu révises moins longtemps, et tu retiens mieux.',
   },
   {
-    id: '2',
-    title: 'Onglet "Accueil"',
-    description: "C'est ici que vous trouverez tous vos parcours d'apprentissage.",
-    highlightTab: 'home-tab',
-    sectionLabel: 'Accueil',
-    sectionIcon: 'home',
+    id: 'import',
+    icon: 'cloud-upload',
+    tone: 'primary',
+    title: 'Importe tes cours',
+    text: 'Un PDF, un Word, un PowerPoint ou une simple photo d’un poly : l’IA en tire l’essentiel en moins d’une minute.',
+    chips: ['PDF', 'Word', 'PowerPoint', 'Photo'],
+    where: { icon: 'add', label: 'Bouton + au centre de la barre du bas' },
   },
   {
-    id: '3',
-    title: "Parcours d'apprentissage",
-    description: 'Choisissez un parcours (Anatomie, Cardiologie, etc.) pour acceder aux lecons.',
-    highlightElement: 'paths-section',
-    sectionLabel: 'Accueil',
-    sectionIcon: 'home',
+    id: 'revision',
+    icon: 'flash',
+    tone: 'warning',
+    title: 'Révise au bon moment',
+    text: 'La répétition espacée te repropose chaque carte juste avant que tu l’oublies. Un rappel quotidien te prévient quand il y en a à revoir.',
+    chips: ['Aujourd’hui', 'Dans 3 j', 'Dans 1 sem.'],
+    where: { icon: 'stats-chart', label: 'Onglet Stats' },
   },
   {
-    id: '4',
-    title: 'Assistant IA',
-    description: "Posez vos questions medicales a l'assistant, et partagez images ou documents directement dans la conversation.",
-    navigateTo: { screen: 'AIChat', nested: 'MainTabs' },
-    sectionLabel: 'IA Chat',
-    sectionIcon: 'chatbubble-ellipses',
+    id: 'assistant',
+    icon: 'chatbubble-ellipses',
+    tone: 'primary',
+    title: 'Un assistant pour tes questions',
+    text: 'Demande une explication, envoie une photo ou un PDF, puis transforme ses réponses en flashcards en un geste.',
+    where: { icon: 'chatbubble-ellipses', label: 'Onglet IA Chat' },
   },
   {
-    id: '5',
-    title: 'Ajouter un cours',
-    description: "Importez un PDF de cours : MedFlow genere automatiquement un resume, des flashcards et un quiz grace a l'IA.",
-    navigateTo: { screen: 'UploadCourse' },
-    sectionLabel: 'Ajouter',
-    sectionIcon: 'cloud-upload',
-  },
-  {
-    id: '6',
-    title: 'Tableau de bord',
-    description: "Retrouvez tous vos cours importes. L'icone en haut a droite vous donne acces a votre progression detaillee (XP, lecons completees...).",
-    navigateTo: { screen: 'Dashboard', nested: 'MainTabs' },
-    sectionLabel: 'Dashboard',
-    sectionIcon: 'grid',
-  },
-  {
-    id: '7',
-    title: 'Votre compte',
-    description: "Gerez votre profil ici. L'icone en haut a droite ouvre les reglages : theme clair/sombre, mot de passe, et plus encore.",
-    navigateTo: { screen: 'Account', nested: 'MainTabs' },
-    sectionLabel: 'Compte',
-    sectionIcon: 'person',
-  },
-  {
-    id: '8',
-    title: 'Pret a commencer !',
-    description: 'Vous etes maintenant pret a utiliser MedFlow.',
-    navigateTo: { screen: 'Home', nested: 'MainTabs' },
+    id: 'progress',
+    icon: 'trophy',
+    tone: 'success',
+    title: 'Garde le rythme',
+    text: 'Leçons guidées, XP, séries, badges et classement entre amis : chaque jour de révision compte.',
+    where: { icon: 'home', label: 'Onglet Accueil' },
   },
 ];
 
@@ -117,499 +89,378 @@ interface TutorialScreenProps {
   navigation: any;
 }
 
-type Rect = { x: number; y: number; width: number; height: number };
-
-/** bottomInset : zone système du bas (barre de gestes), ajoutée sous la barre d'onglets par AppNavigator. */
-export function getTabPosition(tabKey: TabKey, bottomInset = 0): Rect {
-  const idx = TAB_ORDER.indexOf(tabKey);
-  const tabWidth = width / TAB_ORDER.length;
-  const barHeight = TAB_BAR_HEIGHT + bottomInset;
-  return { x: idx * tabWidth, y: height - barHeight, width: tabWidth, height: barHeight };
-}
-
-export function getElementPosition(elementName: string): Rect {
-  switch (elementName) {
-    case 'paths-section':
-      return { x: 20, y: 170, width: width - 40, height: 400 };
-    default:
-      return { x: 0, y: 0, width: 0, height: 0 };
-  }
-}
-
-export function getHighlightRect(step: TutorialStep, bottomInset = 0): Rect | null {
-  if (step.highlightTab) return getTabPosition(step.highlightTab, bottomInset);
-  if (step.highlightElement) return getElementPosition(step.highlightElement);
-  return null;
-}
-
 export function TutorialScreen({ visible, onComplete, navigation }: TutorialScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { bottom: bottomInset } = useScreenInsets();
+  const { top, bottom } = useScreenInsets();
+  const { width } = useWindowDimensions();
 
-  const [currentStep, setCurrentStep] = useState(0);
-  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  const [index, setIndex] = useState(0);
+  const listRef = useRef<FlatList<TutorialSlide>>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const startedAtRef = useRef<number | null>(null);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const tooltipOpacity = useRef(new Animated.Value(1)).current;
-  const tooltipSlide = useRef(new Animated.Value(0)).current;
-
-  const spotX = useRef(new Animated.Value(0)).current;
-  const spotY = useRef(new Animated.Value(0)).current;
-  const spotW = useRef(new Animated.Value(0)).current;
-  const spotH = useRef(new Animated.Value(0)).current;
-  const spotOpacity = useRef(new Animated.Value(0)).current;
-
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-
-  const step = tutorialSteps[currentStep];
-  const highlightRect = getHighlightRect(step, bottomInset);
-  const isShowcase = !!step.navigateTo && !highlightRect;
+  const slide = TUTORIAL_SLIDES[index];
+  const isLast = index === TUTORIAL_SLIDES.length - 1;
 
   useEffect(() => {
     if (visible) {
-      setCurrentStep(0);
+      setIndex(0);
+      scrollX.setValue(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
       startedAtRef.current = logTutorialStarted();
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      fadeAnim.setValue(0);
     }
   }, [visible]);
 
   useEffect(() => {
-    if (!visible) return;
-
-    if (startedAtRef.current !== null) {
-      logStepViewed(startedAtRef.current, currentStep, step.id, step.title);
+    if (visible && startedAtRef.current !== null) {
+      logStepViewed(startedAtRef.current, index, slide.id, slide.title);
     }
+  }, [index, visible]);
 
-    if (step.navigateTo && navigation?.isReady?.()) {
-      if (step.navigateTo.nested) {
-        navigation.navigate(step.navigateTo.nested, { screen: step.navigateTo.screen });
-      } else {
-        navigation.navigate(step.navigateTo.screen);
-      }
-    }
-
-    const rect = highlightRect;
-
-    if (rect) {
-      Animated.parallel([
-        Animated.spring(spotX, { toValue: rect.x, useNativeDriver: false, bounciness: 6 }),
-        Animated.spring(spotY, { toValue: rect.y, useNativeDriver: false, bounciness: 6 }),
-        Animated.spring(spotW, { toValue: rect.width, useNativeDriver: false, bounciness: 6 }),
-        Animated.spring(spotH, { toValue: rect.height, useNativeDriver: false, bounciness: 6 }),
-        Animated.timing(spotOpacity, { toValue: 1, duration: 200, useNativeDriver: false }),
-      ]).start();
-    } else {
-      Animated.timing(spotOpacity, { toValue: 0, duration: 200, useNativeDriver: false }).start();
-    }
-
-    tooltipOpacity.setValue(0);
-    tooltipSlide.setValue(direction === 'forward' ? 24 : -24);
-    Animated.parallel([
-      Animated.timing(tooltipOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
-      Animated.spring(tooltipSlide, { toValue: 0, useNativeDriver: false, bounciness: 8 }),
-    ]).start();
-  }, [currentStep, visible]);
-
-  useEffect(() => {
-    if (!visible || !highlightRect) return;
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: false,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [visible, currentStep]);
-
-  const goToStep = (nextIndex: number) => {
-    setDirection(nextIndex > currentStep ? 'forward' : 'backward');
-    setCurrentStep(nextIndex);
+  const goTo = (next: number) => {
+    listRef.current?.scrollToIndex({ index: next, animated: true });
+    setIndex(next);
   };
 
-  const handleNext = async () => {
-    if (currentStep < tutorialSteps.length - 1) {
-      goToStep(currentStep + 1);
-    } else {
-      if (startedAtRef.current !== null) {
-        logTutorialCompleted(startedAtRef.current);
-      }
-      await markTutorialCompleted();
-      onComplete();
-    }
+  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (next !== index) setIndex(next);
   };
 
-  const handleSkip = async () => {
+  const finish = async (then?: () => void) => {
+    if (startedAtRef.current !== null) logTutorialCompleted(startedAtRef.current);
+    await markTutorialCompleted();
+    onComplete();
+    then?.();
+  };
+
+  const skip = async () => {
     if (startedAtRef.current !== null) {
-      logTutorialSkipped(startedAtRef.current, currentStep, step.id, step.title);
+      logTutorialSkipped(startedAtRef.current, index, slide.id, slide.title);
     }
     await markTutorialCompleted();
     onComplete();
   };
 
+  const openUpload = () => {
+    if (navigation?.isReady?.()) navigation.navigate('UploadCourse');
+  };
+
+  const openHome = () => {
+    if (navigation?.isReady?.()) navigation.navigate('MainTabs', { screen: 'Home' });
+  };
+
+  const toneColors: Record<Tone, { bg: string; fg: string }> = {
+    primary: { bg: colors.tintPrimary, fg: colors.primaryDark },
+    success: { bg: colors.tintSuccess, fg: colors.success },
+    warning: { bg: colors.tintWarning, fg: colors.warning },
+  };
+
+  const renderSlide = ({ item }: { item: TutorialSlide }) => {
+    const tone = toneColors[item.tone];
+    return (
+      <View style={[styles.slide, { width }]}>
+        <View style={styles.illustration} importantForAccessibility="no-hide-descendants">
+          <View style={[styles.halo, { backgroundColor: tone.bg }]} />
+          <View style={[styles.iconCircle, { backgroundColor: colors.surface, borderColor: tone.bg }]}>
+            <Ionicons name={item.icon} size={56} color={tone.fg} />
+          </View>
+          {item.chips?.map((chip, i) => (
+            <View key={chip} style={[styles.chip, CHIP_POSITIONS[i % CHIP_POSITIONS.length]]}>
+              <Text style={styles.chipText}>{chip}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.title} accessibilityRole="header">{item.title}</Text>
+        <Text style={styles.text}>{item.text}</Text>
+
+        {item.where && (
+          <View style={styles.where}>
+            <View style={styles.whereIcon}>
+              <Ionicons name={item.where.icon} size={16} color={colors.primaryDark} />
+            </View>
+            <Text style={styles.whereText}>{item.where.label}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (!visible) return null;
 
-  const isLastStep = currentStep === tutorialSteps.length - 1;
-
-  const getTooltipPosition = () => {
-    // Dernière étape : pas de contenu précis à montrer, centrée comme l'intro
-    // plutôt que collée en bas.
-    if (isLastStep) {
-      return { top: height / 2 - 140, left: 20, right: 20, position: 'absolute' as const };
-    }
-    if (step.highlightTab) {
-      // Ancré depuis le BAS plutôt que le haut : la hauteur du tooltip varie
-      // selon le texte, un offset fixe depuis le haut le faisait parfois
-      // chevaucher la flèche/le spotlight de la tab bar en dessous.
-      return { bottom: TAB_BAR_HEIGHT + 100, left: 20, right: 20, position: 'absolute' as const };
-    }
-    if (isShowcase) {
-      // Sur un écran d'onglet, la tab bar (70px) reste visible sous l'écran
-      // réel — il faut laisser de la place au-dessus d'elle, sinon le
-      // tooltip la chevauche. Sur un écran poussé hors des tabs (Upload),
-      // pas de tab bar : une simple marge suffit.
-      const clearance = step.navigateTo?.nested ? TAB_BAR_HEIGHT + 20 : 30;
-      return { bottom: clearance, left: 20, right: 20, position: 'absolute' as const };
-    }
-    return { top: height / 2 - 120, left: 20, right: 20, position: 'absolute' as const };
-  };
-
-  const tooltipStyle = getTooltipPosition();
-
-  const bandTop = { top: 0, left: 0, right: 0, height: spotY };
-  const bandBottom = {
-    top: Animated.add(spotY, spotH),
-    left: 0,
-    right: 0,
-    bottom: 0,
-  };
-  const bandLeft = { top: spotY, height: spotH, left: 0, width: spotX };
-  const bandRight = {
-    top: spotY,
-    height: spotH,
-    left: Animated.add(spotX, spotW),
-    right: 0,
-  };
-
   return (
-    <Modal
-      transparent
-      visible={visible}
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={handleSkip}
-    >
-      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        {highlightRect ? (
-          <>
-            <Animated.View style={[styles.band, bandTop]} />
-            <Animated.View style={[styles.band, bandBottom]} />
-            <Animated.View style={[styles.band, bandLeft]} />
-            <Animated.View style={[styles.band, bandRight]} />
+    <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={skip}>
+      <View style={[styles.container, { paddingTop: top + 8, paddingBottom: bottom + 16 }]}>
+        <View style={styles.topBar}>
+          <Text style={styles.counter} accessibilityLabel={`Étape ${index + 1} sur ${TUTORIAL_SLIDES.length}`}>
+            {index + 1}/{TUTORIAL_SLIDES.length}
+          </Text>
+          {!isLast && (
+            <TouchableOpacity onPress={skip} style={styles.skipButton} accessibilityRole="button" accessibilityLabel="Passer le tutoriel">
+              <Text style={styles.skipText}>Passer</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: spotX,
-                top: spotY,
-                width: spotW,
-                height: spotH,
-              }}
-            >
-              <Animated.View
-                style={[
-                  styles.pulseRing,
-                  {
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: step.highlightTab ? 0 : 12,
-                    opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
-                    transform: [
-                      { scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) },
-                    ],
-                  },
-                ]}
-              />
-            </Animated.View>
+        <Animated.FlatList
+          ref={listRef as any}
+          data={TUTORIAL_SLIDES}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSlide}
+          horizontal
+          pagingEnabled
+          bounces={false}
+          showsHorizontalScrollIndicator={false}
+          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+          onMomentumScrollEnd={onScrollEnd}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+          scrollEventThrottle={16}
+          style={styles.list}
+        />
 
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.spotlightBorder,
-                {
-                  left: spotX,
-                  top: spotY,
-                  width: spotW,
-                  height: spotH,
-                  borderRadius: step.highlightTab ? 0 : 12,
-                },
-              ]}
-            />
-
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.arrowContainer,
-                {
-                  top: Animated.subtract(spotY, 40),
-                  left: Animated.subtract(Animated.add(spotX, Animated.divide(spotW, 2)), 12),
-                },
-              ]}
-            >
-              <Ionicons name="arrow-down" size={24} color={colors.primary} />
-            </Animated.View>
-          </>
-        ) : isShowcase ? (
-          <View style={styles.showcaseBlocker} />
-        ) : (
-          <View style={styles.fullOverlay} />
-        )}
-
-        <Animated.View
-          style={[
-            styles.tooltip,
-            tooltipStyle,
-            {
-              opacity: tooltipOpacity,
-              transform: [{ translateY: tooltipSlide }],
-            },
-          ]}
-        >
-          <View style={styles.tooltipHeader}>
-            {step.sectionLabel ? (
-              <View style={styles.sectionBadge}>
-                <Ionicons name={step.sectionIcon!} size={13} color={colors.primary} />
-                <Text style={styles.sectionBadgeText}>{step.sectionLabel}</Text>
-              </View>
-            ) : (
-              <View />
-            )}
-            <View style={styles.tooltipHeaderRight}>
-              <Text style={styles.stepCounter}>
-                {currentStep + 1}/{tutorialSteps.length}
-              </Text>
-              <TouchableOpacity onPress={handleSkip} style={styles.closeButton}>
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Text style={styles.title} accessibilityRole="header">{step.title}</Text>
-          <Text style={styles.description}>{step.description}</Text>
-
-          {/* Points de progression désormais DANS le tooltip : ne peuvent
-              plus jamais chevaucher le texte, quelle que soit sa longueur. */}
-          <View style={styles.progressRow}>
-            {tutorialSteps.map((_, index) => (
-              <TouchableOpacity key={index} onPress={() => goToStep(index)} hitSlop={8}>
-                <View
+        {/* Points de progression : s'allongent en suivant le glissement du doigt. */}
+        <View style={styles.dots} importantForAccessibility="no-hide-descendants">
+          {TUTORIAL_SLIDES.map((s, i) => {
+            const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
+            return (
+              <TouchableOpacity key={s.id} onPress={() => goTo(i)} hitSlop={8}>
+                <Animated.View
                   style={[
-                    styles.progressDot,
-                    index === currentStep && styles.progressDotActive,
-                    index < currentStep && styles.progressDotCompleted,
+                    styles.dot,
+                    {
+                      width: scrollX.interpolate({ inputRange, outputRange: [8, 24, 8], extrapolate: 'clamp' }),
+                      opacity: scrollX.interpolate({ inputRange, outputRange: [0.35, 1, 0.35], extrapolate: 'clamp' }),
+                    },
                   ]}
                 />
               </TouchableOpacity>
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          <View style={styles.buttonContainer}>
-            {currentStep > 0 && (
-              <TouchableOpacity
-                onPress={() => goToStep(currentStep - 1)}
-                style={styles.backButton}
-                accessibilityLabel="Étape précédente"
-                accessibilityRole="button"
-              >
-                <Ionicons name="arrow-back" size={16} color={colors.primary} />
-                <Text style={styles.backButtonText}>Retour</Text>
+        <View style={styles.actions}>
+          {isLast ? (
+            <>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => finish(openUpload)} accessibilityRole="button">
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.onAction} />
+                <Text style={styles.primaryText}>Importer mon premier cours</Text>
               </TouchableOpacity>
-            )}
-
-            <TouchableOpacity onPress={handleNext} style={styles.nextButton} activeOpacity={0.8}>
-              <Text style={styles.nextButtonText}>
-                {currentStep === tutorialSteps.length - 1 ? 'Terminer' : 'Suivant'}
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.onAction} style={styles.nextIcon} />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => finish(openHome)} accessibilityRole="button">
+                <Text style={styles.secondaryText}>Découvrir l’app d’abord</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.navRow}>
+              {index > 0 ? (
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => goTo(index - 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Étape précédente"
+                >
+                  <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity style={[styles.primaryButton, styles.flex]} onPress={() => goTo(index + 1)} accessibilityRole="button">
+                <Text style={styles.primaryText}>{index === 0 ? 'C’est parti' : 'Suivant'}</Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.onAction} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
     </Modal>
   );
 }
+
+// Étiquettes réparties autour de l'illustration.
+const CHIP_POSITIONS = [
+  { top: 18, left: 8 },
+  { top: 40, right: 0 },
+  { bottom: 30, left: 0 },
+  { bottom: 8, right: 16 },
+] as const;
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: colors.background,
     },
-    fullOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    },
-    showcaseBlocker: {
-      ...StyleSheet.absoluteFillObject,
-      // Assombrit pour focus sur le tutoriel, mais assez léger pour que
-      // l'écran réel (le "showcase") reste lisible en dessous.
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    },
-    band: {
-      position: 'absolute',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    },
-    spotlightBorder: {
-      position: 'absolute',
-      borderWidth: 3,
-      borderColor: colors.primary,
-      borderStyle: 'dashed',
-    },
-    pulseRing: {
-      position: 'absolute',
-      borderWidth: 3,
-      borderColor: colors.primary,
-    },
-    arrowContainer: {
-      position: 'absolute',
-      zIndex: 1000,
-    },
-    tooltip: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 10,
-    },
-    tooltipHeader: {
+    topBar: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 14,
-    },
-    sectionBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      backgroundColor: colors.tintPrimary,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 20,
-    },
-    sectionBadgeText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.primaryText,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
-    },
-    tooltipHeaderRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    stepCounter: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    closeButton: {
-      padding: 4,
-    },
-    title: {
-      fontSize: 21,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginBottom: 10,
-      lineHeight: 26,
-    },
-    description: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      lineHeight: 22,
-      marginBottom: 18,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 18,
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
       minHeight: 44,
+      paddingHorizontal: 20,
     },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      minWidth: 100,
-    },
-    backButtonText: {
+    counter: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primaryText,
-      marginLeft: 6,
+      color: colors.textSecondary,
     },
-    nextButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.action,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-      minWidth: 120,
+    skipButton: {
+      minHeight: 44,
+      paddingHorizontal: 12,
       justifyContent: 'center',
     },
-    nextButtonText: {
+    skipText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+    list: {
+      flex: 1,
+    },
+    slide: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+      gap: 14,
+    },
+    illustration: {
+      width: 240,
+      height: 220,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 18,
+    },
+    halo: {
+      position: 'absolute',
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+    },
+    iconCircle: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderWidth: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      elevation: 6,
+    },
+    chip: {
+      position: 'absolute',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    title: {
+      fontSize: 26,
+      lineHeight: 32,
+      fontWeight: '700',
+      textAlign: 'center',
+      color: colors.textPrimary,
+    },
+    text: {
       fontSize: 16,
+      lineHeight: 24,
+      textAlign: 'center',
+      color: colors.textSecondary,
+      maxWidth: 360,
+    },
+    where: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 6,
+      paddingLeft: 6,
+      paddingRight: 14,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.surfaceAlt,
+    },
+    whereIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    whereText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    dots: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 20,
+    },
+    dot: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.action,
+    },
+    actions: {
+      paddingHorizontal: 20,
+      gap: 8,
+    },
+    navRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    flex: {
+      flex: 1,
+    },
+    backButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      height: 56,
+      paddingHorizontal: 20,
+      borderRadius: 16,
+      backgroundColor: colors.action,
+    },
+    primaryText: {
+      fontSize: 17,
       fontWeight: '600',
       color: colors.onAction,
     },
-    nextIcon: {
-      marginLeft: 8,
+    secondaryButton: {
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    progressDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.border,
-    },
-    progressDotActive: {
-      width: 24,
-      backgroundColor: colors.action,
-    },
-    progressDotCompleted: {
-      backgroundColor: colors.action,
-      opacity: 0.5,
+    secondaryText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
   });
 }
