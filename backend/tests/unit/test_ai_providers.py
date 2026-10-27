@@ -132,13 +132,13 @@ class TestGetAIProvider:
             GCP_LOCATION = "us-central1"
 
         try:
-            import vertexai  # noqa: F401
+            from google import genai  # noqa: F401
             from services.ai.vertexai_provider import VertexAIProvider
-            with patch("services.ai.vertexai_provider.vertexai.init"):
+            with patch("services.ai.vertexai_provider.genai.Client"):
                 provider = get_ai_provider(FakeConfig())
             assert isinstance(provider, VertexAIProvider)
         except ImportError:
-            pytest.skip("vertexai not installed — skipping VertexAIProvider test")
+            pytest.skip("google-genai not installed — skipping VertexAIProvider test")
 
     def test_returns_ollama_when_configured(self):
         from services.ai import get_ai_provider
