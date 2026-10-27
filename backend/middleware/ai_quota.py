@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 _MESSAGES = {
     "chat": "Tu as atteint la limite de messages à l'assistant. Réessaie un peu plus tard.",
     "process": "Tu as atteint la limite d'imports de cours. Réessaie un peu plus tard.",
+    "case": "Tu as atteint la limite de cas cliniques. Réessaie un peu plus tard.",
 }
 _GLOBAL_MESSAGE = "L'IA est très sollicitée en ce moment. Réessaie plus tard."
 
@@ -15,6 +16,8 @@ _GLOBAL_MESSAGE = "L'IA est très sollicitée en ce moment. Réessaie plus tard.
 def _limits(kind: str, config) -> list:
     if kind == "chat":
         return [(60, config["AI_CHAT_PER_MINUTE"]), (86400, config["AI_CHAT_PER_DAY"])]
+    if kind == "case":
+        return [(3600, config["AI_CASE_PER_HOUR"]), (86400, config["AI_CASE_PER_DAY"])]
     return [(3600, config["AI_PROCESS_PER_HOUR"]), (86400, config["AI_PROCESS_PER_DAY"])]
 
 

@@ -44,6 +44,15 @@ class AIProvider(ABC):
         """Generate a short descriptive course title (max 10 words)."""
         ...
 
+    def generate_clinical_case(self, material: str, difficulty: str = "normal") -> dict | None:
+        """Cas clinique interactif (F43) à partir d'un cours ou d'un sujet.
+
+        Format attendu (validé par routes/cases.py) :
+        {"title", "context", "steps": [{"situation", "question", "options": {A..D},
+        "correct", "feedback": {A..D}, "explanation"}], "debrief": [points clés]}
+        Renvoie None si le fournisseur ne sait pas le faire ou en cas d'échec."""
+        return None
+
     def transcribe_audio(self, data: bytes, mime_type: str) -> str:
         """Retranscrit une question dictée (F45). Chaîne vide si non pris en charge."""
         return ""

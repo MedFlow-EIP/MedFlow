@@ -49,6 +49,8 @@ import { MockExamScreen } from '../screens/MockExamScreen';
 import { ChallengeScreen } from '../screens/ChallengeScreen';
 import { FlashcardReviewScreen } from '../screens/FlashcardReviewScreen';
 import { DocumentsScreen } from '../screens/DocumentsScreen';
+import { ClinicalCasesScreen } from '../screens/ClinicalCasesScreen';
+import { ClinicalCaseScreen } from '../screens/ClinicalCaseScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
@@ -94,6 +96,8 @@ export type RootStackParamList = {
   Challenge: { challengeId: number };
   FlashcardReview: { courseId?: string } | undefined;
   Documents: undefined;
+  ClinicalCases: { courseId?: string } | undefined;
+  ClinicalCase: { caseId: number };
   Auth: undefined;
 };
 
@@ -142,7 +146,7 @@ function CustomTabBar({ state, navigation }: any) {
     stackNavigation.navigate('UploadCourse');
   };
 
-  const goTo = (screen: 'MockExam' | 'Exams') => {
+  const goTo = (screen: 'MockExam' | 'Exams' | 'ClinicalCases') => {
     setAddModalVisible(false);
     stackNavigation.navigate(screen);
   };
@@ -280,6 +284,22 @@ function CustomTabBar({ state, navigation }: any) {
               <View style={styles.optionTextContainer}>
                 <Text style={styles.optionTitle}>Importer un cours</Text>
                 <Text style={styles.optionDescription}>PDF, Word, PowerPoint ou photo d’un poly</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => goTo('ClinicalCases')}
+              accessibilityRole="button"
+              accessibilityLabel="Faire un cas clinique"
+            >
+              <View style={styles.optionIcon}>
+                <Ionicons name="medkit-outline" size={26} color={colors.primaryDark} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>Cas clinique</Text>
+                <Text style={styles.optionDescription}>Prends les décisions face à un patient</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -449,6 +469,8 @@ export function AppNavigator() {
             <Stack.Screen name="Challenge" component={ChallengeScreen} />
             <Stack.Screen name="FlashcardReview" component={FlashcardReviewScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />
+            <Stack.Screen name="ClinicalCases" component={ClinicalCasesScreen} />
+            <Stack.Screen name="ClinicalCase" component={ClinicalCaseScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

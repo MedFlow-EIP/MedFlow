@@ -452,6 +452,8 @@ export function AccountScreen() {
                           ? "timer"
                           : item.type === "challenge"
                           ? "flash"
+                          : item.type === "clinical_case"
+                          ? "medkit"
                           : isQuest
                           ? "flag"
                           : "school"

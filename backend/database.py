@@ -658,6 +658,25 @@ class Database:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_push_tokens_uid ON push_tokens(uid)")
 
+            # Cas cliniques interactifs (F43) : cas généré + réponses de l'utilisateur.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS clinical_cases (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    course_id TEXT,
+                    source_label TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    data TEXT NOT NULL,
+                    answers TEXT NOT NULL DEFAULT '[]',
+                    score INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    finished_at TEXT
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_clinical_cases_uid ON clinical_cases(uid, created_at)")
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """

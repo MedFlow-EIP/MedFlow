@@ -10,6 +10,36 @@ from google.oauth2 import service_account
 
 from .base import QUIZ_DIFFICULTY, AIProvider
 
+CLINICAL_CASE_PROMPT = """
+Crée un cas clinique interactif pour un étudiant en médecine, en français,
+à partir du matériel ci-dessous (cours ou sujet). Le cas doit rester fidèle
+au matériel et médicalement exact.
+
+{difficulty}
+
+Structure :
+- "title" : titre court (ex. « Douleur thoracique chez un homme de 58 ans »).
+- "context" : présentation du patient (âge, sexe, motif de consultation,
+  antécédents, signes cliniques) en 3 à 6 phrases.
+- "steps" : 4 étapes de décision, dans l'ordre de la prise en charge
+  (hypothèse diagnostique, examen à demander, interprétation d'un résultat,
+  traitement ou orientation…). Pour chaque étape :
+  - "situation" : ce qui se passe à cette étape (nouveaux éléments,
+    résultats d'examens…), qui découle de la bonne réponse précédente ;
+  - "question" : la décision à prendre ;
+  - "options" : 4 choix A, B, C, D, plausibles ;
+  - "correct" : la lettre du meilleur choix ;
+  - "feedback" : pour CHAQUE lettre, 1 à 2 phrases qui expliquent pourquoi
+    ce choix est bon, insuffisant ou dangereux dans ce contexte précis ;
+  - "explanation" : le raisonnement attendu, en 1 à 3 phrases.
+- "debrief" : 3 à 5 points clés à retenir.
+
+Matériel :
+{material}
+
+Réponds UNIQUEMENT avec le JSON.
+"""
+
 logger = logging.getLogger(__name__)
 
 _SYSTEM_INSTRUCTION = """
@@ -244,6 +274,17 @@ class VertexAIProvider(AIProvider):
         except Exception as e:
             logger.error("Erreur lecture document: %s", e)
             return ""
+
+    def generate_clinical_case(self, material: str, difficulty: str = "normal") -> dict | None:
+        try:
+            prompt = CLINICAL_CASE_PROMPT.format(
+                difficulty=QUIZ_DIFFICULTY.get(difficulty, QUIZ_DIFFICULTY["normal"]),
+                material=material[: self.max_input_chars],
+            )
+            return json.loads(self._clean_json(self._generate(prompt, json_output=True)))
+        except Exception as e:
+            logger.error("Erreur cas clinique: %s", e)
+            return None
 
     def transcribe_audio(self, data: bytes, mime_type: str) -> str:
         """Dictée vocale du chat : retranscrit mot pour mot ce que l'utilisateur a dit."""
