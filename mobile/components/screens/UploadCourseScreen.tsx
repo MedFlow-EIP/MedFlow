@@ -154,7 +154,11 @@ export function UploadCourseScreen() {
     setError("");
   };
 
-  const handleGenerate = async () => {
+  /**
+   * replaceId : régénère ce cours au lieu d'en créer un.
+   * keepDuplicate : importe quand même un document déjà importé.
+   */
+  const handleGenerate = async (options: { replaceId?: string; keepDuplicate?: boolean } = {}) => {
     if (!file) return;
 
     const user = auth.currentUser;
@@ -177,7 +181,9 @@ export function UploadCourseScreen() {
       formData.append("difficulty", difficulty);
 
       // « Régénérer » remplace le cours déjà créé au lieu d'en ajouter un second.
-      if (data?.courseId) formData.append("replace_course_id", data.courseId);
+      const replaceId = options.replaceId ?? data?.courseId;
+      if (replaceId) formData.append("replace_course_id", replaceId);
+      if (options.keepDuplicate) formData.append("on_duplicate", "keep");
 
       const response = await fetchWithTimeout(
         `${API_URL}/api/process`,
@@ -188,6 +194,14 @@ export function UploadCourseScreen() {
         },
         GENERATE_TIMEOUT_MS
       );
+
+      if (response.status === 409) {
+        const duplicate = await response.json().catch(() => null);
+        if (duplicate?.code === "duplicate") {
+          askAboutDuplicate(duplicate.course_id, duplicate.nom);
+          return;
+        }
+      }
 
       const result = await readJsonOrThrow(response, "La génération a échoué. Réessaie.");
 
@@ -205,6 +219,26 @@ export function UploadCourseScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Document déjà importé (F52) : rien n'a été généré, l'utilisateur choisit.
+  const askAboutDuplicate = (courseId: string, courseName: string) => {
+    appAlert("Cours déjà importé", `Tu as déjà importé ce document : « ${courseName} ».`, [
+      {
+        text: "Ouvrir le cours",
+        onPress: () => navigation.navigate("CourseDetail", { courseId }),
+      },
+      {
+        text: "Le remplacer",
+        style: "destructive",
+        onPress: () => handleGenerate({ replaceId: courseId }),
+      },
+      {
+        text: "Garder les deux",
+        onPress: () => handleGenerate({ keepDuplicate: true }),
+      },
+      { text: "Annuler", style: "cancel" },
+    ]);
   };
 
   const generateLabel = loading
@@ -384,7 +418,7 @@ export function UploadCourseScreen() {
           <>
             <TouchableOpacity
               style={[styles.secondaryBtn, loading && styles.btnDisabled]}
-              onPress={handleGenerate}
+              onPress={() => handleGenerate()}
               disabled={loading}
               accessibilityRole="button"
               accessibilityLabel="Régénérer le contenu"
@@ -408,7 +442,7 @@ export function UploadCourseScreen() {
         ) : (
           <TouchableOpacity
             style={[styles.primaryBtn, (!file || loading) && styles.btnDisabled]}
-            onPress={handleGenerate}
+            onPress={() => handleGenerate()}
             disabled={!file || loading}
             accessibilityRole="button"
             accessibilityLabel={generateLabel}

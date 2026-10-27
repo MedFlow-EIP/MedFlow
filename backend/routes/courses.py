@@ -1,5 +1,7 @@
+import hashlib
 import logging
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
@@ -201,6 +203,15 @@ def _read_course_text(data: bytes, extension: str, mime_type: str):
     return text, False, None, None
 
 
+def _source_hash(data: bytes, text: str) -> str:
+    """Empreinte du document : son texte normalisé (un même cours réexporté ou
+    renommé est reconnu), sinon ses octets (photo, scan)."""
+    if text and text.strip():
+        normalized = re.sub(r"\s+", " ", text.lower()).strip()
+        return "t:" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return "b:" + hashlib.sha256(data).hexdigest()
+
+
 def _clean_flashcards(cards) -> list:
     """Garde les cartes valides (les fournisseurs IA renvoient une carte « Erreur » en cas d'échec)."""
     if not isinstance(cards, list):
@@ -290,6 +301,18 @@ def process_document():
         if error:
             return jsonify({"error": error}), status
 
+        # Déjà importé ? On demande avant de dépenser un appel IA (F52).
+        source_hash = _source_hash(data, text)
+        if not replace_id and request.form.get("on_duplicate") != "keep":
+            existing = current_app.db.find_course_by_hash(g.uid, source_hash)
+            if existing:
+                return jsonify({
+                    "error": f"Tu as déjà importé ce cours : « {existing['nom']} »",
+                    "code": "duplicate",
+                    "course_id": existing["course_id"],
+                    "nom": existing["nom"],
+                }), 409
+
         # Quota compté seulement quand l'IA va vraiment être appelée.
         quota_error = consume_ai_quota("process")
         if quota_error:
@@ -330,6 +353,7 @@ def process_document():
             "summary": results["summary"],
             "quiz": quiz,
             "sessions": 0,
+            "source_hash": source_hash,
         }
         # Nouveau cours : spécialités suggérées. Régénération : on garde les tags choisis.
         if not replace_id:

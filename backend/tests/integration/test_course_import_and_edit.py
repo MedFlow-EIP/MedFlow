@@ -116,7 +116,8 @@ class TestImportFormats:
 
     def test_same_file_name_does_not_overwrite(self, client, db):
         first = _upload(client, b"\xff\xd8\xff", "image.jpg").get_json()["id"]
-        second = _upload(client, b"\xff\xd8\xff", "image.jpg").get_json()["id"]
+        # Autre photo, même nom de fichier (nom par défaut de l'appareil photo).
+        second = _upload(client, b"\xff\xd8\xff autre", "image.jpg").get_json()["id"]
         assert first != second
         assert len(db.fetch_courses("u1")) == 2
 
