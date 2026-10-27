@@ -44,6 +44,7 @@ import { PathScreen } from '../screens/PathScreen';
 import { LessonScreen } from '../screens/LessonScreen';
 import { CourseDetailScreen } from '../screens/CourseDetail';
 import { ExamsScreen } from '../screens/ExamsScreen';
+import { MockExamScreen } from '../screens/MockExamScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
@@ -81,6 +82,7 @@ export type RootStackParamList = {
   Search: undefined;
   Mastered: undefined;
   Exams: undefined;
+  MockExam: undefined;
   Auth: undefined;
 };
 
@@ -343,6 +345,7 @@ export function AppNavigator() {
             <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="Mastered" component={MasteredScreen} />
             <Stack.Screen name="Exams" component={ExamsScreen} />
+            <Stack.Screen name="MockExam" component={MockExamScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
@@ -543,4 +546,4 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
     },
   });
-}
+}

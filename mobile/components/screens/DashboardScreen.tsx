@@ -336,6 +336,17 @@ export function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        <TouchableOpacity
+          style={styles.mockExamButton}
+          onPress={() => navigation.navigate('MockExam')}
+          accessibilityRole="button"
+          accessibilityLabel="Lancer un examen blanc"
+        >
+          <Ionicons name="timer-outline" size={20} color={colors.primaryText} />
+          <Text style={styles.mockExamText}>Examen blanc</Text>
+          <Text style={styles.mockExamHint}>chronométré, noté sur 20</Text>
+        </TouchableOpacity>
+
         {/* Prochain examen : ses cours passent en priorité dans les révisions. */}
         <TouchableOpacity
           style={styles.examCard}
@@ -672,6 +683,28 @@ function makeStyles(colors: ThemeColors) {
     tagFilterTextActive: {
       fontWeight: '600',
       color: colors.primaryText,
+    },
+    mockExamButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minHeight: 52,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.surface,
+    },
+    mockExamText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+    mockExamHint: {
+      flex: 1,
+      textAlign: 'right',
+      fontSize: 13,
+      color: colors.textSecondary,
     },
     examCard: {
       flexDirection: 'row',
