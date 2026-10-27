@@ -22,7 +22,7 @@ Les modifications limitées à `docs/` ou aux fichiers Markdown ne déclenchent 
 2. Refuse de continuer si la VM a des modifications non commitées.
 3. Récupère la branche demandée (`main` par défaut).
 4. Vérifie la présence des variables `GCP_*` et `FIREBASE_*`.
-5. Reconstruit l’image backend (`--no-cache`), récupère Caddy, redémarre.
+5. Sauvegarde la base SQLite (`backup_db.sh`), reconstruit l’image backend (`--no-cache`), récupère Caddy, redémarre.
 6. Vérifie que Firebase Admin s’est initialisé.
 7. Importe les comptes Firebase dans le classement.
 

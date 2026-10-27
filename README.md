@@ -39,10 +39,12 @@ deploy.sh  → déploiement du backend sur la VM
 - Import de cours PDF (20 Mo max) → résumé, flashcards et quiz générés par l’IA
 - Parcours gamifiés (leçons, cartes, quiz visuel, défi chronométré)
 - Révision espacée SM-2 : cartes du jour, prévision par cours, cartes difficiles et maîtrisées
-- Assistant IA médical (garde le fil de la conversation, accepte images et PDF)
+- Assistant IA médical (garde le fil de la conversation, accepte images et PDF, historique synchronisé entre appareils)
 - XP, séries, badges, ligues, classement et amis
 - Rappels de révision et de série à l’heure choisie
 - Consultation des cours hors ligne
+- Connexion par email ou Google (Android), vérification de l’email, suppression du compte
+- Thème clair / sombre / système
 
 ---
 
@@ -107,6 +109,19 @@ FIREBASE_CLIENT_ID=
 
 Optionnel : `AI_PROVIDER=ollama` (+ `OLLAMA_BASE_URL`, `OLLAMA_MODEL`), `ENABLE_DEBUG_ROUTES=true` pour les routes `/api/debug/*` en local.
 
+**Garde-fous de coût IA** (valeurs par défaut entre parenthèses) :
+
+| Variable | Rôle |
+|---|---|
+| `AI_CHAT_MODEL` (`gemini-2.5-flash`) | Modèle du chat |
+| `AI_COURSE_MODEL` (`gemini-2.5-flash`) | Modèle de génération des cours |
+| `AI_MAX_OUTPUT_TOKENS` (`8192`) | Plafond de tokens générés par appel |
+| `AI_CHAT_PER_MINUTE` / `AI_CHAT_PER_DAY` (`6` / `60`) | Messages au chat par compte |
+| `AI_PROCESS_PER_HOUR` / `AI_PROCESS_PER_DAY` (`5` / `10`) | Imports de PDF par compte |
+| `AI_GLOBAL_PER_DAY` (`2000`) | Appels IA sur 24 h, tous comptes confondus |
+
+Au-delà, l’API répond `429`. En production, l’IA est aussi réservée aux comptes dont l’email est vérifié (`403`). Pense à créer une **alerte budget** dans la console GCP (Facturation → Budgets et alertes).
+
 ### Mobile — `mobile/.env`
 
 ```env
@@ -117,7 +132,11 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=
 EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=      # connexion Google (facultatif)
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
 ```
+
+**Connexion Google (Android)** : activer le fournisseur Google dans Firebase Authentication, puis dans Google Cloud Console → *Identifiants* récupérer l’ID client **Web** (créé par Firebase) et créer un ID client **Android** (package `com.wavitooo.medflowlearning` + empreinte SHA-1 de la clé de signature : `eas credentials` pour un build EAS). Le bouton n’apparaît que dans un build de l’app (APK), pas dans Expo Go. Pour un build EAS, ajouter aussi ces variables dans les variables d’environnement EAS : le `.env` n’est pas envoyé.
 
 Les variables `EXPO_PUBLIC_*` sont intégrées à l’application : n’y mettre aucun secret. Les `.env` ne sont jamais commités.
 
@@ -130,7 +149,15 @@ Le backend tourne sur la VM avec Docker Compose : le conteneur `backend` (Flask,
 - **Automatique :** chaque merge sur `main` avec une CI verte lance le workflow *Deploy backend*, qui exécute `deploy.sh` sur la VM en SSH (secrets `VM_HOST`, `VM_USER`, `VM_SSH_KEY`).
 - **À la main / une autre branche :** onglet Actions → *Deploy backend* → *Run workflow*, ou sur la VM `bash deploy.sh <branche>`.
 
-`deploy.sh` sauvegarde les `.env`, reconstruit l’image, vérifie que Firebase Admin démarre et importe les comptes Firebase dans le classement.
+`deploy.sh` sauvegarde les `.env` et la base SQLite, reconstruit l’image, vérifie que Firebase Admin démarre et importe les comptes Firebase dans le classement.
+
+**Sauvegarde quotidienne de la base** (une fois, sur la VM, via `crontab -e`) :
+
+```cron
+0 3 * * * cd ~/MedFlow && bash backup_db.sh >> backups/backup.log 2>&1
+```
+
+Les 14 dernières copies sont gardées dans `backend/data/backups/`. Elles sont sur le même disque que la base : pour se protéger d’une perte de la VM, les copier aussi ailleurs de temps en temps (`scp`).
 
 ## CI/CD
 
