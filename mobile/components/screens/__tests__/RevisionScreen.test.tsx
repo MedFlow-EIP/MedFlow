@@ -16,6 +16,10 @@ jest.mock('../../../utils/authHeaders', () => ({
   getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer fake-token' }),
 }));
 
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
 jest.mock('../../../utils/revisionNotifications', () => ({
   scheduleRevisionReminder: jest.fn().mockResolvedValue(undefined),
 }));
@@ -672,5 +676,37 @@ describe('RevisionScreen — mode cartes difficiles (leeches)', () => {
       expect(screen.getByText('Aucune carte difficile en ce moment')).toBeTruthy();
     });
     expect(screen.queryByText('Réviser quand même (mode libre)')).toBeNull();
+  });
+});
+describe('RevisionScreen — hors ligne (F74)', () => {
+  const AsyncStorage = require('@react-native-async-storage/async-storage');
+  const { saveOffline, courseCacheName } = require('../../../utils/offlineCache');
+  const { saveDueItems, pendingCount } = require('../../../utils/offlineRevision');
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    await saveDueItems('test-uid', undefined, twoItems.items);
+    await saveOffline('test-uid', courseCacheName('anatomy'), {
+      nom: 'Anatomie',
+      quiz: [
+        { question: 'Q0', options: twoItems.items[0].options, correct: 'B', explanation: '206 os.' },
+        { question: 'Q1', options: twoItems.items[1].options, correct: 'C' },
+      ],
+    });
+    (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Network request failed'));
+  });
+
+  it('reprend les cartes enregistrées et affiche le bandeau hors ligne', async () => {
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText(/Hors ligne : tes réponses/)).toBeTruthy());
+    expect(screen.getByText(twoItems.items[0].question)).toBeTruthy();
+  });
+
+  it('corrige sur le téléphone et met la réponse en attente', async () => {
+    render(<RevisionScreen />);
+    await waitFor(() => expect(screen.getByText('186')).toBeTruthy());
+    fireEvent.press(screen.getByText('186'));
+    await waitFor(() => expect(screen.getByText('Bonne réponse : 206')).toBeTruthy());
+    expect(await pendingCount('test-uid')).toBe(1);
   });
 });

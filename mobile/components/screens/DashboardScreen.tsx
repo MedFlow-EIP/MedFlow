@@ -28,6 +28,7 @@ import {
 } from '../../utils/offlineCache';
 import { appAlert } from '../../utils/appAlert';
 import { countdownLabel, syncExamReminders } from '../../utils/examReminders';
+import { flushRevisionQueue } from '../../utils/offlineRevision';
 import type { Exam } from './ExamsScreen';
 import { formatLongDate } from '../ui/DatePickerSheet';
 
@@ -131,6 +132,8 @@ export function DashboardScreen() {
       applyDashboard(data);
       setOffline(false);
       saveOffline(user.uid, DASHBOARD_CACHE_NAME, data);
+      // Réponses données hors ligne : envoyées dès que le réseau revient.
+      flushRevisionQueue(user).catch(() => {});
       if (Array.isArray(data.cours)) prefetchCourses(user, data.cours);
 
       // Récupère la prévision (7 jours) une seule fois : sert à la fois à

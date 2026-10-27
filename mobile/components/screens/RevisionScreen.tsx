@@ -13,7 +13,16 @@ import { shuffle } from '../../utils/shuffle';
 import { StateView } from '../ui/StateView';
 import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { errorMessage, fetchWithTimeout, readJsonOrThrow, UserFacingError } from '../../utils/network';
+import {
+  flushRevisionQueue,
+  gradeOffline,
+  queueAnswer,
+  queueSessionDone,
+  readOfflineItems,
+  saveDueItems,
+} from '../../utils/offlineRevision';
+import { OfflineBanner } from '../course/OfflineBanner';
 import { explainPrompt } from '../../utils/explainPrompt';
 
 type DueItem = {
@@ -56,7 +65,23 @@ export function RevisionScreen() {
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
+  // Pas de réseau : cartes de la copie locale, réponses corrigées sur le
+  // téléphone puis envoyées au serveur au retour de la connexion.
+  const [offlineMode, setOfflineMode] = useState(false);
   const activeItemKeyRef = useRef<string | null>(null);
+
+  const resetSession = (list: DueItem[]) => {
+    // Questions et réponses mélangées à chaque session, sinon on apprend
+    // l'ordre (ou la position de la bonne réponse) plutôt que le contenu.
+    // Les clés (A/B/C/D) restent celles du serveur pour /api/revision/answer.
+    setItems(shuffle(list).map((it) => ({ ...it, optionOrder: shuffle(Object.keys(it.options || {})) })));
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setAnswerResult(null);
+    setAnswerError(null);
+    setCorrectCount(0);
+    setFinished(false);
+  };
 
   const load = useCallback(async (loadMode: 'scheduled' | 'practice' | 'leeches' = mode) => {
     const user = auth.currentUser;
@@ -67,7 +92,11 @@ export function RevisionScreen() {
     setLoading(true);
     setError(false);
     setMode(loadMode);
+    setOfflineMode(false);
     try {
+      // Réponses données hors ligne lors d'une session précédente : envoyées
+      // d'abord, pour que la liste des cartes dues en tienne compte.
+      await flushRevisionQueue(user);
       const headers = await getAuthHeaders(user);
       const endpoint =
         loadMode === 'practice' ? '/api/revision/practice' :
@@ -80,17 +109,8 @@ export function RevisionScreen() {
       if (!res.ok) throw new Error('Erreur serveur');
       const data = await res.json();
       const fetchedItems: DueItem[] = Array.isArray(data.items) ? data.items : [];
-      // Questions et réponses mélangées à chaque session, sinon on apprend
-      // l'ordre (ou la position de la bonne réponse) plutôt que le contenu.
-      // Les clés (A/B/C/D) restent celles du serveur pour /api/revision/answer.
-      setItems(
-        shuffle(fetchedItems).map((it) => ({ ...it, optionOrder: shuffle(Object.keys(it.options || {})) }))
-      );
-      setCurrentIndex(0);
-      setSelectedOption(null);
-      setAnswerResult(null);
-      setCorrectCount(0);
-      setFinished(false);
+      resetSession(fetchedItems);
+      if (loadMode === 'scheduled') saveDueItems(user.uid, courseId, fetchedItems);
 
       // Remet à jour le rappel de notification avec le vrai nombre de
       // cartes dues — uniquement en mode programmé, tous cours confondus
@@ -100,7 +120,14 @@ export function RevisionScreen() {
       }
     } catch (err) {
       console.error('Erreur chargement révision:', err);
-      setError(true);
+      // Hors ligne : dernière liste de cartes dues connue (ou le cours gardé).
+      const offlineItems = loadMode === 'leeches' ? [] : await readOfflineItems(user.uid, courseId);
+      if (offlineItems.length > 0) {
+        resetSession(offlineItems);
+        setOfflineMode(true);
+      } else {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -115,22 +142,28 @@ export function RevisionScreen() {
   const finishSession = async (finalCorrectCount: number, totalReviewed: number) => {
     const user = auth.currentUser;
     if (!user || totalReviewed === 0) return;
+    const body = {
+      mode: courseId ? 'course' : 'all',
+      course_id: courseId,
+      session_type: 'revision',
+      score: Math.round((finalCorrectCount / totalReviewed) * 100),
+      total_questions: totalReviewed,
+    };
+    if (offlineMode) {
+      // Compte pour la série dès le retour du réseau.
+      queueSessionDone(user.uid, body);
+      return;
+    }
     try {
       const headers = await getAuthHeaders(user);
-      const scorePercent = Math.round((finalCorrectCount / totalReviewed) * 100);
       await fetch(`${API_URL}/api/session-done`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: courseId ? 'course' : 'all',
-          course_id: courseId,
-          session_type: 'revision',
-          score: scorePercent,
-          total_questions: totalReviewed,
-        }),
+        body: JSON.stringify(body),
       });
     } catch (err) {
       console.error('Erreur fin de session:', err);
+      queueSessionDone(user.uid, body);
     }
   };
 
@@ -150,6 +183,27 @@ export function RevisionScreen() {
     setSelectedOption(option);
     setAnswerError(null);
 
+    // Correction avec la copie locale du cours ; la réponse part plus tard.
+    const answerOffline = async (): Promise<boolean> => {
+      const result = await gradeOffline(user.uid, item.course_id, item.item_index, option);
+      if (activeItemKeyRef.current !== requestKey) return true;
+      if (!result) return false;
+      // Le mode libre ne touche pas au planning : rien à envoyer.
+      if (mode !== 'practice') {
+        await queueAnswer(user.uid, { course_id: item.course_id, item_index: item.item_index, selected_option: option });
+      }
+      setAnswerResult(result);
+      return true;
+    };
+
+    if (offlineMode) {
+      if (!(await answerOffline())) {
+        setSelectedOption(null);
+        setAnswerError('Ce cours n’est pas enregistré sur ton téléphone. Ouvre-le une fois avec du réseau.');
+      }
+      return;
+    }
+
     try {
       const headers = await getAuthHeaders(user);
       const endpoint = mode === 'practice' ? '/api/revision/check' : '/api/revision/answer';
@@ -168,8 +222,14 @@ export function RevisionScreen() {
     } catch (err) {
       console.error('Erreur enregistrement réponse:', err);
       if (activeItemKeyRef.current !== requestKey) return;
-      // Réponse non enregistrée (réseau coupé…) : on libère la question pour
-      // que l'utilisateur réponde à nouveau, au lieu de la compter fausse.
+      // Réseau coupé en pleine session : on continue hors ligne si possible.
+      const networkLost = err instanceof UserFacingError && err.status === undefined;
+      if (networkLost && (await answerOffline())) {
+        setOfflineMode(true);
+        return;
+      }
+      // Sinon on libère la question pour que l'utilisateur réponde à nouveau,
+      // au lieu de la compter fausse.
       setSelectedOption(null);
       setAnswerError(errorMessage(err, 'Réponse non enregistrée. Réessaie.'));
     }
@@ -304,6 +364,9 @@ export function RevisionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.cardArea} showsVerticalScrollIndicator={false}>
+        {offlineMode && (
+          <OfflineBanner message="Hors ligne : tes réponses seront envoyées au retour du réseau." />
+        )}
         <View style={styles.questionBlock}>
           <View style={styles.overlineRow}>
             <Text style={styles.overline}>QUESTION {currentIndex + 1}</Text>
