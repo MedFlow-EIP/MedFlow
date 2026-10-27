@@ -13,6 +13,8 @@ import { shuffle } from '../../utils/shuffle';
 import { StateView } from '../ui/StateView';
 import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
+import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { explainPrompt } from '../../utils/explainPrompt';
 
 type DueItem = {
   course_id: string;
@@ -51,6 +53,7 @@ export function RevisionScreen() {
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [answerError, setAnswerError] = useState<string | null>(null);
   const activeItemKeyRef = useRef<string | null>(null);
 
   const load = useCallback(async (loadMode: 'scheduled' | 'practice' | 'leeches' = mode) => {
@@ -143,11 +146,12 @@ export function RevisionScreen() {
     activeItemKeyRef.current = requestKey;
 
     setSelectedOption(option);
+    setAnswerError(null);
 
     try {
       const headers = await getAuthHeaders(user);
       const endpoint = mode === 'practice' ? '/api/revision/check' : '/api/revision/answer';
-      const res = await fetch(`${API_URL}${endpoint}`, {
+      const res = await fetchWithTimeout(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -156,15 +160,16 @@ export function RevisionScreen() {
           selected_option: option,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonOrThrow<AnswerResult>(res, 'Réponse non enregistrée.');
       if (activeItemKeyRef.current !== requestKey) return; // question déjà quittée
       setAnswerResult(data);
     } catch (err) {
       console.error('Erreur enregistrement réponse:', err);
       if (activeItemKeyRef.current !== requestKey) return;
-      // Repli honnête : on ne sait pas si c'était correct, on ne compte
-      // pas la question comme réussie, mais on laisse continuer la session.
-      setAnswerResult({ correct: false, correct_answer: '' });
+      // Réponse non enregistrée (réseau coupé…) : on libère la question pour
+      // que l'utilisateur réponde à nouveau, au lieu de la compter fausse.
+      setSelectedOption(null);
+      setAnswerError(errorMessage(err, 'Réponse non enregistrée. Réessaie.'));
     }
   };
 
@@ -180,7 +185,21 @@ export function RevisionScreen() {
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
       setAnswerResult(null);
+      setAnswerError(null);
     }
+  };
+
+  const explain = () => {
+    const current = items[currentIndex];
+    if (!current || !answerResult) return;
+    navigation.navigate('AIChat', {
+      prompt: explainPrompt({
+        question: current.question,
+        correctAnswer: (current.options || {})[answerResult.correct_answer],
+        chosenAnswer: selectedOption ? (current.options || {})[selectedOption] : undefined,
+        courseName: current.course_nom,
+      }),
+    });
   };
 
   if (loading) {
@@ -360,6 +379,26 @@ export function RevisionScreen() {
             {!!correctText && <Text style={styles.feedbackTitle}>{`Bonne réponse : ${correctText}`}</Text>}
             {!!answerResult.explanation && <Text style={styles.feedbackText}>{answerResult.explanation}</Text>}
           </View>
+        )}
+
+        {!!answerError && (
+          <View style={styles.answerError} accessibilityLiveRegion="polite">
+            <Ionicons name="cloud-offline-outline" size={18} color={colors.dangerText} />
+            <Text style={styles.answerErrorText}>{answerError}</Text>
+          </View>
+        )}
+
+        {/* Pas compris ? L'assistant explique cette carte, avec la question en contexte. */}
+        {answerResult && !!answerResult.correct_answer && (
+          <TouchableOpacity
+            style={styles.explainButton}
+            onPress={explain}
+            accessibilityRole="button"
+            accessibilityLabel="Demander une explication à l'assistant"
+          >
+            <Ionicons name="sparkles-outline" size={18} color={colors.primaryText} />
+            <Text style={styles.explainText}>Explique-moi cette carte</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -604,6 +643,36 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
       lineHeight: 20,
       color: colors.successText,
+    },
+    answerError: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: colors.tintDanger,
+    },
+    answerErrorText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.dangerText,
+    },
+    explainButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      minHeight: 48,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    explainText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
   });
 }

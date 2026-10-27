@@ -31,6 +31,13 @@
     "plugins": [
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "MedFlow utilise l’appareil photo pour importer une page de cours.",
+          "photosPermission": "MedFlow accède à tes photos pour importer un cours ou changer ton avatar."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

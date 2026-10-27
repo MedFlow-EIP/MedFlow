@@ -23,7 +23,7 @@ import * as FileSystem from "expo-file-system";
 import { getAuthHeaders } from "../../utils/authHeaders";
 import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Path as SvgPath } from 'react-native-svg';
 import Animated, { FadeIn, FadeOut, SlideInLeft, ZoomIn } from 'react-native-reanimated';
@@ -39,6 +39,8 @@ import { logScreenView } from '../../utils/analytics';
 
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
+import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/network';
+import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
 
 type Message = {
   type: "user" | "ai";
@@ -49,6 +51,8 @@ type Message = {
     name?: string;
   }[];
   timestamp: number;
+  /** Réponse non obtenue (réseau, quota…) : affichée en erreur avec « Réessayer ». */
+  error?: boolean;
 };
 
 type Conversation = {
@@ -73,9 +77,12 @@ const MAX_ATTACHMENTS = 3;
 
 type RootStackParamList = {
   MainTabs: undefined;
-  AIChat: undefined;
+  AIChat: { prompt?: string } | undefined;
   UploadCourse: undefined;
 };
+
+// Une réponse peut être longue à générer, mais jamais d'attente infinie.
+const CHAT_TIMEOUT_MS = 90_000;
 
 const { height } = Dimensions.get('window');
 
@@ -185,6 +192,14 @@ export function AIChatScreen() {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Texte d'une réponse à transformer en flashcards (feuille ouverte si non nul).
+  const [flashcardSource, setFlashcardSource] = useState<string | null>(null);
+
+  // Question envoyée par un autre écran (« Explique-moi cette carte »).
+  const route = useRoute<any>();
+  const promptParamRef = useRef<string | undefined>(undefined);
+  promptParamRef.current = route.params?.prompt;
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -215,7 +230,18 @@ export function AIChatScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadConversations();
+      let active = true;
+      // Après le chargement, sinon il remplacerait la nouvelle conversation.
+      loadConversations().then(() => {
+        const prompt = promptParamRef.current;
+        if (!active || !prompt) return;
+        (navigation as any).setParams({ prompt: undefined });
+        createNewConversation();
+        setPendingPrompt(prompt);
+      });
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
@@ -293,7 +319,7 @@ export function AIChatScreen() {
     message: string,
     serverId: string | undefined,
     files: PendingAttachment[]
-  ): Promise<{ response: string; conversationId?: string }> => {
+  ): Promise<{ response: string; conversationId?: string; error?: boolean }> => {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("Non connecté");
@@ -307,40 +333,51 @@ export function AIChatScreen() {
         }))
       );
 
-      const response = await fetch(`${API_URL}/chat`, {
-        method: "POST",
-        headers: {
-          ...(await getAuthHeaders(user)),
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        `${API_URL}/chat`,
+        {
+          method: "POST",
+          headers: {
+            ...(await getAuthHeaders(user)),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message,
+            conversation_id: serverId,
+            attachments: attachmentsPayload,
+          }),
         },
-        body: JSON.stringify({
-          message,
-          conversation_id: serverId,
-          attachments: attachmentsPayload,
-        }),
-      });
+        CHAT_TIMEOUT_MS
+      );
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        return { response: data?.error || "L'assistant n'a pas pu répondre. Réessaie dans un instant." };
+      if (!response.ok || typeof data?.response !== "string") {
+        return {
+          response: httpErrorMessage(response.status, data, "L'assistant n'a pas pu répondre. Réessaie dans un instant."),
+          error: true,
+        };
       }
 
       return { response: data.response, conversationId: data.conversation_id };
     } catch (error) {
       console.error("Erreur AI:", error);
 
-      return { response: "Une erreur est survenue lors de la communication avec l'assistant médical." };
+      return {
+        response: errorMessage(error, "L'assistant n'a pas pu répondre. Réessaie dans un instant."),
+        error: true,
+      };
     }
   };
 
-  const sendMessage = async (textOverride?: string) => {
+  const sendMessage = async (textOverride?: string, filesOverride?: PendingAttachment[]) => {
     const text = textOverride ?? input;
-    if ((!text.trim() && attachments.length === 0) || !currentConvId) return;
+    const outgoing = filesOverride ?? (attachments as PendingAttachment[]);
+    if ((!text.trim() && outgoing.length === 0) || !currentConvId) return;
 
     const userMessage: Message = {
       type: "user",
       text,
-      attachments: attachments.length > 0 ? [...attachments] : undefined,
+      attachments: outgoing.length > 0 ? [...outgoing] : undefined,
       timestamp: Date.now(),
     };
 
@@ -356,16 +393,18 @@ export function AIChatScreen() {
       )
     );
 
-    const files = [...attachments] as PendingAttachment[];
+    const files = [...outgoing];
     const serverId = conversations.find((c) => c.id === currentConvId)?.serverId;
 
-    setInput("");
-    setAttachments([]);
+    if (!filesOverride) {
+      setInput("");
+      setAttachments([]);
+    }
     setIsAttachMenuOpen(false);
     setIsTyping(true);
 
     try {
-      const { response: aiResponse, conversationId } = await askMedicalAI(text, serverId, files);
+      const { response: aiResponse, conversationId, error } = await askMedicalAI(text, serverId, files);
 
       setIsTyping(false);
 
@@ -373,6 +412,7 @@ export function AIChatScreen() {
         type: "ai",
         text: aiResponse,
         timestamp: Date.now(),
+        error,
       };
 
       setConversations(prev =>
@@ -383,7 +423,7 @@ export function AIChatScreen() {
         )
       );
 
-      if (isAISpeaking) {
+      if (isAISpeaking && !error) {
         Speech.speak(aiResponse, {
           language: "fr",
           pitch: 1,
@@ -398,6 +438,29 @@ export function AIChatScreen() {
         "Impossible de contacter l'assistant médical."
       );
     }
+  };
+
+  // Envoie la question reçue d'un autre écran dès que la conversation vide est prête.
+  useEffect(() => {
+    if (pendingPrompt && currentConv && currentConv.messages.length === 0) {
+      const prompt = pendingPrompt;
+      setPendingPrompt(null);
+      sendMessage(prompt, []);
+    }
+  }, [pendingPrompt, currentConv?.id]);
+
+  /** Renvoie la dernière question restée sans réponse (message d'erreur retiré). */
+  const retryLastMessage = () => {
+    const messages = currentConv?.messages ?? [];
+    const failed = messages[messages.length - 1];
+    const question = messages[messages.length - 2];
+    if (!failed?.error || question?.type !== "user" || isTyping) return;
+
+    setConversations((prev) =>
+      prev.map((c) => (c.id === currentConvId ? { ...c, messages: c.messages.slice(0, -2) } : c))
+    );
+    // Pièces jointes venues d'un autre appareil (sans fichier local) : non renvoyées.
+    sendMessage(question.text, (question.attachments ?? []).filter((a) => !!a.uri) as PendingAttachment[]);
   };
 
   const deleteConversation = (convId: string) => {
@@ -674,7 +737,7 @@ export function AIChatScreen() {
               entering={FadeIn.delay(index * 100)}
               style={message.type === 'user' ? styles.userRow : styles.aiRow}
             >
-              <View style={message.type === 'user' ? styles.userBubble : styles.aiBubble}>
+              <View style={message.type === 'user' ? styles.userBubble : message.error ? styles.errorBubble : styles.aiBubble}>
                 {message.attachments?.map((att, idx) => (
                   <View key={idx} style={styles.attachmentPreview}>
                     {/* Sans uri : pièce jointe venue d'un autre appareil, seul le nom est connu. */}
@@ -693,7 +756,12 @@ export function AIChatScreen() {
                   </View>
                 ))}
 
-                {message.type === "ai" ? (
+                {message.type === "ai" && message.error ? (
+                  <View style={styles.errorContent} accessibilityLiveRegion="polite">
+                    <Ionicons name="alert-circle" size={18} color={colors.dangerText} />
+                    <Text style={styles.errorText}>{message.text}</Text>
+                  </View>
+                ) : message.type === "ai" ? (
                   isHTML(message.text) ? (
                     <RenderHTML
                       contentWidth={width}
@@ -733,6 +801,31 @@ export function AIChatScreen() {
                   <Text style={styles.userText}>{message.text}</Text>
                 )}
               </View>
+
+              {message.type === 'ai' && message.error && index === (currentConv?.messages.length ?? 0) - 1 && (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={retryLastMessage}
+                  disabled={isTyping}
+                  accessibilityRole="button"
+                  accessibilityLabel="Renvoyer la question"
+                >
+                  <Ionicons name="refresh" size={16} color={colors.primaryText} />
+                  <Text style={styles.messageActionText}>Réessayer</Text>
+                </TouchableOpacity>
+              )}
+
+              {message.type === 'ai' && !message.error && message.text.length >= 40 && (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={() => setFlashcardSource(message.text)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Créer des flashcards à partir de cette réponse"
+                >
+                  <Ionicons name="albums-outline" size={16} color={colors.primaryText} />
+                  <Text style={styles.messageActionText}>Créer des flashcards</Text>
+                </TouchableOpacity>
+              )}
 
               <Text style={[styles.messageTime, message.type === 'user' && styles.userTime]}>
                 {formatTime(message.timestamp)}
@@ -854,6 +947,15 @@ export function AIChatScreen() {
           </View>
         </KeyboardAvoidingView>
       )}
+
+      <FlashcardsFromChatSheet
+        text={flashcardSource}
+        onClose={() => setFlashcardSource(null)}
+        onAdded={(count, courseName) => {
+          setFlashcardSource(null);
+          showToast(`${count} flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « ${courseName} »`);
+        }}
+      />
     </View>
   );
 }
@@ -1115,6 +1217,49 @@ function makeStyles(colors: ThemeColors) {
       borderTopRightRadius: 18,
       borderBottomLeftRadius: 18,
       borderBottomRightRadius: 18,
+    },
+
+    errorBubble: {
+      backgroundColor: colors.tintDanger,
+      padding: 14,
+      borderTopLeftRadius: 6,
+      borderTopRightRadius: 18,
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 18,
+    },
+
+    errorContent: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+
+    errorText: {
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: '500',
+      color: colors.dangerText,
+    },
+
+    messageAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      minHeight: 40,
+      marginTop: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+
+    messageActionText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
 
     typingBubble: {

@@ -9,6 +9,10 @@ jest.mock('../../ui/DeleteAccountSheet', () => ({
   DeleteAccountSheet: () => null,
 }));
 
+jest.mock('../../../utils/exportData', () => ({
+  exportUserData: jest.fn(),
+}));
+
 jest.mock('../../../theme/ThemeContext', () => ({
   useTheme: () => ({
     colors: require('../../../theme/colors').lightColors,

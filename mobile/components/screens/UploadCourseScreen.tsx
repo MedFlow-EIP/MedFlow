@@ -10,6 +10,7 @@ import {
 
 import { API_URL } from "@/services/api";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../../firebaseConfig";
@@ -26,12 +27,37 @@ import {
 } from "../course/CourseContent";
 import { useScreenInsets } from "../navigation/constants";
 import { appAlert } from '../../utils/appAlert';
+import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
 
 // Même limite que le backend (MAX_PDF_BYTES).
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-const formatSize = (bytes?: number) =>
+// Génération longue (lecture d'une photo + 4 appels IA) : on attend jusqu'à 3 min.
+const GENERATE_TIMEOUT_MS = 180_000;
+
+const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const ACCEPTED_TYPES = ["application/pdf", DOCX, PPTX, "image/jpeg", "image/png", "image/webp"];
+
+type PickedFile = { uri: string; name: string; size?: number | null; mimeType: string };
+
+const formatSize = (bytes?: number | null) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(2).replace(".", ",")} Mo` : "";
+
+const fileIcon = (mimeType: string): keyof typeof Ionicons.glyphMap =>
+  mimeType.startsWith("image/") ? "image" : mimeType === PPTX ? "easel" : "document-text";
+
+/** Type MIME à envoyer : celui du sélecteur, sinon déduit de l'extension. */
+function guessMimeType(name: string, mimeType?: string | null): string {
+  if (mimeType && ACCEPTED_TYPES.includes(mimeType)) return mimeType;
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "docx") return DOCX;
+  if (ext === "pptx") return PPTX;
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return "application/pdf";
+}
 
 const AI_OUTPUTS = [
   { title: "Un résumé structuré", detail: "titres, définitions, points clés" },
@@ -48,7 +74,7 @@ export function UploadCourseScreen() {
     logScreenView('UploadCourseScreen');
   }, []);
 
-  const [file, setFile] = useState<any>(null);
+  const [file, setFile] = useState<PickedFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -56,26 +82,60 @@ export function UploadCourseScreen() {
 
   const navigation = useNavigation<any>();
 
+  const selectFile = (picked: PickedFile) => {
+    if (picked.size && picked.size > MAX_FILE_BYTES) {
+      appAlert("Fichier trop lourd", `Ce fichier fait ${formatSize(picked.size)}. La limite est de 20 Mo.`);
+      return;
+    }
+    setFile(picked);
+    setData(null);
+    setError("");
+  };
+
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
+        type: ACCEPTED_TYPES,
         copyToCacheDirectory: true,
       });
 
       if (result.canceled) return;
 
       const picked = result.assets[0];
-      if (picked.size && picked.size > MAX_PDF_BYTES) {
-        appAlert("PDF trop lourd", `Ce fichier fait ${formatSize(picked.size)}. La limite est de 20 Mo.`);
-        return;
-      }
-
-      setFile(picked);
-      setData(null);
-      setError("");
+      selectFile({
+        uri: picked.uri,
+        name: picked.name,
+        size: picked.size,
+        mimeType: guessMimeType(picked.name, picked.mimeType),
+      });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        appAlert(
+          "Accès à l’appareil photo refusé",
+          "Autorise l’appareil photo dans les réglages du téléphone pour photographier un cours."
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (result.canceled) return;
+
+      const photo = result.assets[0];
+      selectFile({
+        uri: photo.uri,
+        name: photo.fileName || `photo-cours-${Date.now()}.jpg`,
+        size: photo.fileSize,
+        mimeType: guessMimeType(photo.fileName || "photo.jpg", photo.mimeType),
+      });
+    } catch (err) {
+      console.error(err);
+      appAlert("Appareil photo indisponible", "Choisis plutôt une photo depuis tes fichiers.");
     }
   };
 
@@ -102,22 +162,23 @@ export function UploadCourseScreen() {
       formData.append("file", {
         uri: file.uri,
         name: file.name,
-        type: "application/pdf",
+        type: file.mimeType,
       } as any);
 
-      formData.append("uid", user.uid);
+      // « Régénérer » remplace le cours déjà créé au lieu d'en ajouter un second.
+      if (data?.courseId) formData.append("replace_course_id", data.courseId);
 
-      const response = await fetch(`${API_URL}/api/process`, {
-        method: "POST",
-        headers: await getAuthHeaders(user),
-        body: formData,
-      });
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/process`,
+        {
+          method: "POST",
+          headers: await getAuthHeaders(user),
+          body: formData,
+        },
+        GENERATE_TIMEOUT_MS
+      );
 
-      const result = await response.json();
-
-      if (!response.ok || result.error) {
-        throw new Error(result.error || "Erreur serveur");
-      }
+      const result = await readJsonOrThrow(response, "La génération a échoué. Réessaie.");
 
       setData({
         resume: result.summary,
@@ -128,15 +189,15 @@ export function UploadCourseScreen() {
       });
 
       setActiveTab("resume");
-    } catch (err: any) {
-      setError(err.message || "Erreur inconnue");
+    } catch (err) {
+      setError(errorMessage(err, "La génération a échoué. Réessaie."));
     } finally {
       setLoading(false);
     }
   };
 
   const generateLabel = loading
-    ? "Analyse du PDF…"
+    ? "Analyse du document…"
     : data
     ? "Régénérer le contenu"
     : "Générer le contenu";
@@ -160,7 +221,7 @@ export function UploadCourseScreen() {
           ) : (
             <View style={styles.headerText}>
               <Text style={styles.title} accessibilityRole="header">Importer un cours</Text>
-              <Text style={styles.subtitle}>PDF → résumé, flashcards & quiz IA</Text>
+              <Text style={styles.subtitle}>Cours ou photo → résumé, flashcards & quiz IA</Text>
             </View>
           )}
         </View>
@@ -172,20 +233,33 @@ export function UploadCourseScreen() {
               style={styles.dropZone}
               onPress={pickDocument}
               accessibilityRole="button"
-              accessibilityLabel={file ? "Changer de PDF" : "Importer un PDF"}
+              accessibilityLabel={file ? "Changer de fichier" : "Choisir un fichier"}
+              disabled={loading}
             >
               <View style={styles.dropIcon}>
                 <Ionicons name="cloud-upload-outline" size={30} color={colors.primaryDark} />
               </View>
-              <Text style={styles.dropTitle}>{file ? "Changer de PDF" : "Importer un PDF"}</Text>
-              <Text style={styles.dropHint}>PDF · 20 Mo max · analyse automatique par IA</Text>
+              <Text style={styles.dropTitle}>{file ? "Changer de fichier" : "Choisir un fichier"}</Text>
+              <Text style={styles.dropHint}>PDF, Word, PowerPoint ou image · 20 Mo max</Text>
+            </TouchableOpacity>
+
+            {/* PHOTO D'UN POLY OU D'UNE DIAPO */}
+            <TouchableOpacity
+              style={styles.photoButton}
+              onPress={takePhoto}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Prendre en photo une page de cours"
+            >
+              <Ionicons name="camera-outline" size={20} color={colors.primaryText} />
+              <Text style={styles.photoButtonText}>Prendre une page en photo</Text>
             </TouchableOpacity>
 
             {/* FICHIER SÉLECTIONNÉ */}
             {file && (
               <View style={styles.fileCard}>
                 <View style={styles.fileIcon}>
-                  <Ionicons name="document-text" size={22} color={colors.success} />
+                  <Ionicons name={fileIcon(file.mimeType)} size={22} color={colors.success} />
                 </View>
                 <View style={styles.fileInfo}>
                   <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
@@ -402,6 +476,24 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 13,
       color: colors.textSecondary,
       textAlign: "center",
+    },
+
+    photoButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      minHeight: 52,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+
+    photoButtonText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.primaryText,
     },
 
     fileCard: {

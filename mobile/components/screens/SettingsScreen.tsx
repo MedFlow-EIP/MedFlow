@@ -45,6 +45,8 @@ import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
 import { TimePickerSheet, formatReminderTime, pad2 } from '../ui/TimePickerSheet';
 import { DeleteAccountSheet } from '../ui/DeleteAccountSheet';
+import { exportUserData } from '../../utils/exportData';
+import { errorMessage } from '../../utils/network';
 
 export function SettingsScreen() {
   const navigation = useNavigation();
@@ -63,6 +65,22 @@ export function SettingsScreen() {
   const [reminderMinute, setReminderMinute] = useState(0);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportData = async () => {
+    if (!user || exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportUserData(user);
+      if (result === 'saved') {
+        appAlert("Données exportées", "Le fichier JSON est enregistré dans le dossier choisi.");
+      }
+    } catch (err) {
+      appAlert("Export impossible", errorMessage(err, "Réessaie dans un instant."));
+    } finally {
+      setExporting(false);
+    }
+  };
   // Les comptes Google n'ont pas de mot de passe MedFlow à changer.
   const hasPassword = !!user?.providerData?.some((p) => p.providerId === "password");
 
@@ -651,6 +669,23 @@ export function SettingsScreen() {
           iconColor: colors.primaryDark,
           title: 'Revoir le tutoriel',
           onPress: handleReplayTutorial,
+        })}
+      </View>
+
+      {/* MES DONNÉES (RGPD) */}
+      <Text style={styles.sectionLabel}>Mes données</Text>
+      <View style={styles.listCard}>
+        {renderRow({
+          first: true,
+          icon: 'download-outline',
+          tint: colors.tintPrimary,
+          iconColor: colors.primaryDark,
+          title: 'Exporter mes données',
+          subtitle: 'Fichier JSON : profil, cours, progression, conversations',
+          onPress: handleExportData,
+          right: exporting ? (
+            <ActivityIndicator size="small" color={colors.primaryDark} accessibilityLabel="Export en cours" />
+          ) : undefined,
         })}
       </View>
 

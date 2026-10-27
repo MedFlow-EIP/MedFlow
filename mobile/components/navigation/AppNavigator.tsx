@@ -63,7 +63,7 @@ const Tab = createBottomTabNavigator();
 
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
-  AIChat: undefined;
+  AIChat: { prompt?: string } | undefined;
   CourseDetail: { courseId: string };
   UploadCourse: undefined;
   LessonScreen: { path: any; lesson: any };
@@ -85,7 +85,7 @@ export type RootStackParamList = {
 type MainTabParamList = {
   Home: undefined;
   Dashboard: undefined;
-  AIChat: undefined;
+  AIChat: { prompt?: string } | undefined;
   Account: undefined;
 };
 

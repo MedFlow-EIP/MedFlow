@@ -19,6 +19,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { CourseTabs, CourseTab, FlashcardList, QuizList, SummaryCard } from '../course/CourseContent';
 import { OfflineBanner } from '../course/OfflineBanner';
+import { EditCourseSheet } from '../course/EditCourseSheet';
+import { StateView } from '../ui/StateView';
 import { useScreenInsets } from '../navigation/constants';
 import { courseCacheName, readOffline, saveOffline } from '../../utils/offlineCache';
 
@@ -54,6 +56,8 @@ export function CourseDetailScreen({ route }: Props) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<CourseTab>('resume');
   const [offline, setOffline] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const loadCourse = async () => {
     const user = auth.currentUser;
@@ -64,6 +68,10 @@ export function CourseDetailScreen({ route }: Props) {
       const res = await fetch(`${API_URL}/api/course/${courseId}`, {
         headers: await getAuthHeaders(user),
       });
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
@@ -99,16 +107,31 @@ export function CourseDetailScreen({ route }: Props) {
   }
 
   if (!course) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: colors.textPrimary }}>Aucun cours trouvé</Text>
-      </View>
+    // Supprimé (404) ou pas de réseau sans copie hors ligne : jamais d'écran vide.
+    return notFound ? (
+      <StateView
+        icon="document-outline"
+        tone="neutral"
+        title="Cours introuvable"
+        subtitle="Il a peut-être été supprimé."
+        primary={{ label: 'Retour', onPress: () => navigation.goBack() }}
+        onClose={() => navigation.goBack()}
+      />
+    ) : (
+      <StateView
+        icon="cloud-offline-outline"
+        tone="neutral"
+        title="Impossible de charger le cours"
+        subtitle="Vérifie ta connexion puis réessaie."
+        primary={{ label: 'Réessayer', onPress: () => loadCourse() }}
+        onClose={() => navigation.goBack()}
+      />
     );
   }
 
   const flashcards = Array.isArray(course.flashcards) ? course.flashcards : [];
   const quiz = Array.isArray(course.quiz) ? course.quiz : [];
-  const meta = ['PDF', formatDate(course.created_at), `${flashcards.length} flashcards`, quiz.length ? '1 quiz' : '']
+  const meta = [formatDate(course.created_at), `${flashcards.length} flashcards`, quiz.length ? '1 quiz' : '']
     .filter(Boolean)
     .join(' · ');
 
@@ -135,6 +158,18 @@ export function CourseDetailScreen({ route }: Props) {
               <Text style={styles.metaText} numberOfLines={1}>{meta}</Text>
             </View>
           </View>
+
+          {/* Hors ligne : modification impossible, le bouton est masqué. */}
+          {!offline && (
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => setEditing(true)}
+              accessibilityLabel="Modifier le cours"
+              accessibilityRole="button"
+            >
+              <Ionicons name="create-outline" size={21} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {offline && <OfflineBanner />}
@@ -168,6 +203,20 @@ export function CourseDetailScreen({ route }: Props) {
           </>
         )}
       </ScrollView>
+
+      <EditCourseSheet
+        visible={editing}
+        courseId={courseId}
+        title={course.nom || ''}
+        flashcards={flashcards}
+        onClose={() => setEditing(false)}
+        onSaved={(updated) => {
+          setCourse(updated);
+          setEditing(false);
+          const uid = auth.currentUser?.uid;
+          if (uid) saveOffline(uid, courseCacheName(courseId), updated);
+        }}
+      />
     </View>
   );
 }
