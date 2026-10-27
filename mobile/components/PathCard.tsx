@@ -29,6 +29,7 @@ export function PathCard({
   totalLessons,
   completedLessons,
   isLocked,
+  comingSoon = false,
   color,
   emoji,
   onPress,
@@ -50,7 +51,11 @@ export function PathCard({
         <View
           style={[styles.card, styles.cardLocked]}
           accessible
-          accessibilityLabel={`${title}, verrouillé. ${unlockHint ?? ''} ${completedLessons} sur ${totalLessons} leçons`}
+          accessibilityLabel={
+            comingSoon
+              ? `${title}, bientôt disponible`
+              : `${title}, verrouillé. ${unlockHint ?? ''} ${completedLessons} sur ${totalLessons} leçons`
+          }
         >
           <View style={styles.header}>
             <View style={[styles.iconContainer, styles.iconContainerLocked, { backgroundColor: color + '1A' }]}>
@@ -62,10 +67,17 @@ export function PathCard({
             </View>
             <Ionicons name="lock-closed" size={20} color={colors.muted} />
           </View>
-          <Text style={styles.unlockHint}>
-            {unlockHint ? `${unlockHint} · ` : ''}
-            {completedLessons}/{totalLessons} leçons
-          </Text>
+          {comingSoon ? (
+            <View style={styles.soonChip}>
+              <Ionicons name="time-outline" size={14} color={colors.primaryText} />
+              <Text style={styles.soonText}>Bientôt disponible</Text>
+            </View>
+          ) : (
+            <Text style={styles.unlockHint}>
+              {unlockHint ? `${unlockHint} · ` : ''}
+              {completedLessons}/{totalLessons} leçons
+            </Text>
+          )}
         </View>
       </Animated.View>
     );
@@ -211,6 +223,21 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 13,
       lineHeight: 18,
       color: colors.textSecondary,
+    },
+    soonChip: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.tintPrimary,
+    },
+    soonText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
     unlockHint: {
       fontSize: 13,

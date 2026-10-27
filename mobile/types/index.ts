@@ -8,6 +8,8 @@ export interface Path {
   totalLessons: number;
   completedLessons: number;
   isLocked: boolean;
+  /** Parcours annoncé mais pas encore de leçons. */
+  comingSoon?: boolean;
   color: string;
   emoji: string;
 }
