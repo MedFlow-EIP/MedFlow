@@ -6,6 +6,7 @@ import { AppNavigator } from './components/navigation/AppNavigator';
 import { ThemeProvider } from './theme/ThemeContext';
 import { TutorialProvider } from './context/TutorialContext';
 import { navigationRef } from './navigationRef';
+import { AppDialogHost } from './components/ui/AppDialogHost';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             <NavigationContainer ref={navigationRef}>
               <AppNavigator />
             </NavigationContainer>
+            <AppDialogHost />
           </TutorialProvider>
         </ThemeProvider>
       </SafeAreaProvider>
