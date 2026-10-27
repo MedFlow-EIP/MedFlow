@@ -35,12 +35,16 @@ class VertexAIProvider(AIProvider):
         chat_model: str = "gemini-2.5-pro",
         course_model: str = "gemini-2.5-pro",
         max_output_tokens: int = 8192,
+        max_input_chars: int = 30000,
     ):
         self.chat_model = chat_model
         self.course_model = course_model
         # Plafonne la facture d'un appel : sans ça, le modèle peut générer
         # (et facturer) des dizaines de milliers de tokens.
         self.max_output_tokens = max_output_tokens
+        # Texte du cours envoyé à chaque génération : tout le cours (borné),
+        # pas seulement ses premières pages.
+        self.max_input_chars = max_input_chars
         self.client = None
 
         try:
@@ -130,7 +134,7 @@ class VertexAIProvider(AIProvider):
 
     def generate_flashcards(self, text: str, num_cards: int = 5) -> list:
         try:
-            truncated = text[:2500]
+            truncated = text[: self.max_input_chars]
             prompt = f"""
         Voici un extrait médical :
 
@@ -150,7 +154,7 @@ class VertexAIProvider(AIProvider):
 
     def generate_summary(self, text: str) -> str:
         try:
-            truncated = text[:4000]
+            truncated = text[: self.max_input_chars]
             prompt = f"""
         Voici un texte médical :
 
@@ -172,7 +176,7 @@ class VertexAIProvider(AIProvider):
 
     def generate_quiz(self, text: str, num_questions: int = 5, difficulty: str = "normal") -> list:
         try:
-            truncated = text[:4000]
+            truncated = text[: self.max_input_chars]
             prompt = f"""
         Voici un texte médical :
 
@@ -227,8 +231,12 @@ class VertexAIProvider(AIProvider):
         try:
             prompt = """
         Retranscris fidèlement tout le texte lisible de ce document de cours
-        (titres, paragraphes, listes, légendes de schémas, tableaux en lignes).
-        N'ajoute aucun commentaire, aucune explication, aucun Markdown.
+        (titres, paragraphes, listes, légendes, tableaux en lignes), dans l'ordre.
+        Pour chaque schéma, figure, image ou graphique, ajoute à l'endroit où il
+        apparaît une ligne « [Schéma : … » qui décrit précisément ce qu'il montre :
+        structures, légendes, flèches, étapes, valeurs. Ces descriptions servent
+        à créer des questions de révision sur les schémas.
+        N'ajoute aucun autre commentaire, aucun Markdown.
         S'il n'y a aucun texte lisible, réponds uniquement : AUCUN_TEXTE
         """
             text = self._generate([self._part(data, mime_type), prompt]).strip()
