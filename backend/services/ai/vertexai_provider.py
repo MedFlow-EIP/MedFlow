@@ -2,8 +2,10 @@ import json
 import logging
 import os
 
-import vertexai
-from vertexai.generative_models import GenerationConfig, GenerativeModel, Part
+# SDK « google-genai » : remplace vertexai.generative_models, retiré par Google
+# en juin 2026 (voir docs Vertex AI « genai-vertexai-sdk »).
+from google import genai
+from google.genai import types
 from google.oauth2 import service_account
 
 from .base import QUIZ_DIFFICULTY, AIProvider
@@ -20,8 +22,11 @@ _SYSTEM_INSTRUCTION = """
     """
 
 
+_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+
 class VertexAIProvider(AIProvider):
-    """AI provider backed by Google Vertex AI (Gemini)."""
+    """AI provider backed by Google Vertex AI (Gemini), via le SDK google-genai."""
 
     def __init__(
         self,
@@ -35,7 +40,8 @@ class VertexAIProvider(AIProvider):
         self.course_model = course_model
         # Plafonne la facture d'un appel : sans ça, le modèle peut générer
         # (et facturer) des dizaines de milliers de tokens.
-        self.generation_config = GenerationConfig(max_output_tokens=max_output_tokens)
+        self.max_output_tokens = max_output_tokens
+        self.client = None
 
         try:
 
@@ -59,17 +65,18 @@ class VertexAIProvider(AIProvider):
             }
 
             credentials = service_account.Credentials.from_service_account_info(
-                credentials_info
+                credentials_info, scopes=_SCOPES
             )
 
-            vertexai.init(
+            self.client = genai.Client(
+                vertexai=True,
                 project=project_id,
                 location=location,
                 credentials=credentials,
             )
 
             logger.info(
-                "Vertex AI initialised (project=%s, location=%s)",
+                "Vertex AI initialised with google-genai (project=%s, location=%s)",
                 project_id,
                 location,
             )
@@ -96,12 +103,26 @@ class VertexAIProvider(AIProvider):
             s = s[:-3]
         return s.strip()
 
-    def _model(self, name: str | None = None) -> GenerativeModel:
-        return GenerativeModel(
-            name or self.course_model,
-            system_instruction=_SYSTEM_INSTRUCTION,
-            generation_config=self.generation_config,
+    def _generate(self, contents, model: str | None = None, json_output: bool = False) -> str:
+        """Un appel Gemini ; renvoie le texte de la réponse.
+
+        json_output : impose une réponse JSON valide (flashcards, quiz)."""
+        if self.client is None:
+            raise RuntimeError("Vertex AI non initialisé")
+        response = self.client.models.generate_content(
+            model=model or self.course_model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=_SYSTEM_INSTRUCTION,
+                max_output_tokens=self.max_output_tokens,
+                response_mime_type="application/json" if json_output else None,
+            ),
         )
+        return response.text or ""
+
+    @staticmethod
+    def _part(data: bytes, mime_type: str):
+        return types.Part.from_bytes(data=data, mime_type=mime_type)
 
     # ------------------------------------------------------------------
     # AIProvider interface
@@ -122,8 +143,7 @@ class VertexAIProvider(AIProvider):
           {{"question": "Q2", "answer": "R2"}}
         ]
         """
-            response = self._model().generate_content(prompt, stream=False)
-            return json.loads(self._clean_json(response.text))
+            return json.loads(self._clean_json(self._generate(prompt, json_output=True)))
         except Exception as e:
             logger.error("Erreur flashcards: %s", e)
             return [{"question": "Erreur", "answer": "Génération impossible, réimporte le cours."}]
@@ -142,8 +162,7 @@ class VertexAIProvider(AIProvider):
         ❌ Pas de balises <html> ni <body>
         ❌ Pas de ```html ou ```
         """
-            response = self._model().generate_content(prompt)
-            html = response.text.strip()
+            html = self._generate(prompt).strip()
             for marker in ["```html", "```", "<html>", "</html>", "<body>", "</body>"]:
                 html = html.replace(marker, "")
             return html.strip()
@@ -178,8 +197,7 @@ class VertexAIProvider(AIProvider):
         L'explication s'appuie sur le texte fourni et reste courte.
         Retourne UNIQUEMENT du JSON.
         """
-            response = self._model().generate_content(prompt)
-            return json.loads(self._clean_json(response.text))
+            return json.loads(self._clean_json(self._generate(prompt, json_output=True)))
         except Exception as e:
             logger.error("Erreur quiz: %s", e)
             return [{"question": "Erreur", "options": {"A": "x", "B": "y", "C": "z", "D": "w"}, "correct": "A"}]
@@ -196,8 +214,7 @@ class VertexAIProvider(AIProvider):
         Pas de phrases complètes, pas de guillemets, pas de ponctuation.
         Exemple : "Cardiologie - Bases essentielles"
         """
-            response = self._model().generate_content(prompt, stream=False)
-            title = response.text.strip()
+            title = self._generate(prompt).strip()
             if not title or len(title) < 3:
                 return os.path.splitext(filename)[0]
             return title
@@ -214,11 +231,7 @@ class VertexAIProvider(AIProvider):
         N'ajoute aucun commentaire, aucune explication, aucun Markdown.
         S'il n'y a aucun texte lisible, réponds uniquement : AUCUN_TEXTE
         """
-            response = self._model().generate_content(
-                [Part.from_data(data=data, mime_type=mime_type), prompt],
-                stream=False,
-            )
-            text = (response.text or "").strip()
+            text = self._generate([self._part(data, mime_type), prompt]).strip()
             return "" if text == "AUCUN_TEXTE" else text
         except Exception as e:
             logger.error("Erreur lecture document: %s", e)
@@ -289,14 +302,9 @@ class VertexAIProvider(AIProvider):
 
             prompt += f"\nUtilisateur: {user_message}\nAssistant:"
 
-            parts = [Part.from_data(data=data, mime_type=mime) for data, mime in (attachments or [])]
+            parts = [self._part(data, mime) for data, mime in (attachments or [])]
 
-            response = self._model(self.chat_model).generate_content(
-                [*parts, prompt] if parts else prompt,
-                stream=False,
-            )
-
-            return response.text.strip()
+            return self._generate([*parts, prompt] if parts else prompt, model=self.chat_model).strip()
 
         except Exception as e:
 

@@ -12,7 +12,7 @@ Tests:
   pytest tests/
 
 AI provider selection:
-  AI_PROVIDER=vertexai python app.py   # default — uses Google Gemini 2.5 Pro
+  AI_PROVIDER=vertexai python app.py   # default — uses Google Gemini via google-genai
   AI_PROVIDER=ollama   python app.py   # uses local Ollama (model: llama3.2)
 """
 import logging

@@ -143,13 +143,13 @@ class TestProcessQuota:
 
 class TestProviderFactory:
     def test_reads_flask_config_dict(self):
-        pytest.importorskip("vertexai")
+        pytest.importorskip("google.genai")
         from unittest.mock import patch
 
         from services.ai import get_ai_provider
 
         config = {"AI_CHAT_MODEL": "modele-chat", "AI_COURSE_MODEL": "modele-cours", "AI_MAX_OUTPUT_TOKENS": 512}
-        with patch("services.ai.vertexai_provider.vertexai.init"):
+        with patch("services.ai.vertexai_provider.genai.Client"):
             provider = get_ai_provider(config)
         assert provider.chat_model == "modele-chat"
         assert provider.course_model == "modele-cours"
