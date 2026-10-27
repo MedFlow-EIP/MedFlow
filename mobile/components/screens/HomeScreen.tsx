@@ -164,7 +164,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Ionicons name="school-outline" size={48} color={colors.muted} />
             <Text style={styles.emptyStateTitle}>Aucun parcours</Text>
             <Text style={styles.emptyStateText}>
-              Commencez par importer un cours ou créer votre premier parcours
+              Importe un cours pour commencer : l’IA en tire un résumé, des flashcards et un quiz.
             </Text>
           </View>
         ) : (

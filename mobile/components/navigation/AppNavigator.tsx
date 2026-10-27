@@ -138,6 +138,11 @@ function CustomTabBar({ state, navigation }: any) {
     stackNavigation.navigate('UploadCourse');
   };
 
+  const goTo = (screen: 'MockExam' | 'Exams') => {
+    setAddModalVisible(false);
+    stackNavigation.navigate(screen);
+  };
+
   // Glisser la feuille vers le bas pour la fermer (poignée en haut).
   const sheetPan = useMemo(
     () =>
@@ -263,23 +268,49 @@ function CustomTabBar({ state, navigation }: any) {
               style={styles.optionButton}
               onPress={goToUploadCourse}
               accessibilityRole="button"
-              accessibilityLabel="Uploader un cours"
+              accessibilityLabel="Importer un cours"
             >
               <View style={styles.optionIcon}>
                 <Ionicons name="cloud-upload-outline" size={26} color={colors.primaryDark} />
               </View>
               <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>Uploader un cours</Text>
-                <Text style={styles.optionDescription}>
-                  Importez vos cours PDF ou documents
-                </Text>
+                <Text style={styles.optionTitle}>Importer un cours</Text>
+                <Text style={styles.optionDescription}>PDF, Word, PowerPoint ou photo d’un poly</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <Text style={styles.modalFooterText}>
-              Créez votre propre parcours d’apprentissage
-            </Text>
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => goTo('MockExam')}
+              accessibilityRole="button"
+              accessibilityLabel="Lancer un examen blanc"
+            >
+              <View style={styles.optionIcon}>
+                <Ionicons name="timer-outline" size={26} color={colors.primaryDark} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>Examen blanc</Text>
+                <Text style={styles.optionDescription}>Chronométré, noté sur 20</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => goTo('Exams')}
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter un examen au calendrier"
+            >
+              <View style={styles.optionIcon}>
+                <Ionicons name="calendar-outline" size={26} color={colors.primaryDark} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>Ajouter un examen</Text>
+                <Text style={styles.optionDescription}>Ses cours passent en priorité dans tes révisions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </RNAnimated.View>
         </View>
       </Modal>
