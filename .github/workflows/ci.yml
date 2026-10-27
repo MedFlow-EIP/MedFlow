@@ -149,10 +149,13 @@ jobs:
 
       - name: Test Docker startup
         run: |
-          docker compose up -d
+          # Backend seul : Caddy tenterait d'obtenir le certificat de la VM depuis
+          # le runner, échouerait et consommerait les quotas Let's Encrypt du domaine.
+          docker compose up -d backend
           sleep 15
           docker ps
-          docker compose logs
+          docker compose logs backend
+          curl -fsS http://localhost:8080/health
           docker compose down
 
       - name: Upload Docker logs on failure
