@@ -1,49 +1,54 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, Image, Pressable } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, ImageSourcePropType } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { StepOverline, StepPrimaryButton, makeStepStyles } from "./StepShared";
 
 interface Props {
   title: string;
   explanation: string;
-  image?: string;
+  /** Points clés affichés en liste sous l'explication. */
+  points?: string[];
+  image?: ImageSourcePropType | string;
   onContinue: () => void;
 }
 
-export function ExplanationStep({
-  title,
-  explanation,
-  image,
-  onContinue,
-}: Props) {
+export function ExplanationStep({ title, explanation, points, image, onContinue }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const step = useMemo(() => makeStepStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>💡 {title}</Text>
+      <ScrollView contentContainerStyle={step.scroll} showsVerticalScrollIndicator={false}>
+        <StepOverline icon="bulb-outline" label="À COMPRENDRE" />
+        <Text style={styles.title} accessibilityRole="header">{title}</Text>
 
-        {image && (
+        {image ? (
           <Image
-            source={{ uri: image }}
+            source={typeof image === "string" ? { uri: image } : image}
             style={styles.image}
             resizeMode="contain"
             accessibilityLabel={`Illustration : ${title}`}
           />
-        )}
+        ) : null}
 
         <Text style={styles.text}>{explanation}</Text>
-      </View>
 
-      <Pressable
-        style={styles.button}
-        onPress={onContinue}
-        accessibilityRole="button"
-        accessibilityLabel="Continuer"
-      >
-        <Text style={styles.buttonText}>Continuer</Text>
-      </Pressable>
+        {points && points.length > 0 && (
+          <View style={styles.pointsCard}>
+            {points.map((point) => (
+              <View key={point} style={styles.pointRow}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.pointText}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      <StepPrimaryButton label="Continuer" onPress={onContinue} />
     </View>
   );
 }
@@ -52,51 +57,44 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      padding: 20,
-      justifyContent: "center",
       backgroundColor: colors.background,
     },
-
-    card: {
-      backgroundColor: colors.surface,
-      padding: 20,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-
     title: {
-      fontSize: 22,
+      fontSize: 24,
+      lineHeight: 30,
       fontWeight: "700",
       color: colors.textPrimary,
-      marginBottom: 16,
+      marginTop: -8,
     },
-
     text: {
       fontSize: 16,
-      color: colors.textSecondary,
-      lineHeight: 24,
+      lineHeight: 25,
+      color: colors.textPrimary,
     },
-
     image: {
       width: "100%",
       height: 200,
-      borderRadius: 12,
-      marginBottom: 16,
+      borderRadius: 16,
+      backgroundColor: "#ffffff",
     },
-
-    button: {
-      marginTop: 24,
-      backgroundColor: colors.textPrimary,
-      padding: 16,
-      borderRadius: 12,
+    pointsCard: {
+      gap: 12,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
-
-    buttonText: {
-      textAlign: "center",
-      color: colors.background,
-      fontWeight: "600",
-      fontSize: 16,
+    pointRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+    },
+    pointText: {
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textPrimary,
     },
   });
 }

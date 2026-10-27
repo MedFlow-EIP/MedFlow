@@ -1,14 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
-import { FlashCard } from '../../components/FlashCard';
-import { Button } from '../ui/button';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { ProgressBar } from '../ui/progress';
-import { Card } from '../ui/card';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { API_URL } from '@/services/api';
 import { getAuthHeaders } from '../../utils/authHeaders';
-import { Path, Lesson, FlashCardData } from '../../types';
 import { BadgeUnlockModal, UnlockedBadge } from '../../components/BadgeUnlockModal';
 import { NotificationOptInModal } from '../../components/NotificationOptInModal';
 import {
@@ -22,54 +18,11 @@ import { SwipeCardsStep } from "../../components/steps/SwipeCardsStep";
 import { SpeedChallengeStep } from "../../components/steps/SpeedChallengeStep";
 import { QuickQuizCardsStep } from "../../components/steps/QuickQuizzCardsStep";
 import { VisualDiscovery } from "../../components/steps/VisualDiscoveryStep";
+import { getLessonSteps, isGradedStep } from '../../content/lessons';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
-
-type ExplanationStepType = {
-  type: "explanation";
-  data: { title: string; explanation: string; image: string };
-};
-
-type SwipeStepType = {
-  type: "swipe";
-  data: { cards: { id: string; concept: string; image: string }[] };
-};
-
-type SpeedStepType = {
-  type: "speed";
-  data: {
-    question: string;
-    options: { id: string; text: string }[];
-    correctId: string;
-    timeLimit: number;
-  };
-};
-
-type VisualQuizStepType = {
-  type: "visualQuiz";
-  data: {
-    question: string;
-    image: string;
-    parts: { id: string; x: number; y: number }[];
-    correctId: string;
-  };
-};
-
-type QuickQuizStepType = {
-  type: "quickQuiz";
-  data: {
-    question: string;
-    options: { id: string; text: string }[];
-    correctId: string;
-  };
-};
-
-type LessonStep =
-  | ExplanationStepType
-  | SwipeStepType
-  | SpeedStepType
-  | VisualQuizStepType
-  | QuickQuizStepType;
+import { useScreenInsets } from '../navigation/constants';
+import { appAlert } from '../../utils/appAlert';
 
 interface LessonScreenProps {
   route: any;
@@ -79,12 +32,17 @@ interface LessonScreenProps {
 export function LessonScreen({ route, navigation }: LessonScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, bottom } = useScreenInsets();
 
   const { path, lesson } = route.params;
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [index, setIndex] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const xp = lesson?.xp ?? 10;
+
+  // Contenu propre à la leçon (et non plus le même contenu pour toutes).
+  const steps = useMemo(() => getLessonSteps(path.id, String(lesson.id), lesson.title), [path.id, lesson.id]);
+  const gradedCount = steps.filter(isGradedStep).length;
 
   const [streak, setStreak] = useState<number | null>(null);
   const [newBadges, setNewBadges] = useState<UnlockedBadge[]>([]);
@@ -149,88 +107,11 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
     })();
   }, [showResults]);
 
-  const steps: LessonStep[] = [
-  {
-    type: "explanation",
-    data: {
-      title: "Le crâne",
-      explanation:
-        "Le crâne protège le cerveau et forme la structure de la tête.",
-      image:
-        "https://www.materielmedical.fr/41039-thickbox_default/crane-humain-articule-22-pieces-ez-4701.jpg",
-    },
-  },
-  {
-    type: "swipe",
-    data: {
-      cards: [
-        {
-          id: "1",
-          concept: "Le crâne a 22 os",
-          image:
-            "https://img.passeportsante.net/600x558/2025-01-21/anatomie-crane-humain.jpg",
-        },
-        {
-          id: "2",
-          concept: "8 os crâniens",
-          image:
-            "https://www.fiches-ide.fr/wp-content/uploads/2020/05/92.-Os-du-cr%C3%A2ne-vue-lat%C3%A9rale.png",
-        },
-        {
-          id: "3",
-          concept: "14 os faciaux",
-          image:
-            "https://www.fiches-ide.fr/wp-content/uploads/2020/05/92.-Os-du-cr%C3%A2ne-vue-lat%C3%A9rale.png",
-        },
-      ],
-    },
-  },
-  {
-    type: "visualQuiz",
-    data: {
-      question: "Où se trouve la clavicule ?",
-      image:
-        "https://cdn.pixabay.com/photo/2020/08/19/11/54/human-skeleton-5500722_1280.png",
-      parts: [
-        { id: "clavicle", x: 73, y: 26 },
-        { id: "bassin", x: 27, y: 40 },
-        { id: "femur", x: 70, y: 58 },
-      ],
-      correctId: "clavicle",
-    },
-  },
-  {
-    type: "speed",
-    data: {
-      question: "Quel os protège le cerveau ?",
-      options: [
-        { id: "a", text: "Le crâne" },
-        { id: "b", text: "Le tibia" },
-        { id: "c", text: "La clavicule" },
-      ],
-      correctId: "a",
-      timeLimit: 5,
-    },
-  },
-  {
-    type: "quickQuiz",
-    data: {
-      question: "Combien de vertèbres cervicales possède l’homme ?",
-      options: [
-        { id: "opt1", text: "7" },
-        { id: "opt2", text: "12" },
-        { id: "opt3", text: "5" },
-      ],
-      correctId: "opt1",
-    },
-  },
-];
-
   const step = steps[index];
+  const progress = (index / steps.length) * 100;
 
-  const progress = ((index + 1) / steps.length) * 100;
-
-  const next = () => {
+  const next = (correct?: boolean) => {
+    if (correct) setCorrectCount((c) => c + 1);
     if (index < steps.length - 1) {
       setIndex(index + 1);
     } else {
@@ -238,36 +119,11 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
     }
   };
 
-  const flashcards: FlashCardData[] = [
-    {
-      question: "Combien d'os compose le crâne humain adulte?",
-      answer: "Le crâne humain adulte est composé de 22 os : 8 os crâniens et 14 os faciaux.",
-      color: path.color,
-    },
-    {
-      question: "Quelle est la fonction principale de la cage thoracique?",
-      answer: "La cage thoracique protège les organes vitaux (cœur, poumons) et joue un rôle essentiel dans la respiration.",
-      color: path.color,
-    },
-    {
-      question: "Combien de vertèbres compte la colonne vertébrale?",
-      answer: "La colonne vertébrale compte 33 vertèbres : 7 cervicales, 12 thoraciques, 5 lombaires, 5 sacrées (fusionnées) et 4 coccygiennes (fusionnées).",
-      color: path.color,
-    },
-  ];
-
-  const handleNext = () => {
-    if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setShowResults(true);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
+  const quit = () => {
+    appAlert('Quitter la leçon ?', 'Ta progression dans cette leçon ne sera pas enregistrée.', [
+      { text: 'Rester', style: 'cancel' },
+      { text: 'Quitter', style: 'destructive', onPress: () => navigation.goBack() },
+    ]);
   };
 
   const handleFinish = () => {
@@ -275,8 +131,9 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
   };
 
   if (showResults) {
+    const score = gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 100;
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: top, paddingBottom: bottom }]}>
         <BadgeUnlockModal
           badges={newBadges}
           onDismiss={async () => {
@@ -302,100 +159,123 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
         />
         <View style={styles.resultsContainer}>
           <View style={styles.successIcon}>
-            <Text style={styles.successEmoji}>✅</Text>
+            <Ionicons name="trophy" size={48} color={colors.warning} />
           </View>
 
           <Text style={styles.resultsTitle} accessibilityRole="header">Leçon terminée !</Text>
-          <Text style={styles.resultsSubtitle}>
-            Vous avez terminé cette leçon !
-          </Text>
+          <Text style={styles.resultsSubtitle}>{lesson.title}</Text>
 
-          <Card style={styles.statsCard}>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Ionicons name="star" size={28} color={colors.primary} />
-                <Text style={styles.statValue}>+{xp} XP</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: colors.tintPrimary }]}>
+                <Ionicons name="star" size={22} color={colors.primaryDark} />
               </View>
-              <View style={styles.statItem}>
+              <Text style={styles.statValue}>+{xp} XP</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: colors.tintWarning }]}>
                 {streak === null ? (
                   <ActivityIndicator size="small" color={colors.warning} accessibilityLabel="Chargement de la série" />
-                ) : streak === -1 ? (
-                  <>
-                    <Ionicons name="flame-outline" size={28} color={colors.muted} />
-                    <Text style={styles.statValue}>Série : —</Text>
-                  </>
                 ) : (
-                  <>
-                    <Ionicons name="flame" size={28} color={colors.warning} />
-                    <Text style={styles.statValue}>Série : {streak}j</Text>
-                  </>
+                  <Ionicons name={streak === -1 ? 'flame-outline' : 'flame'} size={22} color={colors.warning} />
                 )}
               </View>
-              <View style={styles.statItem}>
-                <Ionicons name="checkmark-circle" size={28} color={colors.success} />
-                <Text style={styles.statValue}>100%</Text>
-              </View>
+              {streak !== null && (
+                <Text style={styles.statValue}>{streak === -1 ? 'Série : —' : `Série : ${streak}j`}</Text>
+              )}
             </View>
-          </Card>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: colors.tintSuccess }]}>
+                <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+              </View>
+              <Text style={styles.statValue}>{score} %</Text>
+            </View>
+          </View>
 
-          <Button
-            title="Continuer"
-            onPress={handleFinish}
-            color={path.color}
-          />
+          {gradedCount > 0 && (
+            <Text style={styles.scoreDetail}>
+              {correctCount}/{gradedCount} bonne{correctCount > 1 ? 's' : ''} réponse{correctCount > 1 ? 's' : ''}
+            </Text>
+          )}
         </View>
-      </SafeAreaView>
+
+        <View style={styles.resultsFooter}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleFinish} accessibilityRole="button">
+            <Text style={styles.primaryButtonText}>Continuer</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
-        <ProgressBar progress={progress} color={path.color} height={8} />
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={quit}
+          accessibilityRole="button"
+          accessibilityLabel="Quitter la leçon"
+        >
+          <Ionicons name="close" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.progressWrap}>
+          <ProgressBar progress={progress} color={colors.primaryDark} height={8} />
+        </View>
+        <Text style={styles.count}>
+          {index + 1}/{steps.length}
+        </Text>
       </View>
 
-      {step.type === "explanation" && (
-        <ExplanationStep
-          title={step.data.title}
-          explanation={step.data.explanation}
-          image={step.data.image}
-          onContinue={next}
-        />
-      )}
+      <View style={styles.stepArea} key={index}>
+        {step.type === "explanation" && (
+          <ExplanationStep
+            title={step.data.title}
+            explanation={step.data.explanation}
+            points={step.data.points}
+            image={step.data.image}
+            onContinue={() => next()}
+          />
+        )}
 
-      {step.type === "swipe" && (
-        <SwipeCardsStep cards={step.data.cards} onComplete={next} />
-      )}
+        {step.type === "swipe" && (
+          <SwipeCardsStep title={step.data.title} cards={step.data.cards} onComplete={() => next()} />
+        )}
 
-      {step.type === "speed" && (
-        <SpeedChallengeStep
-          question={step.data.question}
-          options={step.data.options}
-          correctId={step.data.correctId}
-          timeLimit={step.data.timeLimit}
-          onComplete={next}
-        />
-      )}
+        {step.type === "speed" && (
+          <SpeedChallengeStep
+            question={step.data.question}
+            options={step.data.options}
+            correctId={step.data.correctId}
+            timeLimit={step.data.timeLimit}
+            explanation={step.data.explanation}
+            onComplete={next}
+          />
+        )}
 
-      {step.type === "visualQuiz" && (
-        <VisualDiscovery
-          question={step.data.question}
-          imageUrl={step.data.image}
-          parts={step.data.parts}
-          correctId={step.data.correctId}
-          onComplete={next}
-        />
-      )}
+        {step.type === "visualQuiz" && (
+          <VisualDiscovery
+            question={step.data.question}
+            image={step.data.image}
+            aspectRatio={step.data.aspectRatio}
+            parts={step.data.parts}
+            correctId={step.data.correctId}
+            explanation={step.data.explanation}
+            onComplete={next}
+          />
+        )}
 
-      {step.type === "quickQuiz" && (
-        <QuickQuizCardsStep
-          question={step.data.question}
-          options={step.data.options}
-          correctId={step.data.correctId}
-          onComplete={next}
-        />
-      )}
-    </SafeAreaView>
+        {step.type === "quickQuiz" && (
+          <QuickQuizCardsStep
+            question={step.data.question}
+            options={step.data.options}
+            correctId={step.data.correctId}
+            explanation={step.data.explanation}
+            onComplete={next}
+          />
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -406,90 +286,110 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.background,
     },
     header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
       paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 16,
+      paddingBottom: 8,
+    },
+    closeButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    progressText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: 12,
-    },
-    progressBarContainer: {
-      marginBottom: 4,
-    },
-    content: {
-      flex: 1,
-      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
       justifyContent: 'center',
     },
-    footer: {
-      padding: 20,
-      backgroundColor: colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+    progressWrap: {
+      flex: 1,
     },
-    buttonRow: {
-      flexDirection: 'row',
-      gap: 12,
+    count: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
     },
-    buttonWrapper: {
+    stepArea: {
       flex: 1,
     },
     resultsContainer: {
       flex: 1,
-      padding: 20,
+      paddingHorizontal: 20,
       justifyContent: 'center',
       alignItems: 'center',
+      gap: 12,
     },
     successIcon: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: colors.tintSuccess,
+      width: 104,
+      height: 104,
+      borderRadius: 52,
+      backgroundColor: colors.tintWarning,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 24,
-    },
-    successEmoji: {
-      fontSize: 48,
+      marginBottom: 8,
     },
     resultsTitle: {
       fontSize: 28,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 12,
       textAlign: 'center',
     },
     resultsSubtitle: {
       fontSize: 16,
       color: colors.textSecondary,
-      marginBottom: 32,
       textAlign: 'center',
+      marginBottom: 12,
     },
-    statsCard: {
-      width: '100%',
-      marginBottom: 32,
-    },
-    statsGrid: {
+    statsRow: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
+      gap: 10,
+      alignSelf: 'stretch',
     },
-    statItem: {
+    statCard: {
+      flex: 1,
       alignItems: 'center',
+      gap: 8,
+      paddingVertical: 16,
+      paddingHorizontal: 6,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
-    statEmoji: {
-      fontSize: 32,
-      marginBottom: 8,
+    statIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     statValue: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    scoreDetail: {
       fontSize: 14,
+      fontWeight: '500',
       color: colors.textSecondary,
+    },
+    resultsFooter: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 12,
+    },
+    primaryButton: {
+      height: 56,
+      borderRadius: 14,
+      backgroundColor: colors.action,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryButtonText: {
+      fontSize: 16,
       fontWeight: '600',
+      color: colors.onAction,
     },
   });
 }

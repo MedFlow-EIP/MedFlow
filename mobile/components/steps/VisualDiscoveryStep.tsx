@@ -1,163 +1,158 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, ImageSourcePropType } from "react-native";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { StepFeedback, StepOverline, StepPrimaryButton, makeStepStyles } from "./StepShared";
 
 interface AnatomyPart {
   id: string;
+  label: string;
+  /** Position en % de l'image. */
   x: number;
   y: number;
 }
 
 interface VisualDiscoveryProps {
   question: string;
-  imageUrl: string;
+  image: ImageSourcePropType;
+  /** Largeur / hauteur de l'image : le cadre a exactement ses proportions, les % tombent donc juste. */
+  aspectRatio: number;
   parts: AnatomyPart[];
   correctId: string;
+  explanation?: string;
   onComplete: (correct: boolean) => void;
 }
 
-export function VisualDiscovery({ question, imageUrl, parts, correctId, onComplete }: VisualDiscoveryProps) {
+const IMAGE_HEIGHT = 380;
+const SPOT = 36;
+
+export function VisualDiscovery({
+  question,
+  image,
+  aspectRatio,
+  parts,
+  correctId,
+  explanation,
+  onComplete,
+}: VisualDiscoveryProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-
+  const step = useMemo(() => makeStepStyles(colors), [colors]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
 
-  const handleTap = (id: string) => {
-    if (showFeedback) return;
-    setSelected(id);
-    setShowFeedback(true);
-    const isCorrect = id === correctId;
-    setTimeout(() => onComplete(isCorrect), 1200);
-  };
+  const answered = selected !== null;
+  const isCorrect = selected === correctId;
+  const correctLabel = parts.find((p) => p.id === correctId)?.label;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.question}>🔍 {question}</Text>
-        
-        <View style={styles.imageWrapper}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.image}
-            resizeMode="contain"
-            accessibilityLabel={`Schéma pour : ${question}`}
-          />
-          {parts.map(part => {
-            const isSelected = selected === part.id;
-            const isCorrect = part.id === correctId;
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={step.scroll} showsVerticalScrollIndicator={false}>
+        <StepOverline icon="scan-outline" label="REPÈRE ANATOMIQUE" />
+        <Text style={[step.question, { marginTop: -8 }]} accessibilityRole="header">{question}</Text>
 
-            let borderColor = colors.primary;
-            let backgroundColor = colors.primary;
-            let opacity = 0.6;
-            
-            if (showFeedback) {
-              if (isCorrect) {
-                borderColor = colors.success;
-                backgroundColor = colors.success;
-                opacity = 1;
-              } else if (isSelected && !isCorrect) {
-                borderColor = colors.danger;
-                backgroundColor = colors.danger;
-                opacity = 1;
-              } else {
-                opacity = 0.3;
-              }
-            }
-
-            return (
-              <TouchableOpacity
-                key={part.id}
-                onPress={() => handleTap(part.id)}
-                style={[
-                  styles.part,
-                  { 
-                    left: `${part.x}%`, 
-                    top: `${part.y}%`,
-                    borderColor,
-                    backgroundColor,
-                    opacity,
-                  }
-                ]}
-                disabled={showFeedback}
-                accessibilityRole="button"
-                accessibilityLabel={`Zone ${part.id}`}
-                accessibilityState={{ disabled: showFeedback }}
-              />
-            );
-          })}
-        </View>
-      </View>
-
-      {showFeedback && (
-        <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.feedback}>
-          <View style={[
-            styles.feedbackCard,
-            { backgroundColor: selected === correctId ? colors.success : colors.danger }
-          ]}>
-            <Text style={styles.feedbackText}>
-              {selected === correctId ? "✓ Correct !" : "✗ Try again!"}
-            </Text>
+        {/* Fond blanc fixe : le schéma reste lisible en mode sombre. */}
+        <View style={styles.frame}>
+          <View style={{ height: IMAGE_HEIGHT, aspectRatio }}>
+            <Image source={image} style={StyleSheet.absoluteFill} resizeMode="stretch" accessible={false} />
+            {parts.map((part) => {
+              const state = !answered
+                ? "idle"
+                : part.id === correctId
+                ? "correct"
+                : part.id === selected
+                ? "incorrect"
+                : "dimmed";
+              const color =
+                state === "correct" ? colors.success : state === "incorrect" ? colors.danger : colors.primaryDark;
+              return (
+                <View
+                  key={part.id}
+                  style={[styles.partWrap, { left: `${part.x}%`, top: `${part.y}%` }]}
+                  pointerEvents="box-none"
+                >
+                  <TouchableOpacity
+                    onPress={() => setSelected(part.id)}
+                    disabled={answered}
+                    style={[
+                      styles.spot,
+                      { borderColor: color, backgroundColor: color + "33", opacity: state === "dimmed" ? 0.35 : 1 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={answered ? part.label : `Zone ${parts.indexOf(part) + 1}`}
+                  >
+                    <View style={[styles.spotDot, { backgroundColor: color }]} />
+                  </TouchableOpacity>
+                  {answered && (state === "correct" || state === "incorrect") && (
+                    <View style={[styles.label, { backgroundColor: color }]}>
+                      <Text style={styles.labelText}>{part.label}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
-        </Animated.View>
-      )}
+        </View>
+
+        {answered && (
+          <StepFeedback
+            correct={isCorrect}
+            title={isCorrect ? "Bien repéré !" : `C’était : ${correctLabel}`}
+            explanation={explanation}
+          />
+        )}
+      </ScrollView>
+
+      {answered && <StepPrimaryButton label="Continuer" onPress={() => onComplete(isCorrect)} />}
     </View>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      padding: 20,
-      justifyContent: "center",
-      backgroundColor: colors.background,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      padding: 20,
-      borderRadius: 16,
+    frame: {
+      alignItems: "center",
+      paddingVertical: 12,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
+      backgroundColor: "#ffffff",
+      overflow: "hidden",
     },
-    question: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      marginBottom: 16,
-      textAlign: "center",
+    partWrap: {
+      position: "absolute",
+      width: 0,
+      height: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "visible",
     },
-    imageWrapper: {
+    spot: {
+      position: "absolute",
+      width: SPOT,
+      height: SPOT,
+      borderRadius: SPOT / 2,
+      borderWidth: 3,
       alignItems: "center",
       justifyContent: "center",
     },
-    image: {
-      width: "100%",
-      height: 300,
-      borderRadius: 12,
+    spotDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
     },
-    part: {
+    label: {
       position: "absolute",
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      borderWidth: 3,
-      transform: [{ translateX: -22 }, { translateY: -22 }],
-    },
-    feedback: {
-      marginTop: 20,
-    },
-    feedbackCard: {
-      padding: 16,
-      borderRadius: 12,
+      top: SPOT / 2 + 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      minWidth: 90,
       alignItems: "center",
     },
-    feedbackText: {
-      color: colors.onAccent,
-      fontWeight: "600",
-      fontSize: 16,
+    labelText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#ffffff",
     },
   });
 }

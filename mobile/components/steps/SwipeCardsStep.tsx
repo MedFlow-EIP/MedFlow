@@ -1,189 +1,203 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, Image, StyleSheet, Pressable } from "react-native";
+import React, { useMemo, useRef, useState } from "react";
+import { View, Text, StyleSheet, Pressable, PanResponder } from "react-native";
+import Animated, { FadeInRight, FadeInLeft } from "react-native-reanimated";
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import { StepOverline, StepPrimaryButton, makeStepStyles } from "./StepShared";
 
 interface Card {
   id: string;
   concept: string;
-  image: string;
+  detail?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 interface SwipeCardsStepProps {
+  title?: string;
   cards: Card[];
   onComplete: () => void;
 }
 
-export function SwipeCardsStep({ cards, onComplete }: SwipeCardsStepProps) {
+const SWIPE_DISTANCE = 50;
+
+export function SwipeCardsStep({ title = "À retenir", cards, onComplete }: SwipeCardsStepProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const step = useMemo(() => makeStepStyles(colors), [colors]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const indexRef = useRef(0);
+  indexRef.current = currentIndex;
 
-  const handleNext = () => {
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
+  const goTo = (next: number) => {
+    if (next < 0 || next > cards.length - 1) return;
+    setDirection(next > indexRef.current ? 1 : -1);
+    setCurrentIndex(next);
   };
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
+  // Glisser vers la gauche = carte suivante, vers la droite = précédente.
+  const pan = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy),
+        onPanResponderRelease: (_, g) => {
+          if (g.dx < -SWIPE_DISTANCE) goTo(indexRef.current + 1);
+          else if (g.dx > SWIPE_DISTANCE) goTo(indexRef.current - 1);
+        },
+      }),
+    [cards.length]
+  );
 
   const isLastCard = currentIndex === cards.length - 1;
-  const currentCard = cards[currentIndex];
+  const card = cards[currentIndex];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Quick Learning</Text>
+      <View style={[step.scroll, styles.content]}>
+        <StepOverline icon="albums-outline" label={`CARTE ${currentIndex + 1}/${cards.length}`} />
+        <Text style={styles.title} accessibilityRole="header">{title}</Text>
 
-      <View style={styles.cardContainer}>
-        <Image
-          source={{ uri: currentCard.image }}
-          style={styles.image}
-          resizeMode="contain"
-          accessibilityLabel={`Illustration : ${currentCard.concept}`}
-        />
-        <Text style={styles.concept}>{currentCard.concept}</Text>
-      </View>
-
-      {/* Indicators */}
-      <View style={styles.indicators}>
-        {cards.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              index === currentIndex ? styles.activeDot : undefined,
-            ]}
-          />
-        ))}
-      </View>
-
-      {/* Navigation */}
-      <View style={styles.navRow}>
-        <Pressable
-          style={[styles.navButton, currentIndex === 0 && styles.disabled]}
-          onPress={handlePrev}
-          disabled={currentIndex === 0}
-          accessibilityRole="button"
-          accessibilityLabel="Carte précédente"
-          accessibilityState={{ disabled: currentIndex === 0 }}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.onAccent} />
-        </Pressable>
-
-        {isLastCard && (
-          <Pressable
-            style={styles.continueButton}
-            onPress={onComplete}
-            accessibilityRole="button"
-            accessibilityLabel="Continuer"
+        <View {...pan.panHandlers}>
+          <Animated.View
+            key={card.id}
+            entering={direction === 1 ? FadeInRight.duration(200) : FadeInLeft.duration(200)}
+            style={styles.card}
+            accessible
+            accessibilityLabel={`${card.concept}. ${card.detail ?? ''}`}
+            accessibilityHint="Glisse à gauche ou à droite pour changer de carte"
           >
-            <Text style={styles.continueText}>Got it! →</Text>
-          </Pressable>
-        )}
+            <View style={styles.iconCircle}>
+              <Ionicons name={card.icon ?? "bookmark-outline"} size={30} color={colors.primaryDark} />
+            </View>
+            <Text style={styles.concept}>{card.concept}</Text>
+            {!!card.detail && <Text style={styles.detail}>{card.detail}</Text>}
+          </Animated.View>
+        </View>
 
-        <Pressable
-          style={[
-            styles.navButton,
-            isLastCard && styles.disabled,
-          ]}
-          onPress={handleNext}
-          disabled={isLastCard}
-          accessibilityRole="button"
-          accessibilityLabel="Carte suivante"
-          accessibilityState={{ disabled: isLastCard }}
-        >
-          <Ionicons name="chevron-forward" size={24} color={colors.onAccent} />
-        </Pressable>
+        <View style={styles.navRow}>
+          <Pressable
+            style={[styles.navButton, currentIndex === 0 && styles.navDisabled]}
+            onPress={() => goTo(currentIndex - 1)}
+            disabled={currentIndex === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Carte précédente"
+            accessibilityState={{ disabled: currentIndex === 0 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+          </Pressable>
+
+          <View style={styles.indicators}>
+            {cards.map((c, i) => (
+              <View key={c.id} style={[styles.dot, i === currentIndex && styles.activeDot]} />
+            ))}
+          </View>
+
+          <Pressable
+            style={[styles.navButton, isLastCard && styles.navDisabled]}
+            onPress={() => goTo(currentIndex + 1)}
+            disabled={isLastCard}
+            accessibilityRole="button"
+            accessibilityLabel="Carte suivante"
+            accessibilityState={{ disabled: isLastCard }}
+          >
+            <Ionicons name="chevron-forward" size={22} color={colors.textPrimary} />
+          </Pressable>
+        </View>
       </View>
+
+      <StepPrimaryButton
+        label={isLastCard ? "J’ai compris" : "Carte suivante"}
+        onPress={isLastCard ? onComplete : () => goTo(currentIndex + 1)}
+      />
     </View>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    container: { 
+    container: {
       flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
       backgroundColor: colors.background,
     },
-    header: { 
-      fontSize: 24, 
-      fontWeight: "700", 
-      marginBottom: 16,
-      color: colors.textPrimary,
+    content: {
+      flex: 1,
     },
-    cardContainer: {
-      width: "100%",
+    title: {
+      fontSize: 24,
+      lineHeight: 30,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: -8,
+    },
+    card: {
+      minHeight: 260,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 14,
+      padding: 24,
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: colors.action,
+      backgroundColor: colors.surface,
+      shadowColor: colors.primaryDark,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 24,
+      elevation: 6,
+    },
+    iconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       backgroundColor: colors.tintPrimary,
-      borderRadius: 16,
-      padding: 16,
       alignItems: "center",
-      marginBottom: 16,
+      justifyContent: "center",
     },
-    image: { 
-      width: "100%", 
-      height: 180, 
-      borderRadius: 12, 
-      marginBottom: 12,
-    },
-    concept: { 
-      fontSize: 18, 
-      fontWeight: "600", 
-      textAlign: "center",
+    concept: {
+      fontSize: 21,
+      fontWeight: "700",
       color: colors.textPrimary,
+      textAlign: "center",
     },
-    indicators: { 
-      flexDirection: "row", 
-      gap: 8, 
-      marginBottom: 20,
+    detail: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: colors.textSecondary,
+      textAlign: "center",
     },
-    dot: { 
-      width: 8, 
-      height: 8, 
-      borderRadius: 4, 
-      backgroundColor: colors.muted,
-    },
-    activeDot: { 
-      width: 16, 
-      backgroundColor: colors.primary,
-    },
-    navRow: { 
-      flexDirection: "row", 
-      justifyContent: "space-between", 
-      width: "100%", 
+    navRow: {
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
     },
     navButton: {
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      backgroundColor: colors.primary,
-      justifyContent: "center",
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
       alignItems: "center",
-    },
-    disabled: { 
-      backgroundColor: colors.muted,
-    },
-    continueButton: {
-      flex: 1,
-      marginHorizontal: 12,
-      paddingVertical: 14,
-      backgroundColor: colors.success,
-      borderRadius: 12,
       justifyContent: "center",
-      alignItems: "center",
     },
-    continueText: { 
-      color: colors.onAccent, 
-      fontWeight: "700",
+    navDisabled: {
+      opacity: 0.4,
+    },
+    indicators: {
+      flexDirection: "row",
+      gap: 6,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.border,
+    },
+    activeDot: {
+      width: 20,
+      backgroundColor: colors.action,
     },
   });
 }
