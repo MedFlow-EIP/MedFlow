@@ -13,6 +13,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.auth import require_auth
 from routes.errors import internal_error
+from services.push import notify_user
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,12 @@ def _names(db, uids) -> dict:
             tuple(uids),
         ).fetchall()
     return {r["uid"]: r["display_name"] or "Utilisateur" for r in rows}
+
+
+def challengeStatusText(summary: dict) -> str:
+    """« Gagné 4–2 », « Perdu 1–3 », « Égalité 2–2 » (défi terminé)."""
+    score = f"{summary['my_score']}–{summary['their_score']}"
+    return {"win": "Gagné", "loss": "Perdu"}.get(summary["outcome"], "Égalité") + f" {score}"
 
 
 def _summary(row, uid: str, names: dict) -> dict:
@@ -135,6 +142,13 @@ def create_challenge():
                     (now + timedelta(days=CHALLENGE_DAYS)).isoformat(),
                 ),
             )
+        notify_user(
+            current_app._get_current_object(),
+            friend_uid,
+            "⚡ Nouveau défi",
+            f"{g.display_name} te défie sur « {course.nom} ».",
+            {"screen": "Challenge", "challengeId": cur.lastrowid},
+        )
         return jsonify({"id": cur.lastrowid}), 201
     except Exception:
         logger.exception("Erreur création défi")
@@ -242,6 +256,17 @@ def submit_challenge(challenge_id):
         for uid, xp in rewards.items():
             other = row["opponent_uid"] if uid == row["challenger_uid"] else row["challenger_uid"]
             db.log_activity(uid, "challenge", f"Défi contre {names.get(other, 'un ami')}", f"+{xp} XP", xp_gained=xp)
+        if rewards:
+            # Le premier joueur découvre le résultat sans rouvrir l'app.
+            other_uid = row["opponent_uid"] if g.uid == row["challenger_uid"] else row["challenger_uid"]
+            other_summary = _summary(row, other_uid, names)
+            notify_user(
+                current_app._get_current_object(),
+                other_uid,
+                "🏁 Défi terminé",
+                f"Contre {names.get(g.uid, 'ton ami')} : {challengeStatusText(other_summary)}",
+                {"screen": "Friends"},
+            )
 
         return jsonify({
             "challenge": summary,

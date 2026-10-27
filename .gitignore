@@ -64,3 +64,4 @@ mobile/android/
 mobile/ios/
 *.jks
 *.keystore
+mobile/google-services.json

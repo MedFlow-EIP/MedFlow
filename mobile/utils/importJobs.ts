@@ -5,6 +5,7 @@ import type { User } from 'firebase/auth';
 import { API_URL } from '@/services/api';
 import { getAuthHeaders } from './authHeaders';
 import { fetchWithTimeout, httpErrorMessage, UserFacingError } from './network';
+import { isPushActive } from './pushNotifications';
 
 // Imports de cours en arrière-plan : le serveur génère le cours pendant que
 // l'utilisateur navigue ailleurs ; l'app suit l'avancement et prévient
@@ -57,6 +58,8 @@ async function persist(uid: string) {
 }
 
 async function notify(job: ImportJob) {
+  // Avec les push actives, le serveur envoie déjà la notification.
+  if (isPushActive()) return;
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;

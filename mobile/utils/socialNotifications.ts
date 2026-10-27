@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from 'firebase/auth';
 import { API_URL } from '@/services/api';
 import { getAuthHeaders } from './authHeaders';
+import { isPushActive } from './pushNotifications';
 
 // Demandes d'ami et défis reçus : pastille sur l'onglet Compte et notification
 // sur le téléphone pour chaque nouveauté. Vérifié à l'ouverture de l'app et
@@ -71,7 +72,8 @@ export async function checkSocialNotifications(user: User): Promise<void> {
     if (fresh.length === 0) return;
 
     // Première vérification sur ce téléphone : on ne notifie pas tout l'historique.
-    if (!firstCheck) {
+    // Avec les push actives, le serveur a déjà prévenu : pas de doublon.
+    if (!firstCheck && !isPushActive()) {
       const { status } = await Notifications.getPermissionsAsync();
       if (status === 'granted') {
         for (const item of fresh.slice(0, 3)) {

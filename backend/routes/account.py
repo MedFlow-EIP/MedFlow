@@ -254,6 +254,22 @@ def delete_account():
         return internal_error("Erreur interne")
 
 
+@account_bp.route("/api/push-token", methods=["POST", "DELETE"])
+@require_auth
+def push_token():
+    """Enregistre (POST) ou oublie (DELETE, à la déconnexion) le jeton push de l'appareil."""
+    from services.push import is_valid_token
+
+    token = (request.get_json(silent=True) or {}).get("token")
+    if not is_valid_token(token):
+        return jsonify({"error": "Jeton invalide"}), 400
+    if request.method == "POST":
+        current_app.db.save_push_token(g.uid, token)
+    else:
+        current_app.db.delete_push_token(token, uid=g.uid)
+    return jsonify({"success": True})
+
+
 @account_bp.route("/api/account/export", methods=["GET"])
 @require_auth
 def export_account():

@@ -62,6 +62,7 @@ import { isFirstTimeUser } from '../../utils/firstTime';
 import { checkSocialNotifications, resetSocialBadge, useSocialBadge } from '../../utils/socialNotifications';
 import { resetImportJobs, resumeImportJobs, useImportJobs } from '../../utils/importJobs';
 import * as Notifications from 'expo-notifications';
+import { notificationTarget, registerForPushNotifications } from '../../utils/pushNotifications';
 import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
 
 const { width, height } = Dimensions.get('window');
@@ -340,6 +341,7 @@ export function AppNavigator() {
       return;
     }
     resumeImportJobs(user);
+    registerForPushNotifications(user);
     checkSocialNotifications(user);
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') checkSocialNotifications(user);
@@ -353,12 +355,12 @@ export function AppNavigator() {
     };
   }, [user]);
 
-  // Toucher la notification « Cours prêt » ouvre directement le cours.
+  // Toucher une notification ouvre l'écran concerné (cours prêt, défi, amis).
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const courseId = response.notification.request.content.data?.courseId;
-      if (typeof courseId === 'string' && navigationRef.isReady()) {
-        (navigationRef as any).navigate('CourseDetail', { courseId });
+      const target = notificationTarget(response.notification.request.content.data);
+      if (target && navigationRef.isReady()) {
+        (navigationRef as any).navigate(target.screen, target.params);
       }
     });
     return () => sub.remove();

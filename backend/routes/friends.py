@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.auth import require_auth
 from routes.errors import internal_error
+from services.push import notify_user
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,13 @@ def send_friend_request():
             return jsonify({"error": "uid requis"}), 400
 
         status = current_app.db.send_friend_request(g.uid, target_uid)
+        app = current_app._get_current_object()
+        if status == "pending":
+            notify_user(app, target_uid, "👋 Nouvelle demande d’ami", f"{g.display_name} veut t’ajouter en ami.",
+                        {"screen": "Friends"})
+        elif status == "accepted":
+            notify_user(app, target_uid, "🤝 Vous êtes amis", f"{g.display_name} a accepté ta demande.",
+                        {"screen": "Friends"})
         return jsonify({"status": status})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -108,4 +116,4 @@ def get_friends_leaderboard():
         return jsonify({"entries": entries, "yourUid": g.uid})
     except Exception as e:
         logger.exception("Erreur classement amis")
-        return internal_error("Erreur interne")
+        return internal_error("Erreur interne")
