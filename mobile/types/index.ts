@@ -19,6 +19,7 @@ export interface Lesson {
   status: "locked" | "available" | "completed";
   stars: number;
   position: "left" | "center" | "right";
+  xp?: number;
 }
 
 export interface FlashCardData {

@@ -23,7 +23,9 @@ import type { ThemeColors } from '../../theme/colors';
 const { width, height } = Dimensions.get('window');
 
 // Doit correspondre exactement a AppNavigator.tsx (styles.bottomNav.height)
-export const TAB_BAR_HEIGHT = 70;
+import { TAB_BAR_HEIGHT, useScreenInsets } from '../navigation/constants';
+
+export { TAB_BAR_HEIGHT };
 
 // Ordre reel des 5 items dans CustomTabBar (AppNavigator.tsx), chacun flex:1
 // sur la largeur totale de l'ecran.
@@ -117,10 +119,12 @@ interface TutorialScreenProps {
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-export function getTabPosition(tabKey: TabKey): Rect {
+/** bottomInset : zone système du bas (barre de gestes), ajoutée sous la barre d'onglets par AppNavigator. */
+export function getTabPosition(tabKey: TabKey, bottomInset = 0): Rect {
   const idx = TAB_ORDER.indexOf(tabKey);
   const tabWidth = width / TAB_ORDER.length;
-  return { x: idx * tabWidth, y: height - TAB_BAR_HEIGHT, width: tabWidth, height: TAB_BAR_HEIGHT };
+  const barHeight = TAB_BAR_HEIGHT + bottomInset;
+  return { x: idx * tabWidth, y: height - barHeight, width: tabWidth, height: barHeight };
 }
 
 export function getElementPosition(elementName: string): Rect {
@@ -132,8 +136,8 @@ export function getElementPosition(elementName: string): Rect {
   }
 }
 
-export function getHighlightRect(step: TutorialStep): Rect | null {
-  if (step.highlightTab) return getTabPosition(step.highlightTab);
+export function getHighlightRect(step: TutorialStep, bottomInset = 0): Rect | null {
+  if (step.highlightTab) return getTabPosition(step.highlightTab, bottomInset);
   if (step.highlightElement) return getElementPosition(step.highlightElement);
   return null;
 }
@@ -141,6 +145,7 @@ export function getHighlightRect(step: TutorialStep): Rect | null {
 export function TutorialScreen({ visible, onComplete, navigation }: TutorialScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { bottom: bottomInset } = useScreenInsets();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
@@ -159,7 +164,7 @@ export function TutorialScreen({ visible, onComplete, navigation }: TutorialScre
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   const step = tutorialSteps[currentStep];
-  const highlightRect = getHighlightRect(step);
+  const highlightRect = getHighlightRect(step, bottomInset);
   const isShowcase = !!step.navigateTo && !highlightRect;
 
   useEffect(() => {

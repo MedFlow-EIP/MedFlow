@@ -38,12 +38,13 @@ describe('getTabPosition — géométrie de la tab bar (5 onglets réels)', () =
     expect(rect.width).toBeCloseTo(width / 5);
   });
 
-  it('utilise la hauteur réelle de la tab bar (70px, pas 60)', () => {
+  it('utilise la hauteur réelle de la tab bar (72px + zone système du bas)', () => {
     // Autre régression corrigée en session : le calcul utilisait 60px
     // en dur, alors que AppNavigator.tsx définit bottomNav à 70px.
     const rect = getTabPosition('home-tab');
-    expect(rect.height).toBe(70);
-    expect(TAB_BAR_HEIGHT).toBe(70);
+    expect(rect.height).toBe(72);
+    expect(TAB_BAR_HEIGHT).toBe(72);
+    expect(getTabPosition('home-tab', 24).height).toBe(96);
   });
 
   it('positionne la tab bar collée en bas de l\'écran', () => {
