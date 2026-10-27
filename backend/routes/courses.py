@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 
 from middleware.ai_quota import consume_ai_quota
 from middleware.auth import build_user_response, require_auth
+from services.ai.base import QUIZ_DIFFICULTY
 from services.documents import (
     DOCUMENT_TYPES,
     IMAGE_EXTENSIONS,
@@ -272,6 +273,10 @@ def process_document():
     if current_app.ai is None:
         return jsonify({"error": "IA indisponible"}), 503
 
+    difficulty = (request.form.get("difficulty") or "normal").strip().lower()
+    if difficulty not in QUIZ_DIFFICULTY:
+        return jsonify({"error": "Difficulté invalide : facile, normal ou difficile"}), 400
+
     replace_id = (request.form.get("replace_course_id") or "").strip()
     if replace_id and not current_app.db.fetch_course(g.uid, replace_id):
         return jsonify({"error": "Cours introuvable"}), 404
@@ -304,7 +309,7 @@ def process_document():
                 executor.submit(ai.generate_title, text, filename): "nom",
                 executor.submit(ai.generate_flashcards, text): "flashcards",
                 executor.submit(ai.generate_summary, text): "summary",
-                executor.submit(ai.generate_quiz, text): "quiz",
+                executor.submit(ai.generate_quiz, text, 5, difficulty): "quiz",
             }
             results = {}
             for future in as_completed(futures):
