@@ -155,7 +155,7 @@ function makeStyles(colors: ThemeColors) {
     eyebrow: {
       fontSize: 13,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.primaryText,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       marginBottom: 16,
@@ -183,7 +183,7 @@ function makeStyles(colors: ThemeColors) {
       lineHeight: 20,
     },
     button: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingHorizontal: 32,
       paddingVertical: 14,
       borderRadius: 14,
@@ -191,7 +191,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
     },
     buttonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 16,
       fontWeight: '700',
     },

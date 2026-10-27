@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  Alert,
   StyleSheet,
 } from "react-native";
 
@@ -26,6 +25,7 @@ import {
   SummaryCard,
 } from "../course/CourseContent";
 import { useScreenInsets } from "../navigation/constants";
+import { appAlert } from '../../utils/appAlert';
 
 const formatSize = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(2).replace(".", ",")} Mo` : "";
@@ -81,7 +81,7 @@ export function UploadCourseScreen() {
 
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert("Erreur", "Vous devez être connecté");
+      appAlert("Erreur", "Vous devez être connecté");
       return;
     }
 

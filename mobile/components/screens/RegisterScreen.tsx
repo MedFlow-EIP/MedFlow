@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { appAlert } from '../../utils/appAlert';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,15 +37,15 @@ export function RegisterScreen({ navigation }: any) {
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      appAlert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      appAlert('Erreur', 'Les mots de passe ne correspondent pas');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+      appAlert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
@@ -58,7 +58,7 @@ export function RegisterScreen({ navigation }: any) {
         displayName: `${firstName} ${lastName}`
       });
 
-      Alert.alert('Succès', 'Compte créé avec succès !');
+      appAlert('Succès', 'Compte créé avec succès !');
     } catch (error: any) {
       let errorMessage = 'Une erreur est survenue';
       switch (error.code) {
@@ -75,7 +75,7 @@ export function RegisterScreen({ navigation }: any) {
           errorMessage = 'Mot de passe trop faible';
           break;
       }
-      Alert.alert('Erreur d\'inscription', errorMessage);
+      appAlert('Erreur d\'inscription', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -102,10 +102,10 @@ export function RegisterScreen({ navigation }: any) {
           style={styles.header}
         >
           <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
+            colors={[colors.action, colors.action]}
             style={styles.iconContainer}
           >
-            <Ionicons name="medical" size={40} color={colors.onAccent} />
+            <Ionicons name="medical" size={40} color={colors.onAction} />
           </LinearGradient>
           <Text style={styles.title} accessibilityRole="header">Créer un compte</Text>
           <Text style={styles.subtitle}>Rejoignez notre plateforme médicale</Text>
@@ -122,7 +122,7 @@ export function RegisterScreen({ navigation }: any) {
             <TextInput 
               style={styles.input} 
               placeholder="Prénom" 
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={firstName} 
               onChangeText={setFirstName} 
               autoCapitalize="words"
@@ -135,7 +135,7 @@ export function RegisterScreen({ navigation }: any) {
             <TextInput 
               style={styles.input} 
               placeholder="Nom" 
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={lastName} 
               onChangeText={setLastName} 
               autoCapitalize="words"
@@ -148,7 +148,7 @@ export function RegisterScreen({ navigation }: any) {
             <TextInput 
               style={styles.input} 
               placeholder="Email" 
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={email} 
               onChangeText={setEmail} 
               autoCapitalize="none" 
@@ -162,7 +162,7 @@ export function RegisterScreen({ navigation }: any) {
             <TextInput 
               style={styles.input} 
               placeholder="Mot de passe" 
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={password} 
               onChangeText={setPassword} 
               secureTextEntry={!showPassword}
@@ -186,7 +186,7 @@ export function RegisterScreen({ navigation }: any) {
             <TextInput 
               style={styles.input} 
               placeholder="Confirmer le mot de passe" 
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               value={confirmPassword} 
               onChangeText={setConfirmPassword} 
               secureTextEntry={!showConfirmPassword}
@@ -215,7 +215,7 @@ export function RegisterScreen({ navigation }: any) {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[colors.action, colors.action]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.buttonGradient}
@@ -225,7 +225,7 @@ export function RegisterScreen({ navigation }: any) {
               ) : (
                 <>
                   <Text style={styles.buttonText}>S'inscrire</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />
+                  <Ionicons name="arrow-forward" size={20} color={colors.onAction} />
                 </>
               )}
             </LinearGradient>
@@ -337,7 +337,7 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       opacity: 0.7,
     },
     buttonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -350,18 +350,18 @@ function makeStyles(colors: ThemeColors, isDarkBg: boolean) {
       fontSize: 14,
     },
     linkTextBold: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '600',
     },
     termsText: {
       textAlign: 'center',
       fontSize: 12,
-      color: colors.muted,
+      color: colors.textSecondary,
       marginTop: 24,
       lineHeight: 18,
     },
     termsLink: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '500',
     },
   });

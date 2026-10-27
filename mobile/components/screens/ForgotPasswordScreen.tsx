@@ -5,13 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { auth } from '../../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { appAlert } from '../../utils/appAlert';
 
 export function ForgotPasswordScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -23,7 +23,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
 
   const handleResetPassword = async () => {
     if (!email) {
-      Alert.alert('Erreur', 'Veuillez entrer votre email');
+      appAlert('Erreur', 'Veuillez entrer votre email');
       return;
     }
 
@@ -31,7 +31,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
     try {
       await sendPasswordResetEmail(auth, email);
       setSent(true);
-      Alert.alert('Succès', 'Un email de réinitialisation a été envoyé');
+      appAlert('Succès', 'Un email de réinitialisation a été envoyé');
     } catch (error: any) {
       let errorMessage = 'Une erreur est survenue';
       
@@ -44,7 +44,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
           break;
       }
       
-      Alert.alert('Erreur', errorMessage);
+      appAlert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
             <TextInput
               style={styles.input}
               placeholder="Votre email"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textSecondary}
               accessibilityLabel="Votre email"
               value={email}
               onChangeText={setEmail}
@@ -175,7 +175,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textPrimary,
     },
     button: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       height: 56,
       borderRadius: 12,
       justifyContent: 'center',
@@ -186,7 +186,7 @@ function makeStyles(colors: ThemeColors) {
       opacity: 0.6,
     },
     buttonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -206,7 +206,7 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
     },
     linkTextBold: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '600',
     },
   });

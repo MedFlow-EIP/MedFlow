@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
@@ -16,6 +15,7 @@ import { getAuthHeaders } from '../../utils/authHeaders';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { AvatarBubble } from '../../components/AvatarBubble';
+import { useScreenInsets } from '../navigation/constants';
 
 type LeaderboardEntry = {
   uid: string;
@@ -30,6 +30,7 @@ type Mode = 'global' | 'friends';
 export function LeaderboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top: insetTop } = useScreenInsets();
   const navigation = useNavigation();
 
   const [mode, setMode] = useState<Mode>('global');
@@ -125,7 +126,7 @@ export function LeaderboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insetTop }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -241,7 +242,7 @@ export function LeaderboardScreen() {
           )}
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -329,13 +330,13 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     retryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 10,
     },
     retryText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontWeight: '600',
     },
     listContent: {
@@ -373,7 +374,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textPrimary,
     },
     nameYou: {
-      color: colors.primary,
+      color: colors.primaryText,
     },
     streakContainer: {
       flexDirection: 'row',
@@ -388,7 +389,7 @@ function makeStyles(colors: ThemeColors) {
     xpText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.primaryText,
       minWidth: 64,
       textAlign: 'right',
     },

@@ -449,7 +449,7 @@ export function TutorialScreen({ visible, onComplete, navigation }: TutorialScre
               <Text style={styles.nextButtonText}>
                 {currentStep === tutorialSteps.length - 1 ? 'Terminer' : 'Suivant'}
               </Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.onAccent} style={styles.nextIcon} />
+              <Ionicons name="arrow-forward" size={16} color={colors.onAction} style={styles.nextIcon} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -521,7 +521,7 @@ function makeStyles(colors: ThemeColors) {
     sectionBadgeText: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.primaryText,
       textTransform: 'uppercase',
       letterSpacing: 0.3,
     },
@@ -576,13 +576,13 @@ function makeStyles(colors: ThemeColors) {
     backButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.primaryText,
       marginLeft: 6,
     },
     nextButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 12,
@@ -592,7 +592,7 @@ function makeStyles(colors: ThemeColors) {
     nextButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.onAccent,
+      color: colors.onAction,
     },
     nextIcon: {
       marginLeft: 8,
@@ -605,10 +605,10 @@ function makeStyles(colors: ThemeColors) {
     },
     progressDotActive: {
       width: 24,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
     },
     progressDotCompleted: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       opacity: 0.5,
     },
   });

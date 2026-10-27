@@ -7,7 +7,6 @@ import {
   ScrollView,
   FlatList,
   StyleSheet,
-  Alert,
   Modal,
   Image,
   KeyboardAvoidingView,
@@ -37,6 +36,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { logScreenView } from '../../utils/analytics';
 
 import { useScreenInsets } from '../navigation/constants';
+import { appAlert } from '../../utils/appAlert';
 
 type Message = {
   type: "user" | "ai";
@@ -290,7 +290,7 @@ export function AIChatScreen() {
     } catch (error) {
       setIsTyping(false);
 
-      Alert.alert(
+      appAlert(
         "Erreur",
         "Impossible de contacter l'assistant médical."
       );
@@ -298,7 +298,7 @@ export function AIChatScreen() {
   };
 
   const deleteConversation = (convId: string) => {
-    Alert.alert(
+    appAlert(
       "Supprimer la conversation",
       "Cette action est irréversible.",
       [

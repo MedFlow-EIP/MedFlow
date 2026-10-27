@@ -172,7 +172,7 @@ function makeStyles(colors: ThemeColors) {
       width: 64,
       height: 64,
       borderRadius: 32,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       justifyContent: 'center',
       alignItems: 'center',
       elevation: 8,

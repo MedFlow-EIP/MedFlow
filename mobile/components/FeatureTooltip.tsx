@@ -100,7 +100,7 @@ function makeStyles(colors: ThemeColors) {
       marginBottom: 20,
     },
     gotItButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
@@ -108,7 +108,7 @@ function makeStyles(colors: ThemeColors) {
     gotItText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.onAccent,
+      color: colors.onAction,
     },
   });
 }

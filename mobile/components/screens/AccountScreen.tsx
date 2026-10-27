@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
   Linking,
   Share,
 } from "react-native";
@@ -24,6 +23,7 @@ import { getAuthHeaders } from "../../utils/authHeaders";
 import { scheduleReminderIfNeeded } from "../../utils/streakNotifications";
 
 import { useScreenInsets } from '../navigation/constants';
+import { appAlert } from '../../utils/appAlert';
 
 type Badge = {
   id: string;
@@ -46,6 +46,15 @@ type ActivityItem = {
   createdAt: string;
 };
 
+/** Assombrit une couleur #rrggbb (factor < 1). */
+function darken(hex: string, factor: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * factor));
+  return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
 function formatRelativeTime(iso: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
@@ -63,7 +72,7 @@ function formatRelativeTime(iso: string): string {
 }
 
 export function AccountScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { top, tabBarHeight } = useScreenInsets();
 
@@ -109,7 +118,7 @@ export function AccountScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
+    appAlert(
       "Déconnexion",
       "Êtes-vous sûr de vouloir vous déconnecter ?",
       [
@@ -121,7 +130,7 @@ export function AccountScreen() {
             try {
               await signOut(auth);
             } catch (error) {
-              Alert.alert("Erreur", "Impossible de se déconnecter");
+              appAlert("Erreur", "Impossible de se déconnecter");
             }
           }
         }
@@ -133,7 +142,7 @@ export function AccountScreen() {
     try {
       await Linking.openURL(url);
     } catch (error) {
-      Alert.alert("Erreur", "Impossible d'ouvrir le lien");
+      appAlert("Erreur", "Impossible d'ouvrir le lien");
     }
   };
 
@@ -146,7 +155,7 @@ export function AccountScreen() {
     try {
       await Linking.openURL(url);
     } catch {
-      Alert.alert(
+      appAlert(
         "Erreur",
         "Aucune application mail configurée sur cet appareil"
       );
@@ -208,6 +217,9 @@ export function AccountScreen() {
     month: "short",
     day: "numeric",
   });
+
+  // Texte de la puce de ligue : couleur de la ligue assombrie, lisible sur sa teinte claire (ex. bronze #cd7f32 → #9a5f26).
+  const leagueText = isDark ? stats.league.color : darken(stats.league.color, 0.75);
 
   const initials = (user.displayName || "U")
     .split(" ")
@@ -329,7 +341,7 @@ export function AccountScreen() {
             {user.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.avatar} accessible={false} />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: stats.league.color || colors.warning }]}>
+              <View style={[styles.avatar, { backgroundColor: colors.warning }]}>
                 <Text style={styles.avatarText}>{initials}</Text>
               </View>
             )}
@@ -344,8 +356,8 @@ export function AccountScreen() {
           {/* Puces qui passent à la ligne au lieu de déborder */}
           <View style={styles.chips}>
             <View style={[styles.chip, { backgroundColor: stats.league.color + "26" }]}>
-              <Ionicons name="ribbon" size={14} color={stats.league.color} />
-              <Text style={[styles.chipText, styles.leagueText]}>Ligue {stats.league.name}</Text>
+              <Ionicons name="ribbon" size={14} color={leagueText} />
+              <Text style={[styles.chipText, styles.leagueText, { color: leagueText }]}>Ligue {stats.league.name}</Text>
             </View>
             <View style={[styles.chip, { backgroundColor: colors.tintPrimary }]}>
               <Ionicons name="calendar" size={14} color={colors.primaryDark} />

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TextInput,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { getAuthHeaders } from '../../utils/authHeaders';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { AvatarBubble } from '../../components/AvatarBubble';
+import { useScreenInsets } from '../navigation/constants';
 
 type SearchResult = {
   uid: string;
@@ -42,6 +42,7 @@ type PendingRequest = {
 export function FriendsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top: insetTop } = useScreenInsets();
   const navigation = useNavigation();
 
   const [query, setQuery] = useState('');
@@ -186,7 +187,7 @@ export function FriendsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insetTop }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -207,7 +208,7 @@ export function FriendsScreen() {
           value={query}
           onChangeText={runSearch}
           placeholder="Nom ou email exact…"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={colors.textSecondary}
           accessibilityLabel="Rechercher un ami par nom"
           style={styles.searchInput}
         />
@@ -320,7 +321,7 @@ export function FriendsScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -452,13 +453,13 @@ function makeStyles(colors: ThemeColors) {
       gap: 8,
     },
     smallAcceptButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingHorizontal: 12,
       paddingVertical: 7,
       borderRadius: 10,
     },
     smallAcceptButtonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 12,
       fontWeight: '700',
     },
