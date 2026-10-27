@@ -13,6 +13,10 @@ jest.mock('../../auth/EmailVerificationBanner', () => ({
   EmailVerificationBanner: () => null,
 }));
 
+jest.mock('../../QuestsCard', () => ({
+  QuestsCard: () => null,
+}));
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
 }));

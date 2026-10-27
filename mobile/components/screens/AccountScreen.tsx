@@ -428,18 +428,21 @@ export function AccountScreen() {
           <View style={styles.listCard}>
             {activity.map((item, index) => {
               const isBadge = item.type === "badge_unlocked";
+              const isQuest = item.type === "quest_completed";
               return (
                 <View key={index} style={[styles.activityRow, index > 0 && styles.rowDivider]}>
                   <View
                     style={[
                       styles.activityIcon,
-                      { backgroundColor: isBadge ? colors.tintWarning : colors.tintPrimary },
+                      {
+                        backgroundColor: isBadge ? colors.tintWarning : isQuest ? colors.tintSuccess : colors.tintPrimary,
+                      },
                     ]}
                   >
                     <Ionicons
-                      name={isBadge ? "trophy" : "school"}
+                      name={isBadge ? "trophy" : isQuest ? "flag" : "school"}
                       size={22}
-                      color={isBadge ? colors.warning : colors.primaryDark}
+                      color={isBadge ? colors.warning : isQuest ? colors.success : colors.primaryDark}
                     />
                   </View>
                   <View style={styles.activityContent}>

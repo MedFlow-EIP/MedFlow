@@ -16,6 +16,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '@/utils/authHeaders';
 import { useScreenInsets } from '../navigation/constants';
 import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
+import { QuestsCard } from '../QuestsCard';
 
 interface HomeScreenProps {
   navigation: any;
@@ -136,6 +137,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         </View>
 
         <EmailVerificationBanner />
+
+        <QuestsCard />
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           Parcours d'apprentissage
