@@ -80,7 +80,9 @@ check_env_vars backend/.env "FIREBASE_"
 check_env_vars .env "GCP_"
 check_env_vars .env "FIREBASE_"
 
-# --- 4. Rebuild COMPLET (jamais juste redémarrer) ----------------------
+# --- 4. Sauvegarde de la base, puis rebuild COMPLET --------------------
+
+bash backup_db.sh || warn "Sauvegarde de la base impossible (non bloquant)."
 
 info "Rebuild du backend (--no-cache)..."
 docker compose build --no-cache backend

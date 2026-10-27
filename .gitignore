@@ -29,6 +29,9 @@ ENV/
 # Uploads (user data)
 backend/uploads/
 
+# Sauvegardes de deploy.sh (copies des .env, journal de backup_db.sh)
+backups/
+
 # Test coverage
 .coverage
 htmlcov/
