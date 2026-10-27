@@ -53,7 +53,13 @@ export function VisualDiscovery({
         {/* Fond blanc fixe : le schéma reste lisible en mode sombre. */}
         <View style={styles.frame}>
           <View style={{ height: IMAGE_HEIGHT, aspectRatio }}>
-            <Image source={image} style={StyleSheet.absoluteFill} resizeMode="stretch" accessible={false} />
+            {/* Taille explicite : sans elle, Android affiche une image require() à sa taille d'origine (débordement). */}
+            <Image
+              source={image}
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+              resizeMode="stretch"
+              accessible={false}
+            />
             {parts.map((part) => {
               const state = !answered
                 ? "idle"
