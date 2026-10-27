@@ -45,6 +45,7 @@ type CourseSummary = {
   flashcards?: number;
   quiz?: number;
   created_at?: string;
+  tags?: string[];
 };
 
 type DueItem = { course_id: string; course_nom: string };
@@ -89,6 +90,8 @@ export function DashboardScreen() {
   const [dueToday, setDueToday] = useState<DueItem[]>([]);
   const [offline, setOffline] = useState(false);
   const [nextExam, setNextExam] = useState<Exam | null>(null);
+  // Filtre « Mes cours » par spécialité (null = tous).
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   const applyDashboard = (data: any) => {
     if (Array.isArray(data?.cours)) {
@@ -123,7 +126,7 @@ export function DashboardScreen() {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      const res = await fetch(`${API_URL}/api/dashboard`, {
+      const res = await fetch(`${API_URL}/api/dashboard?per_page=100`, {
         headers: await getAuthHeaders(user),
       });
 
@@ -260,6 +263,9 @@ export function DashboardScreen() {
       label: 'Score',
     },
   ];
+
+  const allTags = [...new Set(courses.flatMap((c) => c.tags ?? []))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const visibleCourses = tagFilter ? courses.filter((c) => c.tags?.includes(tagFilter)) : courses;
 
   return (
     <View style={styles.container}>
@@ -450,15 +456,41 @@ export function DashboardScreen() {
 
         <View style={styles.coursesHeader}>
           <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
-          <Text style={styles.coursesCount}>{plural(courses.length, 'PDF importé')}</Text>
+          <Text style={styles.coursesCount}>{plural(courses.length, 'cours importé')}</Text>
         </View>
+
+        {allTags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tagFilters}
+            accessibilityRole="tablist"
+          >
+            {[null, ...allTags].map((tag) => {
+              const active = tagFilter === tag;
+              return (
+                <TouchableOpacity
+                  key={tag ?? '__all'}
+                  style={[styles.tagFilter, active && styles.tagFilterActive]}
+                  onPress={() => setTagFilter(tag)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.tagFilterText, active && styles.tagFilterTextActive]}>{tag ?? 'Tous'}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {courses.length === 0 ? (
           <Text style={styles.emptyText}>Aucun cours importé</Text>
+        ) : visibleCourses.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun cours dans cette spécialité</Text>
         ) : (
-          courses.map((course) => {
+          visibleCourses.map((course) => {
             const meta = [
-              'PDF',
+              course.tags?.length ? course.tags.join(', ') : '',
               course.flashcards !== undefined ? plural(course.flashcards, 'flashcard') : '',
               course.quiz ? '1 quiz' : '',
               formatShortDate(course.created_at),
@@ -615,6 +647,32 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 12,
     },
 
+    tagFilters: {
+      gap: 8,
+      paddingRight: 8,
+    },
+    tagFilter: {
+      minHeight: 40,
+      justifyContent: 'center',
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    tagFilterActive: {
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.tintPrimary,
+    },
+    tagFilterText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    tagFilterTextActive: {
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
     examCard: {
       flexDirection: 'row',
       alignItems: 'center',

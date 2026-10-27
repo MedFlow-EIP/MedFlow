@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { auth } from '../../firebaseConfig';
 import { API_URL } from '@/services/api';
 import { ProgressDashboard } from '../../components/ProgressDashboard';
+import { SpecialtyStats } from '../../components/SpecialtyStats';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
@@ -169,6 +170,7 @@ export function ProgressScreen() {
             weeklyGoal={data.weeklyGoal}
             weeklyProgress={data.weeklyProgress}
           />
+          <SpecialtyStats />
         </ScrollView>
       )}
     </View>

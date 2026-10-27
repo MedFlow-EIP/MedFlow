@@ -16,6 +16,7 @@ from services.documents import (
     extract_text_from_pptx,
 )
 from services.pdf import extract_text_from_pdf, pdf_page_count as _pdf_page_count
+from services.specialties import SPECIALTIES, clean_tags, suggest_tags
 from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ def get_dashboard():
                 "flashcards": len(c.flashcards or []),
                 "quiz": len(c.quiz or []),
                 "created_at": c.created_at,
+                "tags": c.tags,
             }
             for c in paginated
         ]
@@ -324,6 +326,9 @@ def process_document():
             "quiz": quiz,
             "sessions": 0,
         }
+        # Nouveau cours : spécialités suggérées. Régénération : on garde les tags choisis.
+        if not replace_id:
+            output["tags"] = suggest_tags(text)
 
         logger.info("Saving course %s for user %s", course_id, g.uid)
         current_app.db.save_course(g.uid, course_id, output)
@@ -381,16 +386,22 @@ def update_course(course_id):
             if len(nom) > MAX_COURSE_NAME_CHARS:
                 return jsonify({"error": f"Titre trop long ({MAX_COURSE_NAME_CHARS} caractères maximum)"}), 400
 
+        tags = None
+        if "tags" in body:
+            tags, error = clean_tags(body.get("tags"))
+            if error:
+                return jsonify({"error": error}), 400
+
         flashcards = None
         if "flashcards" in body:
             flashcards, error = _validate_flashcards(body.get("flashcards"))
             if error:
                 return jsonify({"error": error}), 400
 
-        if nom is None and flashcards is None:
+        if nom is None and flashcards is None and tags is None:
             return jsonify({"error": "Rien à modifier"}), 400
 
-        db.update_course(g.uid, course_id, nom=nom, flashcards=flashcards)
+        db.update_course(g.uid, course_id, nom=nom, flashcards=flashcards, tags=tags)
         return jsonify(_course_to_response(db.fetch_course(g.uid, course_id)))
     except Exception:
         logger.exception("Erreur modification cours")
@@ -455,3 +466,25 @@ def flashcards_from_text():
     except Exception:
         logger.exception("Erreur flashcards depuis texte")
         return internal_error("Erreur création flashcards")
+
+
+# ---------------------------------------------------------------------------
+# Spécialités (F54, F69)
+# ---------------------------------------------------------------------------
+
+@courses_bp.route("/api/specialties", methods=["GET"])
+@require_auth
+def list_specialties():
+    """Spécialités proposées comme tags (l'app accepte aussi des tags libres)."""
+    return jsonify({"specialties": list(SPECIALTIES)})
+
+
+@courses_bp.route("/api/stats/specialties", methods=["GET"])
+@require_auth
+def specialty_stats():
+    """Progression par spécialité : maîtrise, cartes dues, taux de bonnes réponses."""
+    try:
+        return jsonify({"specialties": current_app.db.get_specialty_stats(g.uid)})
+    except Exception:
+        logger.exception("Erreur stats par spécialité")
+        return internal_error("Erreur stats")

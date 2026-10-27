@@ -157,6 +157,15 @@ export function CourseDetailScreen({ route }: Props) {
               <Ionicons name="document-text" size={14} color={colors.textSecondary} />
               <Text style={styles.metaText} numberOfLines={1}>{meta}</Text>
             </View>
+            {Array.isArray(course.tags) && course.tags.length > 0 && (
+              <View style={styles.tags}>
+                {course.tags.map((tag: string) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Hors ligne : modification impossible, le bouton est masqué. */}
@@ -209,6 +218,7 @@ export function CourseDetailScreen({ route }: Props) {
         courseId={courseId}
         title={course.nom || ''}
         flashcards={flashcards}
+        tags={Array.isArray(course.tags) ? course.tags : []}
         onClose={() => setEditing(false)}
         onSaved={(updated) => {
           setCourse(updated);
@@ -281,6 +291,23 @@ function makeStyles(colors: ThemeColors) {
       color: colors.textSecondary,
     },
 
+    tags: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 4,
+    },
+    tag: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.tintPrimary,
+    },
+    tagText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
     reviseButton: {
       flexDirection: 'row',
       alignItems: 'center',
