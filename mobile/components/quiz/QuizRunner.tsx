@@ -56,7 +56,7 @@ export function QuizRunner({
               accessibilityLabel={`Question ${i + 1}${answered ? ', répondue' : ''}`}
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.cellText, answered && styles.cellTextAnswered]}>{i + 1}</Text>
+              <Text style={[styles.cellText, answered && styles.cellTextAnswered]} maxFontSizeMultiplier={1.3}>{i + 1}</Text>
             </TouchableOpacity>
           );
         })}
