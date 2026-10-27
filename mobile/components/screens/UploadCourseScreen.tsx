@@ -36,6 +36,9 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+// Au-delà, les quotas d'import du jour seraient de toute façon atteints.
+const MAX_FILES = 10;
+
 const ACCEPTED_TYPES = ["application/pdf", DOCX, PPTX, "image/jpeg", "image/png", "image/webp"];
 
 type Difficulty = "facile" | "normal" | "difficile";
@@ -82,6 +85,8 @@ export function UploadCourseScreen() {
   }, []);
 
   const [file, setFile] = useState<PickedFile | null>(null);
+  // Plusieurs fichiers choisis d'un coup : chacun devient un import en arrière-plan.
+  const [files, setFiles] = useState<PickedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -105,17 +110,33 @@ export function UploadCourseScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         type: ACCEPTED_TYPES,
         copyToCacheDirectory: true,
+        multiple: true,
       });
 
       if (result.canceled) return;
 
-      const picked = result.assets[0];
-      selectFile({
-        uri: picked.uri,
-        name: picked.name,
-        size: picked.size,
-        mimeType: guessMimeType(picked.name, picked.mimeType),
-      });
+      const picked = result.assets.map((a) => ({
+        uri: a.uri,
+        name: a.name,
+        size: a.size,
+        mimeType: guessMimeType(a.name, a.mimeType),
+      }));
+      if (picked.length === 1) {
+        setFiles([]);
+        selectFile(picked[0]);
+        return;
+      }
+      const tooBig = picked.filter((f) => f.size && f.size > MAX_FILE_BYTES);
+      const kept = picked.filter((f) => !(f.size && f.size > MAX_FILE_BYTES)).slice(0, MAX_FILES);
+      if (tooBig.length) {
+        appAlert("Fichiers trop lourds", `Ignorés (plus de 20 Mo) : ${tooBig.map((f) => f.name).join(", ")}`);
+      } else if (picked.length > MAX_FILES) {
+        appAlert("Trop de fichiers", `Seuls les ${MAX_FILES} premiers seront importés.`);
+      }
+      setFile(null);
+      setData(null);
+      setError("");
+      setFiles(kept);
     } catch (err) {
       console.error(err);
     }
@@ -145,6 +166,40 @@ export function UploadCourseScreen() {
       console.error(err);
       appAlert("Appareil photo indisponible", "Choisis plutôt une photo depuis tes fichiers.");
     }
+  };
+
+  /** Lance un import en arrière-plan par fichier, puis revient en arrière. */
+  const handleGenerateMany = async () => {
+    const user = auth.currentUser;
+    if (!user || files.length === 0) return;
+    setLoading(true);
+    setError("");
+    let started = 0;
+    const skipped: string[] = [];
+    let stopReason = "";
+    for (const f of files) {
+      const formData = new FormData();
+      formData.append("file", { uri: f.uri, name: f.name, type: f.mimeType } as any);
+      formData.append("difficulty", difficulty);
+      try {
+        const res = await startBackgroundImport(user, formData, f.name);
+        if ("duplicate" in res) skipped.push(`${f.name} (déjà importé)`);
+        else started += 1;
+      } catch (err) {
+        stopReason = errorMessage(err, "Import impossible.");
+        // Quota ou réseau : les fichiers suivants échoueraient aussi.
+        break;
+      }
+    }
+    setLoading(false);
+    const lines = [
+      started ? `${started} cours en cours de génération : une notification te prévient pour chacun.` : "",
+      skipped.length ? `Ignorés : ${skipped.join(", ")}.` : "",
+      stopReason ? `Arrêté : ${stopReason}` : "",
+    ].filter(Boolean);
+    appAlert(started ? "Imports lancés" : "Aucun import lancé", lines.join("\n\n"), [
+      { text: "OK", onPress: () => started && navigation.goBack() },
+    ]);
   };
 
   const removeFile = () => {
@@ -336,6 +391,33 @@ export function UploadCourseScreen() {
               </View>
             )}
 
+            {/* PLUSIEURS FICHIERS */}
+            {files.length > 0 && (
+              <View style={styles.multiList}>
+                <Text style={styles.infoTitle}>{files.length} fichiers sélectionnés</Text>
+                {files.map((f, i) => (
+                  <View key={`${f.uri}-${i}`} style={styles.fileCard}>
+                    <View style={styles.fileIcon}>
+                      <Ionicons name={fileIcon(f.mimeType)} size={22} color={colors.success} />
+                    </View>
+                    <View style={styles.fileInfo}>
+                      <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
+                      <Text style={styles.fileSize}>{formatSize(f.size)}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.removeBtn}
+                      onPress={() => setFiles(files.filter((_, j) => j !== i))}
+                      disabled={loading}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Retirer ${f.name}`}
+                    >
+                      <Ionicons name="close" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* DIFFICULTÉ DU QUIZ */}
             <View style={styles.difficultyCard}>
               <Text style={styles.infoTitle}>Difficulté du quiz</Text>
@@ -475,11 +557,11 @@ export function UploadCourseScreen() {
           </>
         ) : (
           <TouchableOpacity
-            style={[styles.primaryBtn, (!file || loading) && styles.btnDisabled]}
-            onPress={() => handleGenerate()}
-            disabled={!file || loading}
+            style={[styles.primaryBtn, ((!file && files.length === 0) || loading) && styles.btnDisabled]}
+            onPress={() => (files.length > 0 ? handleGenerateMany() : handleGenerate())}
+            disabled={(!file && files.length === 0) || loading}
             accessibilityRole="button"
-            accessibilityLabel={generateLabel}
+            accessibilityLabel={files.length > 0 && !loading ? `Importer ${files.length} cours` : generateLabel}
             accessibilityState={{ disabled: !file || loading, busy: loading }}
           >
             {loading ? (
@@ -487,7 +569,9 @@ export function UploadCourseScreen() {
             ) : (
               <Ionicons name="flash-outline" size={20} color={colors.onAction} />
             )}
-            <Text style={styles.primaryBtnText}>{generateLabel}</Text>
+            <Text style={styles.primaryBtnText}>
+              {files.length > 0 && !loading ? `Importer ${files.length} cours` : generateLabel}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -581,6 +665,10 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 13,
       color: colors.textSecondary,
       textAlign: "center",
+    },
+
+    multiList: {
+      gap: 10,
     },
 
     photoButton: {

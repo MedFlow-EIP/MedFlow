@@ -59,6 +59,8 @@ class Config:
     MAX_AUDIO_BYTES = 2 * 1024 * 1024
     # Photos et PDF scannés importés comme cours : lus page par page par l'IA.
     PROCESS_MAX_SCANNED_PAGES = 30
+    # Documents d'origine gardés pour être rouverts depuis l'app (par compte).
+    MAX_SOURCES_BYTES = int(os.getenv("MAX_SOURCES_BYTES", str(200 * 1024 * 1024)))
     # Texte du cours envoyé à l'IA pour chaque génération (~7 500 tokens).
     COURSE_TEXT_MAX_CHARS = int(os.getenv("COURSE_TEXT_MAX_CHARS", "30000"))
     # Texte d'une réponse du chat transformé en flashcards.
