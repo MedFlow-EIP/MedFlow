@@ -31,6 +31,7 @@ import { countdownLabel, syncExamReminders } from '../../utils/examReminders';
 import { flushRevisionQueue } from '../../utils/offlineRevision';
 import type { Exam } from './ExamsScreen';
 import { formatLongDate } from '../ui/DatePickerSheet';
+import { DemoCourseButton } from '../DemoCourseButton';
 
 type Stats = {
   totalCourses: number;
@@ -529,7 +530,10 @@ export function DashboardScreen() {
         )}
 
         {courses.length === 0 ? (
-          <Text style={styles.emptyText}>Aucun cours importé</Text>
+          <>
+            <Text style={styles.emptyText}>Aucun cours importé</Text>
+            <DemoCourseButton />
+          </>
         ) : visibleCourses.length === 0 ? (
           <Text style={styles.emptyText}>Aucun cours dans cette spécialité</Text>
         ) : (
