@@ -10,6 +10,7 @@ name: Mobile Build (APK)
 #   ANDROID_KEYSTORE_PASSWORD  mot de passe du keystore
 #   ANDROID_KEY_ALIAS          alias de la clé
 #   ANDROID_KEY_PASSWORD       mot de passe de la clé
+#   GOOGLE_SERVICES_JSON       (facultatif) google-services.json de Firebase, pour les push
 
 on:
   push:
@@ -61,6 +62,17 @@ jobs:
         run: |
           if [ -z "$MOBILE_ENV" ]; then echo "::error::Secret MOBILE_ENV manquant"; exit 1; fi
           printf '%s\n' "$MOBILE_ENV" > .env
+
+      # FCM (notifications push) : facultatif, le build marche sans.
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          else
+            echo "::warning::Secret GOOGLE_SERVICES_JSON absent : APK sans notifications push"
+          fi
 
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install --clean

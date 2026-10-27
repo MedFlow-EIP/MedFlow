@@ -24,6 +24,7 @@ from services.documents import (
 from services.pdf import extract_text_from_pdf, pdf_page_count as _pdf_page_count
 from services.specialties import SPECIALTIES, clean_tags, suggest_tags
 from routes.errors import internal_error
+from services.push import notify_user
 
 logger = logging.getLogger(__name__)
 
@@ -324,11 +325,15 @@ def _run_import_job(app, uid: str, job_id: str, job: dict) -> None:
         try:
             course = _generate_course(app, uid, job)
             app.db.finish_import_job(job_id, "done", course_id=course["id"], course_nom=course["nom"])
+            notify_user(app, uid, "✅ Cours prêt", f"« {course['nom']} » est prêt à réviser.",
+                        {"screen": "CourseDetail", "courseId": course["id"]})
         except GenerationError as e:
             app.db.finish_import_job(job_id, "error", error=str(e))
+            notify_user(app, uid, "Import échoué", f"{job['filename']} : {e}")
         except Exception:
             logger.exception("Erreur import en arrière-plan")
             app.db.finish_import_job(job_id, "error", error=GENERIC_FAILURE)
+            notify_user(app, uid, "Import échoué", f"{job['filename']} : {GENERIC_FAILURE}")
 
 
 def _job_response(row) -> dict:

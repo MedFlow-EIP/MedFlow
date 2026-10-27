@@ -74,6 +74,9 @@ class TestingConfig(Config):
     AI_PROCESS_PER_HOUR = 1000
     AI_PROCESS_PER_DAY = 1000
     AI_GLOBAL_PER_DAY = 100000
+    # Jamais de vraie notification push pendant les tests.
+    PUSH_ENABLED = False
+    PUSH_ASYNC = False
     # DATABASE_PATH is overridden per-test by conftest.py via a tmp_path fixture
 
 

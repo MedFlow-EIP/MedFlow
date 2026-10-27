@@ -46,6 +46,7 @@ import { useScreenInsets } from '../navigation/constants';
 import { TimePickerSheet, formatReminderTime, pad2 } from '../ui/TimePickerSheet';
 import { DeleteAccountSheet } from '../ui/DeleteAccountSheet';
 import { exportUserData } from '../../utils/exportData';
+import { unregisterPushNotifications } from '../../utils/pushNotifications';
 import { errorMessage } from '../../utils/network';
 
 export function SettingsScreen() {
@@ -378,6 +379,8 @@ export function SettingsScreen() {
 
   const handleLogout = async () => {
     try {
+      // Ce téléphone ne doit plus recevoir les notifications de ce compte.
+      if (user) await unregisterPushNotifications(user);
       await signOut(auth);
     } catch (e: any) {
       appAlert("Erreur", e.message);

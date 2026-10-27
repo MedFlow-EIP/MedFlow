@@ -597,6 +597,18 @@ class Database:
                 """
             )
 
+            # Jetons de notifications push (un par appareil).
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS push_tokens (
+                    token TEXT PRIMARY KEY,
+                    uid TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_push_tokens_uid ON push_tokens(uid)")
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """
@@ -2152,6 +2164,26 @@ class Database:
                 (uid, course_id),
             )
         return result.rowcount > 0
+
+    def save_push_token(self, uid: str, token: str) -> None:
+        """Associe le jeton à ce compte (un téléphone change de compte : le jeton suit)."""
+        with self.transaction() as conn:
+            conn.execute(
+                "INSERT INTO push_tokens (token, uid, updated_at) VALUES (?, ?, ?) "
+                "ON CONFLICT(token) DO UPDATE SET uid=excluded.uid, updated_at=excluded.updated_at",
+                (token, uid, datetime.now(timezone.utc).isoformat()),
+            )
+
+    def delete_push_token(self, token: str, uid: Optional[str] = None) -> None:
+        with self.transaction() as conn:
+            if uid is None:
+                conn.execute("DELETE FROM push_tokens WHERE token=?", (token,))
+            else:
+                conn.execute("DELETE FROM push_tokens WHERE token=? AND uid=?", (token, uid))
+
+    def get_push_tokens(self, uid: str) -> List[str]:
+        with self.connection() as conn:
+            return [r["token"] for r in conn.execute("SELECT token FROM push_tokens WHERE uid=?", (uid,)).fetchall()]
 
     def create_import_job(self, job_id: str, uid: str, file_name: str) -> None:
         with self.transaction() as conn:
