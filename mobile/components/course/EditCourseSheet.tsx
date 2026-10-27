@@ -21,6 +21,7 @@ import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/net
 import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
 import type { Flashcard } from './CourseContent';
+import { MAX_TAGS, MAX_TAG_CHARS, SPECIALTIES } from '../../utils/specialties';
 
 // Mêmes limites que le backend (routes/courses.py).
 const MAX_TITLE_CHARS = 120;
@@ -32,6 +33,7 @@ type Props = {
   courseId: string;
   title: string;
   flashcards: Flashcard[];
+  tags: string[];
   onClose: () => void;
   /** Cours renvoyé par le serveur après enregistrement. */
   onSaved: (course: any) => void;
@@ -41,13 +43,15 @@ type Props = {
  * Renommer un cours et corriger ses flashcards (l'IA se trompe parfois).
  * Le quiz n'est pas modifiable : le planning de révision dépend de ses questions.
  */
-export function EditCourseSheet({ visible, courseId, title, flashcards, onClose, onSaved }: Props) {
+export function EditCourseSheet({ visible, courseId, title, flashcards, tags: initialTags, onClose, onSaved }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { top, bottom } = useScreenInsets();
 
   const [name, setName] = useState(title);
   const [cards, setCards] = useState<Flashcard[]>(flashcards);
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const [customTag, setCustomTag] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,17 +60,34 @@ export function EditCourseSheet({ visible, courseId, title, flashcards, onClose,
     if (visible) {
       setName(title);
       setCards(flashcards.map((c) => ({ ...c })));
+      setTags([...initialTags]);
+      setCustomTag('');
       setError(null);
     }
   }, [visible]);
 
   const dirty =
     name.trim() !== title ||
+    tags.join('|') !== initialTags.join('|') ||
     cards.length !== flashcards.length ||
     cards.some((c, i) => c.question !== flashcards[i]?.question || c.answer !== flashcards[i]?.answer);
 
   const updateCard = (index: number, field: keyof Flashcard, value: string) =>
     setCards((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+
+  const toggleTag = (tag: string) =>
+    setTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : prev.length >= MAX_TAGS ? prev : [...prev, tag]
+    );
+
+  const addCustomTag = () => {
+    const tag = customTag.trim().replace(/s+/g, ' ');
+    if (!tag) return;
+    if (!tags.some((t) => t.toLowerCase() === tag.toLowerCase()) && tags.length < MAX_TAGS) {
+      setTags((prev) => [...prev, tag]);
+    }
+    setCustomTag('');
+  };
 
   const removeCard = (index: number) => setCards((prev) => prev.filter((_, i) => i !== index));
 
@@ -108,7 +129,7 @@ export function EditCourseSheet({ visible, courseId, title, flashcards, onClose,
       const res = await fetchWithTimeout(`${API_URL}/api/course/${encodeURIComponent(courseId)}`, {
         method: 'PATCH',
         headers: { ...(await getAuthHeaders(user)), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom: trimmedName, flashcards: cleaned }),
+        body: JSON.stringify({ nom: trimmedName, flashcards: cleaned, tags }),
       });
       onSaved(await readJsonOrThrow(res, 'Enregistrement impossible. Réessaie.'));
     } catch (err) {
@@ -162,6 +183,52 @@ export function EditCourseSheet({ visible, courseId, title, flashcards, onClose,
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Titre du cours"
           />
+
+          <View style={styles.sectionRow}>
+            <Text style={styles.label}>Spécialités ({tags.length}/{MAX_TAGS})</Text>
+          </View>
+          <View style={styles.tagWrap}>
+            {[...tags.filter((t) => !SPECIALTIES.includes(t)), ...SPECIALTIES].map((tag) => {
+              const active = tags.includes(tag);
+              const full = !active && tags.length >= MAX_TAGS;
+              return (
+                <TouchableOpacity
+                  key={tag}
+                  style={[styles.tag, active && styles.tagActive, full && styles.disabled]}
+                  onPress={() => toggleTag(tag)}
+                  disabled={full}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: active, disabled: full }}
+                >
+                  {active && <Ionicons name="checkmark" size={14} color={colors.primaryText} />}
+                  <Text style={[styles.tagText, active && styles.tagTextActive]}>{tag}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {tags.length < MAX_TAGS && (
+            <View style={styles.customTagRow}>
+              <TextInput
+                value={customTag}
+                onChangeText={setCustomTag}
+                maxLength={MAX_TAG_CHARS}
+                style={[styles.input, styles.flex]}
+                placeholder="Autre tag (ex. Partiel S1)"
+                placeholderTextColor={colors.textSecondary}
+                onSubmitEditing={addCustomTag}
+                accessibilityLabel="Ajouter un tag personnalisé"
+              />
+              <TouchableOpacity
+                style={[styles.addTagButton, !customTag.trim() && styles.disabled]}
+                onPress={addCustomTag}
+                disabled={!customTag.trim()}
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter ce tag"
+              >
+                <Ionicons name="add" size={22} color={colors.onAction} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.sectionRow}>
             <Text style={styles.label}>Flashcards ({cards.length})</Text>
@@ -290,6 +357,50 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       fontSize: 15,
       color: colors.textPrimary,
+    },
+    flex: {
+      flex: 1,
+    },
+    tagWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    tag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minHeight: 38,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    tagActive: {
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.tintPrimary,
+    },
+    tagText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    tagTextActive: {
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+    customTagRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    addTagButton: {
+      width: 50,
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: colors.action,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     multiline: {
       textAlignVertical: 'top',

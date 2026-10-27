@@ -13,7 +13,7 @@ import logging
 import os
 import sqlite3
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -35,6 +35,8 @@ class Course:
     sessions: int
     created_at: str
     updated_at: str
+    # Spécialités médicales (F54) : suggérées à l'import, modifiables.
+    tags: List[str] = field(default_factory=list)
 
 
 # Catalogue des badges — chaque condition est évaluée contre un dict de
@@ -163,6 +165,28 @@ class Database:
                 )
                 """
             )
+
+            try:
+                conn.execute("ALTER TABLE courses ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'")
+            except sqlite3.OperationalError:
+                pass
+
+            # Journal des réponses (révision, entraînement) : précision par
+            # spécialité, quêtes. Une ligne par réponse donnée.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS answer_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    course_id TEXT NOT NULL,
+                    item_index INTEGER NOT NULL,
+                    correct INTEGER NOT NULL,
+                    source TEXT NOT NULL,
+                    answered_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_answer_log_uid_date ON answer_log(uid, answered_at)")
 
             conn.execute(
                 """
@@ -532,14 +556,16 @@ class Database:
         with self.transaction() as conn:
             conn.execute(
                 """
-                INSERT INTO courses (uid, course_id, nom, summary, flashcards, quiz, sessions)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO courses (uid, course_id, nom, summary, flashcards, quiz, sessions, tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(uid, course_id) DO UPDATE SET
                     nom=excluded.nom,
                     summary=excluded.summary,
                     flashcards=excluded.flashcards,
                     quiz=excluded.quiz,
                     sessions=COALESCE(courses.sessions, excluded.sessions),
+                    -- Régénérer un cours garde les tags choisis par l'utilisateur.
+                    tags=CASE WHEN ? THEN excluded.tags ELSE courses.tags END,
                     updated_at=CURRENT_TIMESTAMP
                 """,
                 (
@@ -550,6 +576,8 @@ class Database:
                     json.dumps(payload.get("flashcards", []), ensure_ascii=False),
                     json.dumps(payload.get("quiz", []), ensure_ascii=False),
                     payload.get("sessions", 0),
+                    json.dumps(payload.get("tags", []), ensure_ascii=False),
+                    "tags" in payload,
                 ),
             )
 
@@ -575,7 +603,7 @@ class Database:
         with self.connection() as conn:
             rows = conn.execute(
                 """
-                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at
+                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags
                 FROM courses
                 WHERE uid=?
                 ORDER BY updated_at DESC
@@ -1368,11 +1396,74 @@ class Database:
             raise ValueError("Question de quiz introuvable")
 
         correct_answer = course.quiz[item_index].get("correct")
+        with self.transaction() as conn:
+            self._log_answer(conn, uid, course_id, item_index, selected_option == correct_answer, "practice")
         return {
             "correct": selected_option == correct_answer,
             "correct_answer": correct_answer,
             "explanation": course.quiz[item_index].get("explanation"),
         }
+
+    @staticmethod
+    def _log_answer(conn, uid: str, course_id: str, item_index: int, correct: bool, source: str) -> None:
+        conn.execute(
+            "INSERT INTO answer_log (uid, course_id, item_index, correct, source, answered_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (uid, course_id, item_index, 1 if correct else 0, source, datetime.now(timezone.utc).isoformat()),
+        )
+
+    UNTAGGED_LABEL = "Sans spécialité"
+
+    def get_specialty_stats(self, uid: str) -> List[Dict]:
+        """Progression par spécialité (F69) : cours, questions, cartes maîtrisées,
+        cartes dues aujourd'hui et taux de bonnes réponses. Un cours à plusieurs
+        tags compte dans chacune de ses spécialités."""
+        courses = self.fetch_courses(uid)
+        today = date.today().isoformat()
+        with self.connection() as conn:
+            schedule = {
+                (r["course_id"], r["item_index"]): r
+                for r in conn.execute(
+                    "SELECT course_id, item_index, interval_days, next_review_date FROM revision_schedule WHERE uid=?",
+                    (uid,),
+                ).fetchall()
+            }
+            answers = {
+                r["course_id"]: (r["total"], r["correct"] or 0)
+                for r in conn.execute(
+                    "SELECT course_id, COUNT(*) AS total, SUM(correct) AS correct FROM answer_log WHERE uid=? GROUP BY course_id",
+                    (uid,),
+                ).fetchall()
+            }
+
+        groups: Dict[str, Dict] = {}
+        for course in courses:
+            questions = len(course.quiz or [])
+            mastered = due = 0
+            for idx in range(questions):
+                row = schedule.get((course.id, idx))
+                if row is None or row["next_review_date"] <= today:
+                    due += 1
+                if row is not None and row["interval_days"] >= self.MASTERED_INTERVAL_DAYS:
+                    mastered += 1
+            total, correct = answers.get(course.id, (0, 0))
+            for tag in course.tags or [self.UNTAGGED_LABEL]:
+                g = groups.setdefault(tag, {"tag": tag, "courses": 0, "questions": 0, "mastered": 0,
+                                            "due_today": 0, "answers": 0, "correct": 0})
+                g["courses"] += 1
+                g["questions"] += questions
+                g["mastered"] += mastered
+                g["due_today"] += due
+                g["answers"] += total
+                g["correct"] += correct
+
+        result = []
+        for g in groups.values():
+            g["mastery"] = round(100 * g["mastered"] / g["questions"]) if g["questions"] else 0
+            g["accuracy"] = round(100 * g["correct"] / g["answers"]) if g["answers"] else None
+            result.append(g)
+        # Spécialités les plus fournies d'abord, « Sans spécialité » en dernier.
+        result.sort(key=lambda g: (g["tag"] == self.UNTAGGED_LABEL, -g["questions"], g["tag"]))
+        return result
 
     def search_courses(self, uid: str, query: str, limit: int = 30) -> List[Dict]:
         """Recherche insensible à la casse dans les noms de cours, les
@@ -1771,6 +1862,7 @@ class Database:
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
+            self._log_answer(conn, uid, course_id, item_index, is_correct, "revision")
 
         return {
             "correct": is_correct,
@@ -1942,8 +2034,9 @@ class Database:
         course_id: str,
         nom: Optional[str] = None,
         flashcards: Optional[List[Dict]] = None,
+        tags: Optional[List[str]] = None,
     ) -> bool:
-        """Renomme un cours et/ou remplace ses flashcards. Le quiz n'est pas
+        """Renomme un cours, remplace ses flashcards et/ou ses tags. Le quiz n'est pas
         modifiable : le planning de révision repose sur l'ordre de ses questions."""
         if not uid or not course_id:
             raise ValueError("UID and course_id are required")
@@ -1955,6 +2048,9 @@ class Database:
         if flashcards is not None:
             fields.append("flashcards=?")
             values.append(json.dumps(flashcards, ensure_ascii=False))
+        if tags is not None:
+            fields.append("tags=?")
+            values.append(json.dumps(tags, ensure_ascii=False))
         if not fields:
             return False
 
@@ -2046,7 +2142,7 @@ class Database:
 
             rows = conn.execute(
                 """
-                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at
+                SELECT course_id, nom, summary, flashcards, quiz, sessions, created_at, updated_at, tags
                 FROM courses
                 WHERE uid=?
                 ORDER BY updated_at DESC
@@ -2101,7 +2197,13 @@ class Database:
             logger.error("Invalid quiz JSON for course %s: %s", row["course_id"], exc)
             quiz = []
 
+        try:
+            tags = json.loads(row["tags"] or "[]") if "tags" in row.keys() else []
+        except json.JSONDecodeError:
+            tags = []
+
         return Course(
+            tags=tags,
             id=row["course_id"],
             nom=row["nom"],
             summary=row["summary"],
@@ -2320,4 +2422,4 @@ class Database:
 
             messages.append(row)
 
-        return messages
+        return messages
