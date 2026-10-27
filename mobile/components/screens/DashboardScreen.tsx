@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
@@ -18,6 +18,15 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
+import { OfflineBanner } from '../course/OfflineBanner';
+import { useScreenInsets } from '../navigation/constants';
+import {
+  DASHBOARD_CACHE_NAME,
+  courseCacheName,
+  readOffline,
+  removeOffline,
+  saveOffline,
+} from '../../utils/offlineCache';
 
 type Stats = {
   totalCourses: number;
@@ -29,19 +38,34 @@ type Stats = {
 type CourseSummary = {
   id: string;
   nom: string;
-  // sessions: number;
+  flashcards?: number;
+  quiz?: number;
+  created_at?: string;
 };
 
+type DueItem = { course_id: string; course_nom: string };
+
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const BAR_MAX_HEIGHT = 84;
+
+const formatShortDate = (iso?: string) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  return isNaN(date.getTime()) ? '' : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+};
+
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 export function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, tabBarHeight } = useScreenInsets();
+  const courseDotColors = [colors.primaryDark, colors.warning, colors.secondary, colors.success, colors.danger];
 
   const user = auth.currentUser;
   const navigation = useNavigation<Nav>();
   const [courses, setCourses] = useState<CourseSummary[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
 
   const [stats, setStats] = useState<Stats>({
     totalCourses: 0,
@@ -50,7 +74,38 @@ export function DashboardScreen() {
     avgScore: null,
   });
   const [forecast, setForecast] = useState<{ date: string; count: number }[]>([]);
-  const [revisionStreak, setRevisionStreak] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [dueToday, setDueToday] = useState<DueItem[]>([]);
+  const [offline, setOffline] = useState(false);
+
+  const applyDashboard = (data: any) => {
+    if (Array.isArray(data?.cours)) {
+      setCourses(data.cours);
+    }
+    if (data?.stats) {
+      setStats({
+        totalCourses: data.stats.cours ?? 0,
+        totalFlashcards: data.stats.flashcards ?? 0,
+        totalSessions: data.stats.sessions ?? 0,
+        avgScore: data.stats.detailed_sessions?.avg_score ?? null,
+      });
+    }
+  };
+
+  // Télécharge en arrière-plan le contenu de chaque cours pour qu'il reste
+  // consultable hors ligne, même s'il n'a jamais été ouvert.
+  const prefetchCourses = async (user: NonNullable<typeof auth.currentUser>, list: CourseSummary[]) => {
+    for (const course of list) {
+      try {
+        const res = await fetch(`${API_URL}/api/course/${course.id}`, {
+          headers: await getAuthHeaders(user),
+        });
+        if (res.ok) await saveOffline(user.uid, courseCacheName(course.id), await res.json());
+      } catch {
+        return; // réseau perdu : on réessaiera au prochain affichage
+      }
+    }
+  };
 
   const loadCourses = async () => {
     const user = auth.currentUser;
@@ -60,18 +115,12 @@ export function DashboardScreen() {
         headers: await getAuthHeaders(user),
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (Array.isArray(data.cours)) {
-        setCourses(data.cours);
-      }
-      if (data.stats) {
-        setStats({
-          totalCourses: data.stats.cours ?? 0,
-          totalFlashcards: data.stats.flashcards ?? 0,
-          totalSessions: data.stats.sessions ?? 0,
-          avgScore: data.stats.detailed_sessions?.avg_score ?? null,
-        });
-      }
+      applyDashboard(data);
+      setOffline(false);
+      saveOffline(user.uid, DASHBOARD_CACHE_NAME, data);
+      if (Array.isArray(data.cours)) prefetchCourses(user, data.cours);
 
       // Récupère la prévision (7 jours) une seule fois : sert à la fois à
       // l'affichage et à rafraîchir le rappel de notification — best-effort,
@@ -83,18 +132,35 @@ export function DashboardScreen() {
         const forecastData = await forecastRes.json();
         const days = Array.isArray(forecastData?.forecast) ? forecastData.forecast : [];
         setForecast(days);
-        setRevisionStreak(forecastData?.streak ?? 0);
-        const dueToday = days[0]?.count ?? 0;
-        await scheduleRevisionReminder(dueToday);
+        const dueTodayCount = days[0]?.count ?? 0;
+        await scheduleRevisionReminder(dueTodayCount);
       } catch {
         // Silencieux : la prévision n'est pas critique pour l'écran.
       }
+
+      // Cartes dues aujourd'hui, regroupées par cours sous le graphique.
+      try {
+        const dueRes = await fetch(`${API_URL}/api/revision/due`, {
+          headers: await getAuthHeaders(user),
+        });
+        const dueData = await dueRes.json();
+        setDueToday(Array.isArray(dueData?.items) ? dueData.items : []);
+      } catch {
+        // Silencieux : le détail du jour est un bonus.
+      }
     } catch (e) {
-      console.error(e);
+      // Hors ligne : on affiche la dernière liste de cours connue.
+      const cached = await readOffline<any>(user.uid, DASHBOARD_CACHE_NAME);
+      if (cached) {
+        applyDashboard(cached);
+        setOffline(true);
+      } else {
+        console.error(e);
+      }
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
+  const deleteCourse = async (courseId: string) => {
     const user = auth.currentUser;
     if (!user) return;
     try {
@@ -104,30 +170,36 @@ export function DashboardScreen() {
       });
 
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
+      removeOffline(user.uid, courseCacheName(courseId));
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const confirmDeleteCourse = (course: CourseSummary) => {
+    Alert.alert('Supprimer le cours', `« ${course.nom} » et ses flashcards seront supprimés.`, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: () => deleteCourse(course.id) },
+    ]);
   };
 
   useFocusEffect(
     useCallback(() => {
       const user = auth.currentUser;
       if (!user) return;
-
-      const loadAll = async () => {
-        setRefreshing(true);
-        try {
-          await Promise.all([loadCourses()]);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setRefreshing(false);
-        }
-      };
-
-      loadAll();
+      loadCourses();
     }, [user])
   );
+
+  const dueByCourse = useMemo(() => {
+    const groups = new Map<string, { id: string; nom: string; count: number }>();
+    for (const item of dueToday) {
+      const group = groups.get(item.course_id) ?? { id: item.course_id, nom: item.course_nom, count: 0 };
+      group.count += 1;
+      groups.set(item.course_id, group);
+    }
+    return [...groups.values()];
+  }, [dueToday]);
 
   if (!user) {
     return (
@@ -137,202 +209,225 @@ export function DashboardScreen() {
     );
   }
 
+  const maxCount = Math.max(1, ...forecast.map((d) => d.count));
+  const dayLabel = (date: string, idx: number) =>
+    idx === 0
+      ? 'Auj.'
+      : new Date(date + 'T12:00:00')
+          .toLocaleDateString('fr-FR', { weekday: 'short' })
+          .replace('.', '')
+          .replace(/^./, (c) => c.toUpperCase());
+  const selected = forecast[selectedDay];
+
+  const kpis = [
+    { icon: 'document-text-outline' as const, color: colors.primaryDark, value: String(stats.totalCourses), label: 'Cours' },
+    { icon: 'layers-outline' as const, color: colors.secondary, value: String(stats.totalFlashcards), label: 'Flashcards' },
+    { icon: 'school-outline' as const, color: colors.success, value: String(stats.totalSessions), label: 'Sessions' },
+    {
+      icon: 'trending-up-outline' as const,
+      color: colors.warning,
+      value: stats.avgScore !== null ? `${Math.round(stats.avgScore)} %` : '—',
+      label: 'Score',
+    },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title} accessibilityRole="header">Tableau de bord</Text>
-          <Text style={styles.subtitle}>Vue d'ensemble de votre apprentissage</Text>
-        </View>
-        <View style={styles.headerIcons}>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: top, paddingBottom: tabBarHeight + 24 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={styles.title} accessibilityRole="header">Statistiques</Text>
+            <Text style={styles.subtitle}>Ta progression en un coup d’œil</Text>
+          </View>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Search')}
             accessibilityRole="button"
             accessibilityLabel="Rechercher"
           >
-            <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
+            <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Progress')}
             accessibilityRole="button"
-            accessibilityLabel="Progression"
+            accessibilityLabel="Statistiques avancées"
           >
-            <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
+            <Ionicons name="trending-up-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        {/* <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={24} color="#6b7280" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="calendar-outline" size={24} color="#6b7280" />
-          </TouchableOpacity>
-        </View> */}
-      </View>
 
-      <View style={styles.statsStrip}>
-        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalCourses} cours`}>
-          <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-          <Text style={styles.statChipValue}>{stats.totalCourses}</Text>
-          <Text style={styles.statChipLabel}>Cours</Text>
+        {offline && <OfflineBanner />}
+
+        <View style={styles.kpiRow}>
+          {kpis.map((kpi) => (
+            <View key={kpi.label} style={styles.kpi} accessible accessibilityLabel={`${kpi.label} : ${kpi.value}`}>
+              <Ionicons name={kpi.icon} size={20} color={kpi.color} />
+              <Text style={styles.kpiValue}>{kpi.value}</Text>
+              <Text style={styles.kpiLabel}>{kpi.label}</Text>
+            </View>
+          ))}
         </View>
-        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalFlashcards} flashcards générées`}>
-          <Ionicons name="layers-outline" size={18} color={colors.secondary} />
-          <Text style={styles.statChipValue}>{stats.totalFlashcards}</Text>
-          <Text style={styles.statChipLabel}>Flashcards</Text>
-        </View>
-        <View style={styles.statChip} accessible={true} accessibilityLabel={`${stats.totalSessions} sessions d'étude`}>
-          <Ionicons name="school-outline" size={18} color={colors.success} />
-          <Text style={styles.statChipValue}>{stats.totalSessions}</Text>
-          <Text style={styles.statChipLabel}>Sessions</Text>
-        </View>
-        <View
-          style={styles.statChip}
-          accessible={true}
-          accessibilityLabel={stats.avgScore !== null ? `Score moyen : ${Math.round(stats.avgScore)}%` : 'Score moyen : pas encore de données'}
+
+        <TouchableOpacity
+          style={styles.reviseButton}
+          onPress={() => navigation.navigate('Revision')}
+          accessibilityRole="button"
+          accessibilityLabel="Lancer une session de révision"
         >
-          <Ionicons name="trending-up-outline" size={18} color={colors.warning} />
-          <Text style={styles.statChipValue}>
-            {stats.avgScore !== null ? `${Math.round(stats.avgScore)}%` : '—'}
-          </Text>
-          <Text style={styles.statChipLabel}>Score moyen</Text>
-        </View>
-      </View>
+          <Ionicons name="flash-outline" size={20} color={colors.onAction} />
+          <Text style={styles.reviseButtonText}>Réviser maintenant</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.reviseButton}
-        onPress={() => navigation.navigate('Revision')}
-        accessibilityRole="button"
-        accessibilityLabel="Lancer une session de révision"
-      >
-        <Ionicons name="flash-outline" size={20} color={colors.onAccent} />
-        <Text style={styles.reviseButtonText}>Réviser maintenant</Text>
-        {revisionStreak > 0 && (
-          <View
-            style={styles.streakPill}
-            accessible={true}
-            accessibilityLabel={`${revisionStreak} jour${revisionStreak > 1 ? 's' : ''} de série de révision`}
+        <View style={styles.secondaryButtonsRow}>
+          <TouchableOpacity
+            style={[styles.secondaryChip, { backgroundColor: colors.tintWarning }]}
+            onPress={() => navigation.navigate('Revision', { startMode: 'leeches' })}
+            accessibilityRole="button"
+            accessibilityLabel="Revoir les cartes difficiles"
           >
-            <Ionicons name="flame" size={14} color={colors.warning} />
-            <Text style={styles.streakPillText}>{revisionStreak}</Text>
+            <Ionicons name="warning-outline" size={16} color={colors.warningText} />
+            <Text style={[styles.secondaryChipText, { color: colors.warningText }]}>Cartes difficiles</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.secondaryChip, { backgroundColor: colors.tintSuccess }]}
+            onPress={() => navigation.navigate('Mastered')}
+            accessibilityRole="button"
+            accessibilityLabel="Voir les cartes maîtrisées"
+          >
+            <Ionicons name="trophy-outline" size={16} color={colors.successText} />
+            <Text style={[styles.secondaryChipText, { color: colors.successText }]}>Cartes maîtrisées</Text>
+          </TouchableOpacity>
+        </View>
+
+        {forecast.length > 0 && (
+          <View style={styles.forecastCard}>
+            <View style={styles.forecastHeader}>
+              <Text style={styles.forecastTitle}>À réviser cette semaine</Text>
+              <Text style={styles.forecastHint}>Touche un jour</Text>
+            </View>
+
+            <View style={styles.forecastRow}>
+              {forecast.map((day, idx) => {
+                const isSelected = idx === selectedDay;
+                const barHeight = day.count === 0 ? 6 : Math.max(14, (day.count / maxCount) * BAR_MAX_HEIGHT);
+                const label = dayLabel(day.date, idx);
+                return (
+                  <TouchableOpacity
+                    key={day.date}
+                    style={styles.forecastDay}
+                    onPress={() => setSelectedDay(idx)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${label} : ${plural(day.count, 'carte')} à réviser`}
+                  >
+                    <Text style={[styles.forecastCount, isSelected && { color: colors.primaryText }]}>{day.count}</Text>
+                    <View
+                      style={[
+                        styles.forecastBar,
+                        {
+                          height: barHeight,
+                          backgroundColor:
+                            day.count === 0 ? colors.border : isSelected ? colors.primaryDark : colors.tintPrimaryStrong,
+                        },
+                      ]}
+                    />
+                    <Text style={[styles.forecastDayLabel, isSelected && styles.forecastDayLabelSelected]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {selected && (
+              <>
+                <View style={styles.separator} />
+                <Text style={styles.dayTitle}>
+                  {selectedDay === 0 ? 'Aujourd’hui' : dayLabel(selected.date, selectedDay)} · {plural(selected.count, 'carte')}
+                </Text>
+                {selectedDay === 0 ? (
+                  dueByCourse.map((group, i) => (
+                    <TouchableOpacity
+                      key={group.id}
+                      style={styles.dueRow}
+                      onPress={() => navigation.navigate('Revision', { courseId: group.id })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Réviser ${group.nom}, ${plural(group.count, 'carte')}`}
+                    >
+                      <View style={[styles.dueDot, { backgroundColor: courseDotColors[i % courseDotColors.length] }]} />
+                      <Text style={styles.dueName}>{group.nom}</Text>
+                      <Text style={styles.dueCount}>{plural(group.count, 'carte')}</Text>
+                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.dayHint}>
+                    Le détail par cours s’affichera le jour même dans « Réviser maintenant ».
+                  </Text>
+                )}
+              </>
+            )}
           </View>
         )}
-      </TouchableOpacity>
 
-      <View style={styles.secondaryButtonsRow}>
-        <TouchableOpacity
-          style={styles.leechesButton}
-          onPress={() => navigation.navigate('Revision', { startMode: 'leeches' })}
-          accessibilityRole="button"
-          accessibilityLabel="Revoir les cartes difficiles"
-        >
-          <Ionicons name="warning-outline" size={16} color={colors.warning} />
-          <Text style={styles.leechesButtonText}>Cartes difficiles</Text>
-        </TouchableOpacity>
+        <View style={styles.coursesHeader}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
+          <Text style={styles.coursesCount}>{plural(courses.length, 'PDF importé')}</Text>
+        </View>
 
-        <TouchableOpacity
-          style={styles.masteredButton}
-          onPress={() => navigation.navigate('Mastered')}
-          accessibilityRole="button"
-          accessibilityLabel="Voir les cartes maîtrisées"
-        >
-          <Ionicons name="trophy-outline" size={16} color={colors.success} />
-          <Text style={styles.masteredButtonText}>Cartes maîtrisées</Text>
-        </TouchableOpacity>
-      </View>
-
-      {forecast.length > 0 && (
-        <View style={styles.forecastCard}>
-          <Text style={styles.forecastTitle}>À réviser cette semaine</Text>
-          <View style={styles.forecastRow}>
-            {forecast.map((day, idx) => {
-              const maxCount = Math.max(1, ...forecast.map((d) => d.count));
-              const fillHeight = day.count === 0 ? 0 : 8 + (day.count / maxCount) * 32;
-              const dayLabel = idx === 0
-                ? 'Auj.'
-                : new Date(day.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
-              return (
-                <View
-                  key={day.date}
-                  style={styles.forecastDay}
-                  accessible={true}
-                  accessibilityLabel={`${dayLabel} : ${day.count} carte${day.count > 1 ? 's' : ''} à réviser`}
+        {courses.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun cours importé</Text>
+        ) : (
+          courses.map((course) => {
+            const meta = [
+              'PDF',
+              course.flashcards !== undefined ? plural(course.flashcards, 'flashcard') : '',
+              course.quiz ? '1 quiz' : '',
+              formatShortDate(course.created_at),
+            ]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <View key={course.id} style={styles.courseCard}>
+                <TouchableOpacity
+                  style={styles.courseMain}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${course.nom}, ${meta}`}
+                  onPress={() => navigation.navigate('CourseDetail', { courseId: course.id })}
                 >
-                  <Text style={styles.forecastCount}>{day.count}</Text>
-                  <View style={styles.forecastBarTrack}>
-                    {fillHeight > 0 && (
-                      <View
-                        style={[
-                          styles.forecastBarFill,
-                          { height: fillHeight, backgroundColor: colors.primary },
-                        ]}
-                      />
-                    )}
+                  <View style={styles.courseIcon}>
+                    <Ionicons name="document-text" size={22} color={colors.primaryDark} />
                   </View>
-                  <Text style={styles.forecastDayLabel}>{dayLabel}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      <View style={styles.courseSection}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
-      </View>
-
-  {courses.length === 0 ? (
-  <Text style={styles.emptyText}>Aucun cours importé</Text>
-) : (
-  courses.map((course) => (
-    <View key={course.id} style={styles.courseCardModern}>
-
-      {/* LEFT (cliquable entier) */}
-      <TouchableOpacity
-        style={styles.courseLeft}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={course.nom}
-        onPress={() =>
-          navigation.navigate('CourseDetail', {
-            courseId: course.id,
+                  <View style={styles.courseText}>
+                    <Text style={styles.courseTitle} numberOfLines={2}>{course.nom}</Text>
+                    <Text style={styles.courseMeta}>{meta}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => confirmDeleteCourse(course)}
+                  style={styles.deleteBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Supprimer le cours ${course.nom}`}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            );
           })
-        }
-      >
-        <View style={styles.courseIcon}>
-          <Ionicons name="document-text" size={20} color={colors.primary} />
-        </View>
+        )}
 
-        <View>
-          <Text style={styles.courseTitle} numberOfLines={1}>
-            {course.nom}
-          </Text>
-          {/* <Text style={styles.courseMeta}>
-            {course.sessions || 0} sessions
-          </Text> */}
-        </View>
-      </TouchableOpacity>
-
-      {/* RIGHT actions */}
-      <View style={styles.courseActions}>
         <TouchableOpacity
-          onPress={() => handleDeleteCourse(course.id)}
-          style={styles.actionBtn}
+          style={styles.importButton}
+          onPress={() => navigation.navigate('UploadCourse')}
           accessibilityRole="button"
-          accessibilityLabel="Supprimer le cours"
         >
-          <Ionicons name="trash-outline" size={20} color={colors.danger} />
+          <Ionicons name="add" size={20} color={colors.primaryText} />
+          <Text style={styles.importButtonText}>Importer un PDF</Text>
         </TouchableOpacity>
-      </View>
-
+      </ScrollView>
     </View>
-    
-  ))
-)}
-
-    </SafeAreaView>
   );
 }
 
@@ -343,20 +438,24 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.background,
     },
 
-    header: {
-      backgroundColor: colors.surface,
+    content: {
       paddingHorizontal: 20,
-      paddingTop: 25,
-      paddingBottom: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      gap: 20,
+    },
+
+    header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 10,
+    },
+
+    headerText: {
+      flex: 1,
+      gap: 4,
     },
 
     title: {
-      fontSize: 24,
+      fontSize: 26,
       fontWeight: '700',
       color: colors.textPrimary,
     },
@@ -364,267 +463,289 @@ function makeStyles(colors: ThemeColors) {
     subtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginTop: 4,
-    },
-
-    headerIcons: {
-      flexDirection: 'row',
-      gap: 12,
     },
 
     iconButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surfaceAlt,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
     },
 
-    courseSection: {
-      marginBottom: 24,
-      marginTop: 20,
-    },
-
-    sectionTitle: {
-      marginLeft: 10,
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-
-    statsStrip: {
+    kpiRow: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
-      marginTop: 16,
       gap: 10,
     },
 
-    statChip: {
+    kpi: {
       flex: 1,
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      paddingVertical: 12,
       alignItems: 'center',
-      gap: 4,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 4,
-      elevation: 1,
-    },
-
-    statChipValue: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-
-    statChipLabel: {
-      fontSize: 11,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-
-    courseCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      padding: 14,
-      borderRadius: 16,
-      marginBottom: 10,
-      shadowColor: '#000',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      elevation: 2,
-    },
-
-    courseSubtitle: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-
-    courseCardModern: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-
-      backgroundColor: colors.surface,
+      gap: 6,
+      paddingHorizontal: 6,
       paddingVertical: 14,
-      paddingHorizontal: 14,
       borderRadius: 16,
-
-      marginBottom: 10,
-
-      shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      elevation: 2,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
 
-    courseLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-    },
-
-    courseIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: colors.tintPrimary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-
-    courseTitle: {
-      fontSize: 15,
+    kpiValue: {
+      fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,
-      maxWidth: 200,
     },
 
-    courseMeta: {
+    kpiLabel: {
       fontSize: 12,
+      fontWeight: '500',
       color: colors.textSecondary,
-      marginTop: 2,
-    },
-
-    courseActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-
-    actionBtn: {
-      padding: 8,
-      borderRadius: 10,
-    },
-
-    emptyText: {
-      textAlign: 'center',
-      color: colors.muted,
-      marginTop: 20,
-      fontSize: 14,
     },
 
     reviseButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      backgroundColor: colors.primary,
-      marginHorizontal: 20,
-      marginTop: 16,
-      paddingVertical: 14,
+      gap: 10,
+      backgroundColor: colors.action,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       borderRadius: 14,
     },
 
     reviseButtonText: {
-      color: colors.onAccent,
-      fontSize: 15,
+      color: colors.onAction,
+      fontSize: 16,
       fontWeight: '600',
     },
-    streakPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 3,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 10,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      marginLeft: 4,
-    },
-    streakPillText: {
-      color: colors.onAccent,
-      fontSize: 13,
-      fontWeight: '700',
-    },
+
     secondaryButtonsRow: {
       flexDirection: 'row',
-      marginHorizontal: 20,
-      marginTop: 10,
       gap: 8,
+      marginTop: -8,
     },
-    leechesButton: {
+
+    secondaryChip: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      paddingVertical: 8,
-      backgroundColor: colors.tintWarning,
+      minHeight: 44,
       borderRadius: 12,
     },
-    leechesButtonText: {
-      color: colors.warning,
+
+    secondaryChipText: {
       fontSize: 13,
       fontWeight: '600',
     },
-    masteredButton: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 8,
-      backgroundColor: colors.tintSuccess,
-      borderRadius: 12,
-    },
-    masteredButtonText: {
-      color: colors.success,
-      fontSize: 13,
-      fontWeight: '600',
-    },
+
     forecastCard: {
+      gap: 16,
+      padding: 20,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      marginHorizontal: 20,
-      marginTop: 16,
-      padding: 16,
     },
+
+    forecastHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+
     forecastTitle: {
-      fontSize: 13,
+      fontSize: 16,
       fontWeight: '700',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      marginBottom: 12,
+      color: colors.textPrimary,
     },
+
+    forecastHint: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+
     forecastRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-end',
     },
+
     forecastDay: {
       alignItems: 'center',
-      gap: 4,
-      flex: 1,
+      gap: 6,
+      minWidth: 40,
     },
+
     forecastCount: {
-      fontSize: 11,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+
+    forecastBar: {
+      width: 28,
+      borderRadius: 8,
+    },
+
+    forecastDayLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+
+    forecastDayLabelSelected: {
+      fontWeight: '700',
+      color: colors.primaryText,
+    },
+
+    separator: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
+
+    dayTitle: {
+      fontSize: 14,
       fontWeight: '600',
       color: colors.textPrimary,
     },
-    forecastBarTrack: {
-      width: 16,
-      height: 40,
-      borderRadius: 8,
-      backgroundColor: colors.border,
-      justifyContent: 'flex-end',
-      overflow: 'hidden',
-    },
-    forecastBarFill: {
-      width: '100%',
-      borderRadius: 8,
-    },
-    forecastDayLabel: {
-      fontSize: 10,
+
+    dayHint: {
+      fontSize: 13,
       color: colors.textSecondary,
-      textTransform: 'capitalize',
+    },
+
+    dueRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceAlt,
+      marginTop: -6,
+    },
+
+    dueDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+
+    dueName: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+
+    dueCount: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+
+    coursesHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: -8,
+    },
+
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+
+    coursesCount: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+
+    courseCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingLeft: 14,
+      paddingRight: 8,
+      paddingVertical: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      marginTop: -8,
+    },
+
+    courseMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+    },
+
+    courseIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: colors.tintPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    courseText: {
+      flex: 1,
+      gap: 3,
+    },
+
+    courseTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+
+    courseMeta: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+
+    // Zone tactile 44 px pour la suppression.
+    deleteBtn: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    emptyText: {
+      textAlign: 'center',
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+
+    importButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: colors.primary,
+      backgroundColor: colors.tintPrimary,
+      marginTop: -8,
+    },
+
+    importButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
   });
 }

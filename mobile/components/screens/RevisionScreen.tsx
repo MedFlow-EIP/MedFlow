@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
@@ -9,6 +9,8 @@ import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { ProgressBar } from '../ui/progress';
+import { shuffle } from '../../utils/shuffle';
+import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type DueItem = {
@@ -18,6 +20,8 @@ type DueItem = {
   question: string;
   options: Record<string, string>;
   lapses?: number;
+  /** Ordre d'affichage des réponses, tiré au chargement de la session. */
+  optionOrder?: string[];
 };
 
 type AnswerResult = {
@@ -32,6 +36,7 @@ type RevisionRoute = RouteProp<RootStackParamList, 'Revision'>;
 export function RevisionScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, bottom } = useScreenInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RevisionRoute>();
   const courseId = route.params?.courseId;
@@ -68,8 +73,13 @@ export function RevisionScreen() {
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error('Erreur serveur');
       const data = await res.json();
-      const fetchedItems = Array.isArray(data.items) ? data.items : [];
-      setItems(fetchedItems);
+      const fetchedItems: DueItem[] = Array.isArray(data.items) ? data.items : [];
+      // Questions et réponses mélangées à chaque session, sinon on apprend
+      // l'ordre (ou la position de la bonne réponse) plutôt que le contenu.
+      // Les clés (A/B/C/D) restent celles du serveur pour /api/revision/answer.
+      setItems(
+        shuffle(fetchedItems).map((it) => ({ ...it, optionOrder: shuffle(Object.keys(it.options || {})) }))
+      );
       setCurrentIndex(0);
       setSelectedOption(null);
       setAnswerResult(null);
@@ -174,17 +184,17 @@ export function RevisionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: top }]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Chargement de la révision" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: top }]}>
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.muted} />
           <Text style={styles.emptyTitle}>Impossible de charger la révision</Text>
@@ -192,13 +202,13 @@ export function RevisionScreen() {
             <Text style={styles.primaryButtonText}>Réessayer</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Retour">
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -231,14 +241,14 @@ export function RevisionScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (finished) {
     const scorePercent = Math.round((correctCount / items.length) * 100);
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: top }]}>
         <View style={styles.centered}>
           <Ionicons name="ribbon-outline" size={64} color={colors.warning} />
           <Text style={styles.emptyTitle} accessibilityRole="header">Session terminée !</Text>
@@ -267,93 +277,118 @@ export function RevisionScreen() {
             <Text style={styles.secondaryButtonText}>Terminer</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const item = items[currentIndex];
-  const optionEntries = Object.entries(item.options || {});
+  const optionEntries = (item.optionOrder ?? Object.keys(item.options || {})).map(
+    (key) => [key, item.options[key]] as const
+  );
+  const correctText = answerResult ? (item.options || {})[answerResult.correct_answer] : undefined;
 
-  const optionStyle = (key: string) => {
-    if (!selectedOption) return styles.option;
-    if (!answerResult) {
-      // Réponse envoyée, en attente de la confirmation serveur — état
-      // neutre, surtout ne pas afficher rouge/vert avant de savoir.
-      return key === selectedOption ? [styles.option, styles.optionPending] : [styles.option, styles.optionDisabled];
-    }
-    if (key === answerResult.correct_answer) return [styles.option, styles.optionCorrect];
-    if (key === selectedOption) return [styles.option, styles.optionIncorrect];
-    return [styles.option, styles.optionDisabled];
+  // Même bordure 2 px et même indicateur rond aligné à droite pour tous les états.
+  const optionState = (key: string): 'idle' | 'pending' | 'correct' | 'incorrect' | 'dimmed' => {
+    if (!selectedOption) return 'idle';
+    if (!answerResult) return key === selectedOption ? 'pending' : 'dimmed';
+    if (key === answerResult.correct_answer) return 'correct';
+    if (key === selectedOption) return 'incorrect';
+    return 'idle';
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Retour">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Quitter la révision"
+        >
+          <Ionicons name="close" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">Révision</Text>
-        <Text style={styles.headerCount}>{currentIndex + 1} / {items.length}</Text>
+        <View style={styles.progressWrap}>
+          <ProgressBar progress={(currentIndex / items.length) * 100} height={8} color={colors.primaryDark} />
+        </View>
+        <Text style={styles.headerCount}>{currentIndex + 1}/{items.length}</Text>
       </View>
 
-      <ProgressBar progress={(currentIndex / items.length) * 100} height={6} />
-
-      <View style={styles.cardArea}>
-        <Text style={styles.courseLabel}>{item.course_nom}</Text>
-        <Text style={styles.questionText}>{item.question}</Text>
+      <ScrollView contentContainerStyle={styles.cardArea} showsVerticalScrollIndicator={false}>
+        <View style={styles.questionBlock}>
+          <Text style={styles.overline}>QUESTION {currentIndex + 1}</Text>
+          {!!item.course_nom && <Text style={styles.courseLabel}>{item.course_nom}</Text>}
+          <Text style={styles.questionText} accessibilityRole="header">{item.question}</Text>
+        </View>
 
         <View style={styles.optionsList}>
-          {optionEntries.map(([key, text]) => (
-            <TouchableOpacity
-              key={key}
-              style={optionStyle(key) as any}
-              onPress={() => selectOption(key)}
-              disabled={!!selectedOption}
-              accessibilityRole="button"
-              accessibilityLabel={`${key} : ${text}`}
-              accessibilityState={{ disabled: !!selectedOption, selected: key === selectedOption }}
-            >
-              <Text style={styles.optionLetter}>{key}</Text>
-              <Text style={styles.optionText}>{text}</Text>
-              {selectedOption && key === selectedOption && !answerResult && (
-                <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Vérification en cours" />
-              )}
-              {answerResult && key === answerResult.correct_answer && (
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              )}
-              {answerResult && key === selectedOption && !answerResult.correct && (
-                <Ionicons name="close-circle" size={20} color={colors.danger} />
-              )}
-            </TouchableOpacity>
-          ))}
+          {optionEntries.map(([key, text]) => {
+            const state = optionState(key);
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.option,
+                  state === 'pending' && styles.optionPending,
+                  state === 'correct' && styles.optionCorrect,
+                  state === 'incorrect' && styles.optionIncorrect,
+                  state === 'dimmed' && styles.optionDimmed,
+                ]}
+                onPress={() => selectOption(key)}
+                disabled={!!selectedOption}
+                accessibilityRole="button"
+                accessibilityLabel={`${text}${state === 'correct' ? ', bonne réponse' : state === 'incorrect' ? ', mauvaise réponse' : ''}`}
+                accessibilityState={{ disabled: !!selectedOption, selected: key === selectedOption }}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    state === 'correct' && styles.optionTextCorrect,
+                    state === 'incorrect' && styles.optionTextIncorrect,
+                  ]}
+                >
+                  {text}
+                </Text>
+                {state === 'pending' ? (
+                  <ActivityIndicator size="small" color={colors.primaryDark} accessibilityLabel="Vérification en cours" />
+                ) : state === 'correct' ? (
+                  <Ionicons name="checkmark-circle" size={26} color={colors.success} />
+                ) : state === 'incorrect' ? (
+                  <Ionicons name="close-circle" size={26} color={colors.danger} />
+                ) : (
+                  <View style={styles.indicator} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {answerResult?.is_leech && (
           <View style={styles.leechBadge} accessible={true} accessibilityLabel="Carte difficile — plusieurs échecs récents">
-            <Ionicons name="flame-outline" size={16} color={colors.warning} />
+            <Ionicons name="flame-outline" size={16} color={colors.warningText} />
             <Text style={styles.leechBadgeText}>Carte difficile — retravaille-la plus souvent</Text>
           </View>
         )}
 
-        {!answerResult?.correct && answerResult?.explanation && (
-          <View style={styles.explanationBox}>
-            <Text style={styles.explanationLabel}>Pourquoi ?</Text>
-            <Text style={styles.explanationText}>{answerResult.explanation}</Text>
+        {/* Après une erreur : bonne réponse + explication courte */}
+        {answerResult && !answerResult.correct && (!!correctText || !!answerResult.explanation) && (
+          <View style={styles.feedbackBox} accessibilityLiveRegion="polite">
+            {!!correctText && <Text style={styles.feedbackTitle}>{`Bonne réponse : ${correctText}`}</Text>}
+            {!!answerResult.explanation && <Text style={styles.feedbackText}>{answerResult.explanation}</Text>}
           </View>
         )}
+      </ScrollView>
 
-        {selectedOption && answerResult && (
-          <TouchableOpacity
-            style={styles.continueButton}
-            onPress={goToNext}
-            accessibilityRole="button"
-            accessibilityLabel="Continuer"
-          >
-            <Text style={styles.continueButtonText}>Continuer</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </SafeAreaView>
+      {selectedOption && answerResult && (
+        <TouchableOpacity
+          style={[styles.continueButton, { bottom: bottom + 16 }]}
+          onPress={goToNext}
+          accessibilityRole="button"
+          accessibilityLabel="Continuer"
+        >
+          <Text style={styles.continueButtonText}>Continuer</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -373,9 +408,22 @@ function makeStyles(colors: ThemeColors) {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 12,
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingBottom: 8,
+    },
+    closeButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    progressWrap: {
+      flex: 1,
     },
     headerTitle: {
       fontSize: 18,
@@ -384,6 +432,7 @@ function makeStyles(colors: ThemeColors) {
     },
     headerCount: {
       fontSize: 14,
+      fontWeight: '600',
       color: colors.textSecondary,
     },
     emptyTitle: {
@@ -398,62 +447,70 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     primaryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.action,
       paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 12,
+      paddingVertical: 14,
+      borderRadius: 14,
       marginTop: 8,
     },
     primaryButtonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontWeight: '600',
-      fontSize: 15,
+      fontSize: 16,
     },
     secondaryButton: {
-      borderWidth: 1,
-      borderColor: colors.primary,
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
       paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 12,
+      paddingVertical: 13,
+      borderRadius: 14,
       marginTop: 8,
     },
     secondaryButtonText: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '600',
       fontSize: 15,
     },
     practiceHint: {
       fontSize: 12,
-      color: colors.muted,
+      color: colors.textSecondary,
       textAlign: 'center',
       marginTop: 4,
     },
     cardArea: {
-      flex: 1,
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 120,
+      gap: 24,
+    },
+    questionBlock: {
+      gap: 8,
+    },
+    overline: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primaryText,
     },
     courseLabel: {
       fontSize: 13,
       color: colors.textSecondary,
-      textAlign: 'center',
-      marginTop: 12,
-      marginBottom: 8,
+      marginTop: -4,
     },
     questionText: {
-      fontSize: 19,
-      fontWeight: '700',
+      fontSize: 21,
+      fontWeight: '600',
       color: colors.textPrimary,
-      lineHeight: 26,
-      textAlign: 'center',
-      marginBottom: 28,
+      lineHeight: 29,
     },
+    // Réponses aérées : 12 px entre les choix, 16 px de padding, cible ≥ 56 px.
     optionsList: {
-      gap: 10,
+      gap: 12,
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+      minHeight: 56,
       backgroundColor: colors.surface,
       borderRadius: 14,
       padding: 16,
@@ -469,37 +526,49 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.tintDanger,
     },
     optionPending: {
-      borderColor: colors.primary,
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.tintPrimary,
     },
-    optionDisabled: {
-      opacity: 0.5,
-    },
-    optionLetter: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.surfaceAlt,
-      textAlign: 'center',
-      textAlignVertical: 'center',
-      lineHeight: 28,
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textPrimary,
+    optionDimmed: {
+      opacity: 0.6,
     },
     optionText: {
       flex: 1,
-      fontSize: 15,
+      fontSize: 16,
+      fontWeight: '500',
       color: colors.textPrimary,
     },
-    continueButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 14,
-      paddingVertical: 16,
+    optionTextCorrect: {
+      fontWeight: '600',
+      color: colors.successText,
+    },
+    optionTextIncorrect: {
+      fontWeight: '600',
+      color: colors.dangerText,
+    },
+    indicator: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.muted,
+      backgroundColor: colors.surface,
       alignItems: 'center',
-      marginTop: 24,
+      justifyContent: 'center',
+    },
+    // Bouton « Continuer » : padding vertical 16, 20 px de marge latérale, 28 px au-dessus de la barre système.
+    continueButton: {
+      position: 'absolute',
+      left: 20,
+      right: 20,
+      height: 56,
+      backgroundColor: colors.action,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     continueButtonText: {
-      color: colors.onAccent,
+      color: colors.onAction,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -510,33 +579,29 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.tintWarning,
       borderRadius: 12,
       padding: 12,
-      marginTop: 16,
+      marginTop: -8,
     },
     leechBadgeText: {
       flex: 1,
       fontSize: 13,
-      color: colors.textPrimary,
+      color: colors.warningText,
       fontWeight: '500',
     },
-    explanationBox: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 14,
-      marginTop: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+    feedbackBox: {
+      gap: 4,
+      padding: 16,
+      borderRadius: 14,
+      backgroundColor: colors.tintSuccess,
     },
-    explanationLabel: {
-      fontSize: 12,
+    feedbackTitle: {
+      fontSize: 15,
       fontWeight: '700',
-      color: colors.primary,
-      textTransform: 'uppercase',
-      marginBottom: 4,
+      color: colors.successText,
     },
-    explanationText: {
+    feedbackText: {
       fontSize: 14,
-      color: colors.textPrimary,
       lineHeight: 20,
+      color: colors.successText,
     },
   });
 }

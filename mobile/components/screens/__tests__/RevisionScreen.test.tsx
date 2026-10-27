@@ -62,6 +62,8 @@ beforeEach(() => {
   global.fetch = jest.fn();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mockGoBack.mockClear();
+  // Mélange neutralisé (tirage = dernier indice → ordre conservé) pour des tests déterministes.
+  jest.spyOn(Math, 'random').mockReturnValue(0.999999);
 });
 
 afterEach(() => {
@@ -120,7 +122,7 @@ describe('RevisionScreen — session de révision (quiz)', () => {
     expect(screen.getByText('206')).toBeTruthy();
     expect(screen.getByText('226')).toBeTruthy();
     expect(screen.getByText('246')).toBeTruthy();
-    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText('1/2')).toBeTruthy();
   });
 
   it('ne montre pas de bouton "Continuer" avant d\'avoir répondu', async () => {
@@ -201,7 +203,7 @@ describe('RevisionScreen — session de révision (quiz)', () => {
     await waitFor(() => {
       expect(screen.getByText('Quel est le plus grand organe du corps humain ?')).toBeTruthy();
     });
-    expect(screen.getByText('2 / 2')).toBeTruthy();
+    expect(screen.getByText('2/2')).toBeTruthy();
   });
 
   it('affiche l\'écran de fin avec le score après la dernière question', async () => {
@@ -531,7 +533,7 @@ describe('RevisionScreen — explication et carte difficile', () => {
     await waitFor(() => {
       expect(screen.getByText('Le rythme cardiaque normal est de 60 a 100 battements par minute.')).toBeTruthy();
     });
-    expect(screen.getByText('Pourquoi ?')).toBeTruthy();
+    expect(screen.getByText('Bonne réponse : 206')).toBeTruthy();
   });
 
   it('n\'affiche pas d\'explication quand la reponse est correcte', async () => {
@@ -570,7 +572,8 @@ describe('RevisionScreen — explication et carte difficile', () => {
     fireEvent.press(screen.getByText('186'));
 
     await waitFor(() => expect(screen.getByText('Continuer')).toBeTruthy());
-    expect(screen.queryByText('Pourquoi ?')).toBeNull();
+    // Sans explication, on affiche quand même la bonne réponse.
+    expect(screen.getByText('Bonne réponse : 206')).toBeTruthy();
   });
 
   it('affiche le badge "carte difficile" quand is_leech est vrai', async () => {

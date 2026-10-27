@@ -9,12 +9,12 @@ import {
   StyleSheet,
   Alert,
   Modal,
-  SafeAreaView,
   Image,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
   Keyboard,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
@@ -24,21 +24,11 @@ import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Animated, { 
-  FadeIn, 
-  FadeOut, 
-  SlideInRight,
-  SlideOutLeft,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
+import Svg, { Path as SvgPath } from 'react-native-svg';
+import Animated, { FadeIn, FadeOut, SlideInLeft, ZoomIn } from 'react-native-reanimated';
 
 import { API_URL } from '@/services/api';
+import { auth } from '../../firebaseConfig';
 import Markdown from 'react-native-markdown-display';
 import RenderHTML from 'react-native-render-html';
 import { useWindowDimensions } from "react-native";
@@ -46,7 +36,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { logScreenView } from '../../utils/analytics';
 
-const TAB_BAR_HEIGHT = 70;
+import { useScreenInsets } from '../navigation/constants';
 
 type Message = {
   type: "user" | "ai";
@@ -74,11 +64,23 @@ type RootStackParamList = {
 
 const { height } = Dimensions.get('window');
 
-const STORAGE_KEY = "@ai_conversations";
+// Ancienne clé commune à tous les comptes du téléphone : un compte voyait les
+// conversations d'un autre. Elle est supprimée au chargement.
+const LEGACY_STORAGE_KEY = "@ai_conversations";
+
+/** Historique stocké par utilisateur Firebase. */
+const storageKey = (uid: string) => `@ai_conversations:${uid}`;
+
+const SUGGESTIONS = [
+  "Résume les points clés de mon dernier cours",
+  "Fais-moi un quiz sur les os du crâne",
+  "Explique le cycle cardiaque simplement",
+];
 
 export function AIChatScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, tabBarHeight } = useScreenInsets();
 
   useEffect(() => {
     logScreenView('AIChatScreen');
@@ -97,19 +99,16 @@ export function AIChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
-  const menuAnimation = useSharedValue(0);
 
   const { width } = useWindowDimensions();
 
   const currentConv = conversations.find((c) => c.id === currentConvId);
-
-  const menuStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(menuAnimation.value, [0, 1], [0.8, 1]) }],
-    opacity: menuAnimation.value,
-  }));
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -139,7 +138,10 @@ export function AIChatScreen() {
 
   const loadConversations = async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      await AsyncStorage.removeItem(LEGACY_STORAGE_KEY);
+      const stored = await AsyncStorage.getItem(storageKey(uid));
       if (stored) {
         const parsed: Conversation[] = JSON.parse(stored);
         setConversations(parsed.sort((a, b) => b.createdAt - a.createdAt));
@@ -158,7 +160,8 @@ export function AIChatScreen() {
 
   useEffect(() => {
     if (conversations.length > 0) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+      const uid = auth.currentUser?.uid;
+      if (uid) AsyncStorage.setItem(storageKey(uid), JSON.stringify(conversations));
     }
   }, [conversations]);
 
@@ -168,7 +171,17 @@ export function AIChatScreen() {
     }, 200);
   }, [currentConv?.messages.length, isTyping]);
 
-  const createNewConversation = () => {
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2000);
+  };
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const createNewConversation = (announce = false) => {
     const newConv: Conversation = {
       id: Date.now().toString(),
       title: "Nouvelle conversation",
@@ -180,13 +193,15 @@ export function AIChatScreen() {
     setAttachments([]);
     setInput("");
     setIsHistoryVisible(false);
+    setIsAttachMenuOpen(false);
+    if (announce) showToast("Nouvelle conversation démarrée");
   };
 
   const generateTitle = (messages: Message[]): string => {
     const firstUserMsg = messages.find(m => m.type === "user");
     if (firstUserMsg?.text) {
-      return firstUserMsg.text.length > 30 
-        ? firstUserMsg.text.substring(0, 30) + "..." 
+      return firstUserMsg.text.length > 30
+        ? firstUserMsg.text.substring(0, 30) + "..."
         : firstUserMsg.text;
     }
     return "Nouvelle conversation";
@@ -218,12 +233,13 @@ export function AIChatScreen() {
     }
   };
 
-  const sendMessage = async () => {
-    if ((!input.trim() && attachments.length === 0) || !currentConvId) return;
+  const sendMessage = async (textOverride?: string) => {
+    const text = textOverride ?? input;
+    if ((!text.trim() && attachments.length === 0) || !currentConvId) return;
 
     const userMessage: Message = {
       type: "user",
-      text: input,
+      text,
       attachments: attachments.length > 0 ? [...attachments] : undefined,
       timestamp: Date.now(),
     };
@@ -231,8 +247,8 @@ export function AIChatScreen() {
     setConversations(prev =>
       prev.map(c =>
         c.id === currentConvId
-          ? { 
-              ...c, 
+          ? {
+              ...c,
               messages: [...c.messages, userMessage],
               title: c.messages.length === 0 ? generateTitle([userMessage]) : c.title,
             }
@@ -242,10 +258,11 @@ export function AIChatScreen() {
 
     setInput("");
     setAttachments([]);
+    setIsAttachMenuOpen(false);
     setIsTyping(true);
 
     try {
-      const aiResponse = await askMedicalAI(input);
+      const aiResponse = await askMedicalAI(text);
 
       setIsTyping(false);
 
@@ -292,9 +309,10 @@ export function AIChatScreen() {
           onPress: () => {
             setConversations(prev => {
               const filtered = prev.filter(c => c.id !== convId);
-              
-              AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-              
+
+              const uid = auth.currentUser?.uid;
+              if (uid) AsyncStorage.setItem(storageKey(uid), JSON.stringify(filtered));
+
               if (currentConvId === convId) {
                 if (filtered.length > 0) {
                   setCurrentConvId(filtered[0].id);
@@ -309,7 +327,7 @@ export function AIChatScreen() {
                   return [newConv];
                 }
               }
-              
+
               return filtered;
             });
           }
@@ -325,6 +343,36 @@ export function AIChatScreen() {
     setInput("");
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setAttachments([...attachments, {
+        type: 'image',
+        uri: result.assets[0].uri,
+        name: result.assets[0].fileName || 'Image'
+      }]);
+    }
+    setIsAttachMenuOpen(false);
+  };
+
+  const pickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "*/*",
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachments([...attachments, {
+        type: 'file',
+        uri: result.assets[0].uri,
+        name: result.assets[0].name
+      }]);
+    }
+    setIsAttachMenuOpen(false);
+  };
+
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -333,457 +381,355 @@ export function AIChatScreen() {
   const isHTML = (text: string) =>
   text.trim().startsWith("<") && text.includes("</");
 
+  // Conversations groupées par date dans le tiroir d'historique.
+  const historySections = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const today = startOfToday.getTime();
+    const weekAgo = today - 6 * 24 * 60 * 60 * 1000;
+    const groups: { title: string; items: Conversation[] }[] = [
+      { title: "AUJOURD’HUI", items: [] },
+      { title: "CETTE SEMAINE", items: [] },
+      { title: "PLUS ANCIEN", items: [] },
+    ];
+    for (const conv of conversations) {
+      const bucket = conv.createdAt >= today ? 0 : conv.createdAt >= weekAgo ? 1 : 2;
+      groups[bucket].items.push(conv);
+    }
+    return groups.filter((g) => g.items.length > 0);
+  }, [conversations]);
+
+  const canSend = !!input.trim() || attachments.length > 0;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: top - 12 }]}>
       {/* Header */}
-      <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerButton}
           onPress={() => setIsHistoryVisible(true)}
           accessibilityRole="button"
           accessibilityLabel="Historique des conversations"
         >
-          <Ionicons name="menu" size={24} color={colors.textSecondary} />
+          <Ionicons name="menu" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        
-        <View style={styles.headerCenter}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerBadge}
-          >
-            <Ionicons name="sparkles" size={16} color={colors.onAccent} />
-          </LinearGradient>
-          <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
-            {currentConv?.title || "Assistant Médical"}
-          </Text>
-        </View>
-        
-        <TouchableOpacity 
+
+        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
+          {currentConv?.title || "Assistant Médical"}
+        </Text>
+
+        <TouchableOpacity
           style={styles.headerButton}
-          onPress={createNewConversation}
+          onPress={() => createNewConversation(true)}
           accessibilityRole="button"
           accessibilityLabel="Nouvelle conversation"
         >
-          <Ionicons name="create-outline" size={24} color={colors.textSecondary} />
+          <Ionicons name="create-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-      </BlurView>
+      </View>
 
-      {/* Modal Historique */}
+      {/* Tiroir Historique */}
       <Modal
         visible={isHistoryVisible}
-        animationType="slide"
+        animationType="fade"
         transparent
         onRequestClose={() => setIsHistoryVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View 
-            style={styles.modalContent}
-          >
-            <LinearGradient
-              colors={[colors.surface, colors.background]}
-              style={styles.modalGradient}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Historique</Text>
-                <TouchableOpacity 
-                  style={styles.modalClose}
-                  onPress={() => setIsHistoryVisible(false)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Fermer"
-                >
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={conversations}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.historyItem,
-                      item.id === currentConvId && styles.historyItemActive
-                    ]}
-                    onPress={() => selectConversation(item.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.title}
-                    accessibilityState={{ selected: item.id === currentConvId }}
-                  >
-                    <View style={styles.historyItemLeft}>
-                      <View style={[
-                        styles.historyIcon,
-                        item.id === currentConvId && styles.historyIconActive
-                      ]}>
-                        <Ionicons 
-                          name="chatbubble-ellipses" 
-                          size={20} 
-                          color={item.id === currentConvId ? colors.onAccent : colors.primary} 
-                        />
-                      </View>
-                      <View style={styles.historyInfo}>
-                        <Text 
-                          style={[
-                            styles.historyTitle,
-                            item.id === currentConvId && styles.historyTitleActive
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {item.title}
-                        </Text>
-                        <Text style={styles.historyDate}>
-                          {new Date(item.createdAt).toLocaleDateString('fr-FR')}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <TouchableOpacity
-                      onPress={() => deleteConversation(item.id)}
-                      style={styles.historyDelete}
-                      accessibilityRole="button"
-                      accessibilityLabel="Supprimer la conversation"
-                    >
-                      <Ionicons 
-                        name="trash-outline" 
-                        size={18} 
-                        color={item.id === currentConvId ? colors.onAccent : colors.danger} 
-                      />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                )}
-              />
-
-              <TouchableOpacity 
-                style={styles.newConversationButton}
-                onPress={createNewConversation}
+          {/* Toucher n'importe où sur la zone assombrie ferme l'historique */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setIsHistoryVisible(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer l'historique"
+          />
+          <Animated.View entering={SlideInLeft.duration(200)} style={[styles.drawer, { paddingTop: top + 12 }]}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle} accessibilityRole="header">Historique</Text>
+              <TouchableOpacity
+                style={styles.newChip}
+                onPress={() => createNewConversation(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Nouvelle conversation"
               >
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.newConversationGradient}
-                >
-                  <Ionicons name="add" size={24} color={colors.onAccent} />
-                  <Text style={styles.newConversationText}>
-                    Nouvelle conversation
-                  </Text>
-                </LinearGradient>
+                <Ionicons name="create-outline" size={16} color={colors.primaryText} />
+                <Text style={styles.newChipText}>Nouveau</Text>
               </TouchableOpacity>
-            </LinearGradient>
-          </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.drawerList}>
+              {historySections.map((section) => (
+                <View key={section.title} style={styles.drawerSection}>
+                  <Text style={styles.drawerSectionTitle}>{section.title}</Text>
+                  {section.items.map((item) => {
+                    const active = item.id === currentConvId;
+                    return (
+                      <View key={item.id} style={[styles.historyItem, active && styles.historyItemActive]}>
+                        {active && <View style={styles.historyActiveBar} />}
+                        <TouchableOpacity
+                          style={styles.historyItemMain}
+                          onPress={() => selectConversation(item.id)}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.title}
+                          accessibilityState={{ selected: active }}
+                        >
+                          <Text
+                            style={[styles.historyTitle, active && styles.historyTitleActive]}
+                            numberOfLines={1}
+                          >
+                            {item.title}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => deleteConversation(item.id)}
+                          style={styles.historyDelete}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Supprimer la conversation ${item.title}`}
+                        >
+                          <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+          </Animated.View>
         </View>
       </Modal>
 
       {/* Messages */}
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={[
-          styles.messagesContent,
-          { paddingBottom: currentConvId ? 0 : 30 }
-        ]}
+        style={[styles.messagesContainer, { marginBottom: tabBarHeight + 72 }]}
+        contentContainerStyle={styles.messagesContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
+        {toast && (
+          <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.toastRow}>
+            <View style={styles.toast} accessibilityLiveRegion="polite">
+              <Ionicons name="create-outline" size={16} color={colors.background} />
+              <Text style={styles.toastText}>{toast}</Text>
+            </View>
+          </Animated.View>
+        )}
+
         {currentConv?.messages.length === 0 ? (
-          <View style={styles.emptyState}>
-            <LinearGradient
-              colors={[colors.tintPrimary, colors.tintPrimary]}
-              style={styles.emptyIcon}
-            >
-              <Ionicons name="chatbubble-ellipses" size={48} color={colors.primary} />
-            </LinearGradient>
-            <Text style={styles.emptyTitle}>Comment puis-je vous aider ?</Text>
-            <Text style={styles.emptyText}>
-              Posez vos questions médicales, demandez des explications ou partagez des documents
-            </Text>
-          </View>
+          <Animated.View key={currentConvId} entering={ZoomIn.duration(250)} style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Svg width={30} height={30} viewBox="0 0 30 30" fill="none">
+                <SvgPath
+                  d="M15 1.5V7.5M15 22.5V28.5M1.5 15H7.5M22.5 15H28.5M6 6L9.75 9.75M20.25 20.25L24 24M6 24L9.75 20.25M20.25 9.75L24 6"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  stroke={colors.primaryDark}
+                />
+              </Svg>
+            </View>
+            <Text style={styles.emptyTitle}>Sur quoi veux-tu réviser ?</Text>
+            <Text style={styles.emptyText}>Pose une question ou pars d’un de tes cours.</Text>
+
+            <View style={styles.suggestions}>
+              {SUGGESTIONS.map((suggestion) => (
+                <TouchableOpacity
+                  key={suggestion}
+                  style={styles.suggestion}
+                  onPress={() => sendMessage(suggestion)}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.suggestionText}>{suggestion}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
         ) : (
           currentConv?.messages.map((message, index) => (
-            <Animated.View 
+            <Animated.View
               key={index}
               entering={FadeIn.delay(index * 100)}
-              style={[
-                styles.messageRow,
-                message.type === 'user' ? styles.userRow : styles.aiRow
-              ]}
+              style={message.type === 'user' ? styles.userRow : styles.aiRow}
             >
-              {message.type === 'ai' && (
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  style={styles.aiAvatar}
-                >
-                  <Ionicons name="sparkles" size={16} color={colors.onAccent} />
-                </LinearGradient>
-              )}
-
-                <View style={[
-                  styles.messageBubble,
-                  message.type === 'user' ? styles.userBubble : styles.aiBubble
-                ]}>
-                  {message.attachments?.map((att, idx) => (
-                    <View key={idx} style={styles.attachmentPreview}>
-                      {att.type === 'image' ? (
-                        <Image
-                          source={{ uri: att.uri }}
-                          style={styles.attachmentImage}
-                          accessibilityLabel={`Image jointe : ${att.name}`}
-                        />
-                      ) : (
-                        <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentFile}>
-                          <Ionicons name="document-text" size={24} color={colors.primary} />
-                          <Text style={styles.attachmentFileName}>{att.name}</Text>
-                        </BlurView>
-                      )}
-                    </View>
-                  ))}
-
-                  {message.type === "ai" ? (
-                    isHTML(message.text) ? (
-                      <RenderHTML
-                        contentWidth={width}
-                        source={{ html: message.text }}
-                        baseStyle={{ color: colors.textPrimary }}
+              <View style={message.type === 'user' ? styles.userBubble : styles.aiBubble}>
+                {message.attachments?.map((att, idx) => (
+                  <View key={idx} style={styles.attachmentPreview}>
+                    {att.type === 'image' ? (
+                      <Image
+                        source={{ uri: att.uri }}
+                        style={styles.attachmentImage}
+                        accessibilityLabel={`Image jointe : ${att.name}`}
                       />
                     ) : (
-                      <Markdown
-                        style={{
-                          body: {
-                            color: colors.textPrimary,
-                            fontSize: 14,
-                            lineHeight: 20,
-                          },
-                          strong: { fontWeight: "700" },
-                          bullet_list: { marginTop: 4 },
-                          code_inline: {
-                            backgroundColor: colors.surfaceAlt,
-                            color: colors.textPrimary,
-                            padding: 4,
-                            borderRadius: 6,
-                          },
-                        }}
-                      >
-                        {message.text}
-                      </Markdown>
-                    )
-                  ) : (
-                    <Text style={styles.userText}>{message.text}</Text>
-                  )}
+                      <View style={styles.attachmentFile}>
+                        <Ionicons name="document-text" size={24} color={colors.primaryDark} />
+                        <Text style={styles.attachmentFileName}>{att.name}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
 
-                  <Text style={[
-                    styles.messageTime,
-                    message.type === 'user' ? styles.userTime : styles.aiTime
-                  ]}>
-                    {formatTime(message.timestamp)}
-                  </Text>
-                </View>
-                
-                <Text style={[
-                  styles.messageTime,
-                  message.type === 'user' ? styles.userTime : styles.aiTime
-                ]}>
-                  {formatTime(message.timestamp)}
-                </Text>
+                {message.type === "ai" ? (
+                  isHTML(message.text) ? (
+                    <RenderHTML
+                      contentWidth={width}
+                      source={{ html: message.text }}
+                      baseStyle={{ color: colors.textPrimary, fontSize: 15, lineHeight: 23 }}
+                    />
+                  ) : (
+                    <Markdown
+                      style={{
+                        body: {
+                          color: colors.textPrimary,
+                          fontSize: 15,
+                          lineHeight: 23,
+                        },
+                        heading1: { fontSize: 19, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+                        heading2: { fontSize: 17, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+                        heading3: { fontSize: 17, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+                        strong: { fontWeight: "700" },
+                        bullet_list: { marginTop: 4 },
+                        table: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginVertical: 4 },
+                        thead: { backgroundColor: colors.surfaceAlt },
+                        th: { padding: 10, fontWeight: "600" },
+                        td: { padding: 10 },
+                        tr: { borderBottomWidth: 0 },
+                        code_inline: {
+                          backgroundColor: colors.surfaceAlt,
+                          color: colors.textPrimary,
+                          padding: 4,
+                          borderRadius: 6,
+                        },
+                      }}
+                    >
+                      {message.text}
+                    </Markdown>
+                  )
+                ) : (
+                  <Text style={styles.userText}>{message.text}</Text>
+                )}
+              </View>
+
+              <Text style={[styles.messageTime, message.type === 'user' && styles.userTime]}>
+                {formatTime(message.timestamp)}
+              </Text>
             </Animated.View>
           ))
         )}
-        
+
         {isTyping && (
-          <Animated.View 
-            entering={FadeIn}
-            style={[styles.messageRow, styles.aiRow]}
-          >
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              style={styles.aiAvatar}
+          <Animated.View entering={FadeIn} style={styles.aiRow}>
+            <View
+              style={[styles.aiBubble, styles.typingBubble]}
+              accessible
+              accessibilityLabel="L'assistant écrit une réponse"
             >
-              <Ionicons name="sparkles" size={16} color={colors.onAccent} />
-            </LinearGradient>
-            <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
-              <View style={styles.typingIndicator}>
-                <View style={styles.typingDot} />
-                <View style={[styles.typingDot, styles.typingDotDelay]} />
-                <View style={[styles.typingDot, styles.typingDotDelay2]} />
-              </View>
+              <View style={styles.typingDot} />
+              <View style={[styles.typingDot, styles.typingDotDelay]} />
+              <View style={[styles.typingDot, styles.typingDotDelay2]} />
             </View>
           </Animated.View>
         )}
       </ScrollView>
-
-      {/* Attachments preview */}
-      {attachments.length > 0 && (
-        <Animated.View 
-          entering={FadeIn}
-          style={[
-            styles.attachmentsContainer,
-            { bottom: currentConvId ? (keyboardHeight > 0 ? 100 + keyboardHeight : 100) : 0 }
-          ]}
-        >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {attachments.map((att, index) => (
-              <BlurView key={index} intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.attachmentItem}>
-                {att.type === 'image' ? (
-                  <Image
-                    source={{ uri: att.uri }}
-                    style={styles.attachmentThumb}
-                    accessibilityLabel={`Image à envoyer : ${att.name}`}
-                  />
-                ) : (
-                  <View style={styles.attachmentThumbFile}>
-                    <Ionicons name="document-text" size={30} color={colors.primary} />
-                  </View>
-                )}
-                <TouchableOpacity 
-                  style={styles.removeAttachment}
-                  onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}
-                  accessibilityRole="button"
-                  accessibilityLabel="Retirer la pièce jointe"
-                >
-                  <Ionicons name="close-circle" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </BlurView>
-            ))}
-          </ScrollView>
-        </Animated.View>
-      )}
 
       {/* Input area */}
       {currentConvId && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          style={styles.keyboardAvoidingView}
+          style={[styles.keyboardAvoidingView, { bottom: tabBarHeight + 14 }]}
         >
-          <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.inputContainer}>
-            {/* <TouchableOpacity 
-              style={styles.attachButton}
-              onPress={() => {
-                menuAnimation.value = withSpring(menuAnimation.value === 0 ? 1 : 0);
-              }}
-            >
-              <Ionicons name="add" size={24} color="#4b5563" />
-            </TouchableOpacity> */}
-
-            <TextInput
-              ref={inputRef}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Écrivez votre message..."
-              accessibilityLabel="Message à l'assistant IA"
-              style={styles.input}
-              multiline
-              placeholderTextColor={colors.muted}
-            />
-            
-            <View style={styles.inputActions}>
-              {/* <TouchableOpacity 
-                style={[styles.actionButton, isListening && styles.actionButtonActive]}
-                onPressIn={() => {
-                  setIsListening(true);
-                }}
-                onPressOut={() => {
-                  setIsListening(false);
-                }}
-              >
-                <Ionicons 
-                  name={isListening ? "mic" : "mic-outline"} 
-                  size={22} 
-                  color={isListening ? "#ffffff" : "#4b5563"} 
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.actionButton, isAISpeaking && styles.actionButtonActive]}
-                onPress={() => {
-                  setIsAISpeaking(!isAISpeaking);
-                  if (isAISpeaking) Speech.stop();
-                }}
-              >
-                <Ionicons 
-                  name={isAISpeaking ? "volume-high" : "volume-medium-outline"} 
-                  size={22} 
-                  color={isAISpeaking ? "#ffffff" : "#4b5563"} 
-                />
-              </TouchableOpacity> */}
-
-              <TouchableOpacity 
-                style={styles.sendButton}
-                onPress={sendMessage}
-                disabled={!input.trim() && attachments.length === 0}
-                accessibilityRole="button"
-                accessibilityLabel="Envoyer"
-                accessibilityState={{ disabled: !input.trim() && attachments.length === 0 }}
-              >
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.sendGradient}
-                >
-                  <Ionicons name="send" size={18} color={colors.onAccent} />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </BlurView>
-
           {/* Menu d'attachement */}
-          {menuAnimation.value > 0 && (
-            <Animated.View style={[styles.attachmentMenu, menuStyle]}>
-              <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.attachmentMenuBlur}>
-                <TouchableOpacity 
-                  style={styles.attachmentMenuItem}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ajouter une image"
-                  onPress={async () => {
-                    const result = await ImagePicker.launchImageLibraryAsync({
-                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                      allowsEditing: true,
-                      quality: 1,
-                    });
-                    if (!result.canceled) {
-                      setAttachments([...attachments, {
-                        type: 'image',
-                        uri: result.assets[0].uri,
-                        name: result.assets[0].fileName || 'Image'
-                      }]);
-                    }
-                    menuAnimation.value = withSpring(0);
-                  }}
-                >
-                  <Ionicons name="image-outline" size={24} color={colors.primary} />
-                  <Text style={styles.attachmentMenuItemText}>Image</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.attachmentMenuItem}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ajouter un document"
-                  onPress={async () => {
-                    const result = await DocumentPicker.getDocumentAsync({
-                      type: "*/*",
-                    });
-                    if (!result.canceled && result.assets[0]) {
-                      setAttachments([...attachments, {
-                        type: 'file',
-                        uri: result.assets[0].uri,
-                        name: result.assets[0].name
-                      }]);
-                    }
-                    menuAnimation.value = withSpring(0);
-                  }}
-                >
-                  <Ionicons name="document-outline" size={24} color={colors.primary} />
-                  <Text style={styles.attachmentMenuItemText}>Document</Text>
-                </TouchableOpacity>
-              </BlurView>
+          {isAttachMenuOpen && (
+            <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={styles.attachmentMenu}>
+              <TouchableOpacity
+                style={styles.attachmentMenuItem}
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter une image"
+                onPress={pickImage}
+              >
+                <Ionicons name="image-outline" size={22} color={colors.primaryDark} />
+                <Text style={styles.attachmentMenuItemText}>Image</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.attachmentMenuItem}
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter un document"
+                onPress={pickDocument}
+              >
+                <Ionicons name="document-outline" size={22} color={colors.primaryDark} />
+                <Text style={styles.attachmentMenuItemText}>Document</Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
+
+          {/* Pièces jointes en attente */}
+          {attachments.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachmentsContainer}>
+              {attachments.map((att, index) => (
+                <View key={index} style={styles.attachmentItem}>
+                  {att.type === 'image' ? (
+                    <Image
+                      source={{ uri: att.uri }}
+                      style={styles.attachmentThumb}
+                      accessibilityLabel={`Image à envoyer : ${att.name}`}
+                    />
+                  ) : (
+                    <View style={styles.attachmentThumbFile}>
+                      <Ionicons name="document-text" size={30} color={colors.primaryDark} />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeAttachment}
+                    onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retirer la pièce jointe"
+                  >
+                    <Ionicons name="close-circle" size={22} color={colors.danger} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Capsule dans capsule : rayon extérieur 28 = rayon intérieur 22 + padding 6 */}
+          <View style={styles.chatBar}>
+            <View style={styles.inputField}>
+              <TouchableOpacity
+                onPress={() => setIsAttachMenuOpen((open) => !open)}
+                style={styles.attachButton}
+                accessibilityRole="button"
+                accessibilityLabel="Joindre un fichier"
+                accessibilityState={{ expanded: isAttachMenuOpen }}
+              >
+                <Ionicons name="attach" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <TextInput
+                ref={inputRef}
+                value={input}
+                onChangeText={setInput}
+                placeholder="Écris ta question…"
+                accessibilityLabel="Message à l'assistant IA"
+                style={styles.input}
+                multiline
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
+              onPress={() => sendMessage()}
+              disabled={!canSend}
+              accessibilityRole="button"
+              accessibilityLabel="Envoyer"
+              accessibilityState={{ disabled: !canSend }}
+            >
+              <Ionicons name="arrow-forward" size={22} color={colors.onAction} />
+            </TouchableOpacity>
+          </View>
         </KeyboardAvoidingView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -792,73 +738,39 @@ function makeStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: 25,
     },
 
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      zIndex: 10,
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 8,
     },
 
-    menuButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+    headerButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-
-    headerCenter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-
-    headerBadge: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
     },
 
     headerTitle: {
-      fontSize: 16,
+      flex: 1,
+      fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
     },
 
-    headerButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-
     keyboardAvoidingView: {
       position: 'absolute',
-      bottom: TAB_BAR_HEIGHT,
-      left: 0,
-      right: 0,
+      left: 20,
+      right: 20,
     },
 
     modalOverlay: {
@@ -866,213 +778,222 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
 
-    modalContent: {
+    drawer: {
       position: 'absolute',
       left: 0,
       top: 0,
       bottom: 0,
-      width: '80%',
+      width: 300,
+      maxWidth: '80%',
       backgroundColor: colors.surface,
       borderTopRightRadius: 24,
       borderBottomRightRadius: 24,
-      overflow: 'hidden',
+      paddingHorizontal: 12,
+      paddingBottom: 24,
     },
 
-    modalGradient: {
-      flex: 1,
-      padding: 20,
-    },
-
-    modalHeader: {
+    drawerHeader: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 20,
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      paddingBottom: 12,
     },
 
-    modalTitle: {
-      fontSize: 24,
+    drawerTitle: {
+      fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,
     },
 
-    modalClose: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surfaceAlt,
+    newChip: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
+    },
+
+    newChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+
+    drawerList: {
+      gap: 6,
+    },
+
+    drawerSection: {
+      gap: 6,
+    },
+
+    drawerSectionTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
     },
 
     historyItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: 12,
-      borderRadius: 16,
-      marginBottom: 8,
-      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      paddingLeft: 12,
     },
 
+    // Conversation active : fond bleu très clair + barre bleue + texte bleu foncé (AA).
     historyItemActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.tintPrimary,
+      gap: 10,
     },
 
-    historyItemLeft: {
+    historyActiveBar: {
+      width: 4,
+      height: 22,
+      borderRadius: 2,
+      backgroundColor: colors.primaryDark,
+    },
+
+    historyItemMain: {
+      flex: 1,
+      paddingVertical: 12,
+    },
+
+    historyTitle: {
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+
+    historyTitleActive: {
+      fontWeight: '600',
+      color: colors.primaryText,
+    },
+
+    historyDelete: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    messagesContainer: {
+      flex: 1,
+    },
+
+    messagesContent: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 24,
+      gap: 16,
+    },
+
+    toastRow: {
+      alignItems: 'center',
+    },
+
+    toast: {
       flexDirection: 'row',
       alignItems: 'center',
-      flex: 1,
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: colors.textPrimary,
+    },
+
+    toastText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.background,
+    },
+
+    emptyState: {
+      alignItems: 'center',
+      paddingTop: 24,
       gap: 12,
     },
 
-    historyIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+    emptyIcon: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: colors.tintPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
 
-    historyIconActive: {
-      backgroundColor: 'rgba(255,255,255,0.2)',
-    },
-
-    historyInfo: {
-      flex: 1,
-    },
-
-    historyTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 2,
-    },
-
-    historyTitleActive: {
-      color: colors.onAccent,
-    },
-
-    historyDate: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
-
-    historyDelete: {
-      padding: 8,
-    },
-
-    newConversationButton: {
-      marginTop: 20,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-
-    newConversationGradient: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-      gap: 8,
-    },
-
-    newConversationText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.onAccent,
-    },
-
-    messagesContainer: {
-      flex: 1,
-      marginBottom: TAB_BAR_HEIGHT + 70,
-    },
-
-    messagesContent: {
-      padding: 20,
-    },
-
-    emptyState: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 60,
-      minHeight: height * 0.6,
-    },
-
-    emptyIcon: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 24,
-    },
-
     emptyTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 12,
     },
 
     emptyText: {
-      fontSize: 14,
+      fontSize: 15,
+      lineHeight: 22,
       color: colors.textSecondary,
       textAlign: 'center',
-      paddingHorizontal: 40,
-      lineHeight: 20,
     },
 
-    messageRow: {
-      flexDirection: 'row',
-      marginBottom: 16,
-      gap: 12,
+    suggestions: {
+      alignSelf: 'stretch',
+      gap: 10,
+      marginTop: 16,
+    },
+
+    suggestion: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+
+    suggestionText: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: colors.textPrimary,
     },
 
     userRow: {
-      justifyContent: 'flex-end',
+      alignItems: 'flex-end',
+      gap: 4,
     },
 
     aiRow: {
-      justifyContent: 'flex-start',
+      alignItems: 'stretch',
+      gap: 4,
     },
 
-    aiAvatar: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      alignSelf: 'flex-end',
-      marginBottom: 4,
-    },
-
-    messageBubble: {
-      maxWidth: '75%',
-      padding: 12,
-      borderRadius: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-
+    // Bulle utilisateur en bleu très clair + texte foncé : le bleu plein est réservé à « Envoyer ».
     userBubble: {
-      backgroundColor: colors.primary,
-      borderBottomRightRadius: 4,
+      maxWidth: '80%',
+      backgroundColor: colors.tintPrimary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 6,
     },
 
     aiBubble: {
       backgroundColor: colors.surface,
-      borderBottomLeftRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      borderTopLeftRadius: 6,
+      borderTopRightRadius: 18,
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 18,
     },
 
     typingBubble: {
-      padding: 16,
-    },
-
-    typingIndicator: {
+      alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
@@ -1082,7 +1003,7 @@ function makeStyles(colors: ThemeColors) {
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       opacity: 0.5,
     },
 
@@ -1094,61 +1015,44 @@ function makeStyles(colors: ThemeColors) {
       opacity: 1,
     },
 
-    messageText: {
-      fontSize: 14,
-      lineHeight: 20,
-      marginBottom: 4,
-    },
-
     userText: {
-      color: colors.onAccent,
-    },
-
-    aiText: {
+      fontSize: 15,
+      lineHeight: 22,
       color: colors.textPrimary,
     },
 
     messageTime: {
-      fontSize: 10,
-      alignSelf: 'flex-end',
+      fontSize: 11,
+      color: colors.textSecondary,
     },
 
     userTime: {
-      color: 'rgba(255,255,255,0.7)',
-    },
-
-    aiTime: {
-      color: colors.muted,
+      alignSelf: 'flex-end',
     },
 
     attachmentsContainer: {
-      position: 'absolute',
-      left: 16,
-      right: 16,
-      paddingHorizontal: 16,
+      gap: 8,
       paddingBottom: 8,
-      zIndex: 20,
+      paddingTop: 6,
     },
 
     attachmentItem: {
       width: 70,
       height: 70,
-      marginRight: 8,
       borderRadius: 12,
-      overflow: 'hidden',
       backgroundColor: colors.surfaceAlt,
     },
 
     attachmentThumb: {
       width: '100%',
       height: '100%',
+      borderRadius: 12,
     },
 
     attachmentThumbFile: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.surfaceAlt,
     },
 
     removeAttachment: {
@@ -1157,11 +1061,6 @@ function makeStyles(colors: ThemeColors) {
       right: -6,
       backgroundColor: colors.surface,
       borderRadius: 11,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
     },
 
     attachmentPreview: {
@@ -1169,10 +1068,9 @@ function makeStyles(colors: ThemeColors) {
     },
 
     attachmentImage: {
-      width: '100%',
+      width: 220,
       height: 150,
       borderRadius: 12,
-      marginBottom: 8,
     },
 
     attachmentFile: {
@@ -1181,92 +1079,79 @@ function makeStyles(colors: ThemeColors) {
       padding: 12,
       borderRadius: 12,
       gap: 8,
-      backgroundColor: colors.surfaceAlt,
+      backgroundColor: colors.surface,
     },
 
     attachmentFileName: {
       fontSize: 14,
-      color: colors.textSecondary,
-      flex: 1,
+      color: colors.textPrimary,
+      flexShrink: 1,
     },
 
-    inputContainer: {
+    chatBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      gap: 6,
+      padding: 6,
+      borderRadius: 28,
       backgroundColor: colors.surface,
-      marginHorizontal: 8,
-      marginBottom: 8,
-      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+
+    inputField: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingLeft: 6,
+      paddingRight: 14,
+      minHeight: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surfaceAlt,
     },
 
     attachButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surfaceAlt,
+      width: 32,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
 
     input: {
       flex: 1,
-      marginHorizontal: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 10,
       maxHeight: 100,
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: 20,
-      fontSize: 14,
+      fontSize: 16,
       color: colors.textPrimary,
     },
 
-    inputActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-
-    actionButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    actionButtonActive: {
-      backgroundColor: colors.primary,
-    },
-
     sendButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      overflow: 'hidden',
-    },
-
-    sendGradient: {
-      flex: 1,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.action,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+
+    sendButtonDisabled: {
+      opacity: 0.5,
     },
 
     attachmentMenu: {
-      position: 'absolute',
-      bottom: 80,
-      left: 20,
+      alignSelf: 'flex-start',
+      marginBottom: 8,
+      padding: 6,
       borderRadius: 16,
-      overflow: 'hidden',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
@@ -1274,20 +1159,17 @@ function makeStyles(colors: ThemeColors) {
       elevation: 4,
     },
 
-    attachmentMenuBlur: {
-      padding: 8,
-    },
-
     attachmentMenuItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 12,
+      minHeight: 44,
+      paddingHorizontal: 12,
       gap: 12,
     },
 
     attachmentMenuItemText: {
       fontSize: 16,
-      color: colors.textSecondary,
+      color: colors.textPrimary,
     },
   });
 }
