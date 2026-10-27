@@ -96,11 +96,15 @@ export function SearchScreen() {
   return (
     <View style={[styles.container, { paddingTop: insetTop }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Retour">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} accessibilityRole="header">Recherche</Text>
-        <View style={{ width: 24 }} />
       </View>
 
       <View style={styles.searchBar}>
@@ -163,12 +167,24 @@ function makeStyles(colors: ThemeColors) {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 12,
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     headerTitle: {
-      fontSize: 18,
+      flex: 1,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.textPrimary,
     },

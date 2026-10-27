@@ -101,7 +101,7 @@ export function ProgressScreen() {
             accessibilityLabel="Retour"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} accessibilityRole="header">Votre progression</Text>
@@ -178,12 +178,9 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.background,
     },
     header: {
-      backgroundColor: colors.surface,
       paddingHorizontal: 20,
-      paddingTop: 25,
-      paddingBottom: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingTop: 8,
+      paddingBottom: 12,
     },
     headerRow: {
       flexDirection: 'row',
@@ -191,15 +188,17 @@ function makeStyles(colors: ThemeColors) {
       gap: 12,
     },
     backButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.surfaceAlt,
     },
     title: {
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.textPrimary,
     },
