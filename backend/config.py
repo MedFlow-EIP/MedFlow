@@ -28,6 +28,25 @@ class Config:
     # Taille max d'un PDF importé.
     MAX_PDF_BYTES = 20 * 1024 * 1024
 
+    # --- Garde-fous de coût IA (Vertex AI est facturé au token) ---
+    # Modèles : Flash coûte ~4x moins cher que Pro. Surchargeable par variable d'env.
+    AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "gemini-2.5-flash")
+    AI_COURSE_MODEL = os.getenv("AI_COURSE_MODEL", "gemini-2.5-flash")
+    # Plafond de tokens générés par appel (réflexion du modèle comprise).
+    AI_MAX_OUTPUT_TOKENS = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "8192"))
+    # Quotas par utilisateur (glissants) : messages de chat et imports de PDF.
+    AI_CHAT_PER_MINUTE = int(os.getenv("AI_CHAT_PER_MINUTE", "6"))
+    AI_CHAT_PER_DAY = int(os.getenv("AI_CHAT_PER_DAY", "60"))
+    AI_PROCESS_PER_HOUR = int(os.getenv("AI_PROCESS_PER_HOUR", "5"))
+    AI_PROCESS_PER_DAY = int(os.getenv("AI_PROCESS_PER_DAY", "10"))
+    # Plafond global sur 24 h (tous comptes confondus) : coupe-circuit si
+    # quelqu'un crée des comptes en masse pour contourner les quotas.
+    AI_GLOBAL_PER_DAY = int(os.getenv("AI_GLOBAL_PER_DAY", "2000"))
+    # Taille de ce qui part au modèle depuis le chat.
+    CHAT_MAX_MESSAGE_CHARS = 2000
+    CHAT_HISTORY_MESSAGES = 12
+    CHAT_MAX_PDF_PAGES = 30
+
 
 class DevelopmentConfig(Config):
     """Local development: skip token verification for convenience."""
@@ -44,6 +63,12 @@ class TestingConfig(Config):
     TESTING = True
     FIREBASE_VERIFY = False
     ENABLE_DEBUG_ROUTES = True
+    # Quotas larges : les tests qui les vérifient les abaissent eux-mêmes.
+    AI_CHAT_PER_MINUTE = 1000
+    AI_CHAT_PER_DAY = 1000
+    AI_PROCESS_PER_HOUR = 1000
+    AI_PROCESS_PER_DAY = 1000
+    AI_GLOBAL_PER_DAY = 100000
     # DATABASE_PATH is overridden per-test by conftest.py via a tmp_path fixture
 
 

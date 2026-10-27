@@ -6,6 +6,7 @@ from dataclasses import asdict
 from flask import Blueprint, current_app, g, jsonify, request
 from werkzeug.utils import secure_filename
 
+from middleware.ai_quota import consume_ai_quota
 from middleware.auth import build_user_response, require_auth
 from services.pdf import extract_text_from_pdf
 from routes.errors import internal_error
@@ -174,6 +175,9 @@ def process_document():
     if size > max_bytes:
         return jsonify({"error": f"PDF trop lourd ({max_bytes // (1024 * 1024)} Mo maximum)"}), 413
 
+    if current_app.ai is None:
+        return jsonify({"error": "IA indisponible"}), 503
+
     try:
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         user_folder = _ensure_user_folder(upload_folder, g.uid)
@@ -190,6 +194,11 @@ def process_document():
             return jsonify({"error": "PDF vide ou illisible"}), 400
 
         logger.info("Extracted text length: %d", len(text))
+
+        # Quota compté seulement quand l'IA va vraiment être appelée.
+        quota_error = consume_ai_quota("process")
+        if quota_error:
+            return quota_error
 
         # Run all 4 AI generation tasks concurrently
         ai = current_app.ai

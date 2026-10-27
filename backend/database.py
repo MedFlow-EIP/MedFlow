@@ -464,6 +464,32 @@ class Database:
                 """
             )
 
+            # Un appel IA par ligne : sert aux quotas (voir consume_ai_quota).
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS ai_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_ai_usage_uid_kind
+                ON ai_usage(uid, kind, created_at)
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_ai_usage_created
+                ON ai_usage(created_at)
+                """
+            )
+
     @contextmanager
     def connection(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
@@ -1922,6 +1948,59 @@ class Database:
                     title,
                 ),
             )
+
+    def consume_ai_quota(
+        self,
+        uid: str,
+        kind: str,
+        limits: List[Tuple[int, int]],
+        global_per_day: int,
+    ) -> Optional[str]:
+        """Réserve un appel IA si les quotas le permettent.
+
+        ``limits`` : liste de (fenêtre en secondes, nombre max d'appels) pour cet
+        utilisateur et ce type d'appel. Renvoie None si l'appel est autorisé (et
+        l'enregistre), sinon "user" ou "global" selon le quota atteint.
+        Vérification et enregistrement se font dans la même transaction
+        exclusive, pour que des requêtes simultanées ne dépassent pas la limite.
+        """
+        now = datetime.now(timezone.utc)
+        day_ago = (now - timedelta(days=1)).isoformat()
+        with self.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                total = conn.execute(
+                    "SELECT COUNT(*) FROM ai_usage WHERE created_at > ?",
+                    (day_ago,),
+                ).fetchone()[0]
+                if total >= global_per_day:
+                    conn.rollback()
+                    return "global"
+
+                for window_seconds, max_calls in limits:
+                    since = (now - timedelta(seconds=window_seconds)).isoformat()
+                    count = conn.execute(
+                        "SELECT COUNT(*) FROM ai_usage WHERE uid = ? AND kind = ? AND created_at > ?",
+                        (uid, kind, since),
+                    ).fetchone()[0]
+                    if count >= max_calls:
+                        conn.rollback()
+                        return "user"
+
+                conn.execute(
+                    "INSERT INTO ai_usage (uid, kind, created_at) VALUES (?, ?, ?)",
+                    (uid, kind, now.isoformat()),
+                )
+                # Les lignes de plus de 2 jours ne servent plus à rien.
+                conn.execute(
+                    "DELETE FROM ai_usage WHERE created_at < ?",
+                    ((now - timedelta(days=2)).isoformat(),),
+                )
+                conn.commit()
+                return None
+            except Exception:
+                conn.rollback()
+                raise
 
     def get_chat_conversation_owner(self, conversation_id: str) -> str | None:
         """UID propriétaire d'une conversation, ou None si elle n'existe pas."""

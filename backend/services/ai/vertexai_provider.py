@@ -3,26 +3,39 @@ import logging
 import os
 
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part
+from vertexai.generative_models import GenerationConfig, GenerativeModel, Part
 from google.oauth2 import service_account
 
 from .base import AIProvider
 
 logger = logging.getLogger(__name__)
 
-_GEMINI_MODEL = "gemini-2.5-pro"
+_SYSTEM_INSTRUCTION = """
+    Tu es un assistant IA spécialisé uniquement en médecine et santé.
 
+    Si la question n'est pas liée à la médecine :
+    "Je suis spécialisé uniquement dans le domaine médical et de la santé."
 
+    Les salutations simples sont autorisées.
+    """
 
 
 class VertexAIProvider(AIProvider):
-    """AI provider backed by Google Vertex AI (Gemini 2.5 Pro)."""
+    """AI provider backed by Google Vertex AI (Gemini)."""
 
     def __init__(
         self,
         project_id: str | None = None,
         location: str = "us-central1",
+        chat_model: str = "gemini-2.5-flash",
+        course_model: str = "gemini-2.5-flash",
+        max_output_tokens: int = 8192,
     ):
+        self.chat_model = chat_model
+        self.course_model = course_model
+        # Plafonne la facture d'un appel : sans ça, le modèle peut générer
+        # (et facturer) des dizaines de milliers de tokens.
+        self.generation_config = GenerationConfig(max_output_tokens=max_output_tokens)
 
         try:
 
@@ -83,18 +96,11 @@ class VertexAIProvider(AIProvider):
             s = s[:-3]
         return s.strip()
 
-    @staticmethod
-    def _model() -> GenerativeModel:
+    def _model(self, name: str | None = None) -> GenerativeModel:
         return GenerativeModel(
-            _GEMINI_MODEL,
-            system_instruction="""
-    Tu es un assistant IA spécialisé uniquement en médecine et santé.
-
-    Si la question n'est pas liée à la médecine :
-    "Je suis spécialisé uniquement dans le domaine médical et de la santé."
-
-    Les salutations simples sont autorisées.
-    """
+            name or self.course_model,
+            system_instruction=_SYSTEM_INSTRUCTION,
+            generation_config=self.generation_config,
         )
 
     # ------------------------------------------------------------------
@@ -120,7 +126,7 @@ class VertexAIProvider(AIProvider):
             return json.loads(self._clean_json(response.text))
         except Exception as e:
             logger.error("Erreur flashcards: %s", e)
-            return [{"question": "Erreur", "answer": str(e)}]
+            return [{"question": "Erreur", "answer": "Génération impossible, réimporte le cours."}]
 
     def generate_summary(self, text: str) -> str:
         try:
@@ -143,7 +149,7 @@ class VertexAIProvider(AIProvider):
             return html.strip()
         except Exception as e:
             logger.error("Erreur résumé: %s", e)
-            return f"<p><strong>Erreur résumé :</strong> {e}</p>"
+            return "<p><strong>Le résumé n'a pas pu être généré.</strong></p>"
 
     def generate_quiz(self, text: str, num_questions: int = 5) -> list:
         try:
@@ -263,7 +269,7 @@ class VertexAIProvider(AIProvider):
 
             parts = [Part.from_data(data=data, mime_type=mime) for data, mime in (attachments or [])]
 
-            response = self._model().generate_content(
+            response = self._model(self.chat_model).generate_content(
                 [*parts, prompt] if parts else prompt,
                 stream=False,
             )

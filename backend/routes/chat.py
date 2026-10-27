@@ -2,9 +2,11 @@ import base64
 import binascii
 import logging
 import uuid
+from io import BytesIO
 
 from flask import Blueprint, current_app, g, jsonify, request
 
+from middleware.ai_quota import consume_ai_quota
 from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,14 @@ MAX_ATTACHMENTS = 3
 MAX_ATTACHMENT_BYTES = 7 * 1024 * 1024  # 7 Mo par fichier, après décodage
 
 DEFAULT_ATTACHMENT_PROMPT = "Analyse ce document et explique-moi l'essentiel."
+
+
+def _pdf_page_count(data: bytes):
+    try:
+        from pypdf import PdfReader
+        return len(PdfReader(BytesIO(data)).pages)
+    except Exception:
+        return None
 
 
 def _parse_attachments(raw):
@@ -43,6 +53,14 @@ def _parse_attachments(raw):
             return None, "Pièce jointe vide", 400
         if len(data) > MAX_ATTACHMENT_BYTES:
             return None, "Pièce jointe trop lourde (7 Mo maximum)", 413
+        if mime_type == "application/pdf":
+            # Gemini facture chaque page lue : un PDF de 500 pages coûterait cher.
+            max_pages = current_app.config.get("CHAT_MAX_PDF_PAGES", 30)
+            pages = _pdf_page_count(data)
+            if pages is None:
+                return None, "PDF illisible", 400
+            if pages > max_pages:
+                return None, f"PDF trop long ({max_pages} pages maximum dans le chat)", 413
         files.append({"name": item.get("name") or "fichier", "mime_type": mime_type, "data": data})
     return files, None, None
 
@@ -67,6 +85,9 @@ def medical_chat():
 
         if not message and not attachments:
             return jsonify({"error": "Le message est vide"}), 400
+        max_chars = current_app.config.get("CHAT_MAX_MESSAGE_CHARS", 2000)
+        if len(message) > max_chars:
+            return jsonify({"error": f"Message trop long ({max_chars} caractères maximum)"}), 400
         if not message:
             message = DEFAULT_ATTACHMENT_PROMPT
 
@@ -74,6 +95,10 @@ def medical_chat():
         ai_provider = current_app.ai
         if ai_provider is None:
             return jsonify({"error": "Assistant IA indisponible"}), 503
+
+        quota_error = consume_ai_quota("chat")
+        if quota_error:
+            return quota_error
 
         # Une conversation inconnue ou appartenant à quelqu'un d'autre
         # repart de zéro : on ne mélange jamais les historiques.
@@ -83,9 +108,14 @@ def medical_chat():
             db.create_chat_conversation(uid=uid, title=title, conversation_id=conversation_id)
 
         # Historique AVANT le nouveau message (sinon il serait envoyé deux fois au modèle).
+        # Seuls les derniers échanges partent, tronqués : chaque token est facturé.
+        keep = current_app.config.get("CHAT_HISTORY_MESSAGES", 12)
         history = [
-            {"role": "user" if msg["sender"] == "user" else "assistant", "content": msg["content"]}
-            for msg in db.fetch_chat_messages(conversation_id)
+            {
+                "role": "user" if msg["sender"] == "user" else "assistant",
+                "content": msg["content"][:max_chars],
+            }
+            for msg in db.fetch_chat_messages(conversation_id)[-keep:]
         ]
 
         db.save_chat_message(
