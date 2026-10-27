@@ -33,8 +33,8 @@ import {
   enableRevisionReminders,
   disableRevisionReminders,
   sendTestRevisionNotification,
-  getRevisionReminderHour,
-  setRevisionReminderHour,
+  getRevisionReminderTime,
+  setRevisionReminderTime,
   scheduleRevisionReminder,
 } from "../../utils/revisionNotifications";
 import { getAuthHeaders } from "../../utils/authHeaders";
@@ -43,6 +43,7 @@ import { useTutorial } from "../../context/TutorialContext";
 import { navigationRef } from "../../navigationRef";
 import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
+import { TimePickerSheet, formatReminderTime, pad2 } from '../ui/TimePickerSheet';
 
 export function SettingsScreen() {
   const navigation = useNavigation();
@@ -58,11 +59,16 @@ export function SettingsScreen() {
   const [streakRemindersOn, setStreakRemindersOn] = useState(false);
   const [revisionRemindersOn, setRevisionRemindersOn] = useState(false);
   const [reminderHour, setReminderHour] = useState(9);
+  const [reminderMinute, setReminderMinute] = useState(0);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
 
   useEffect(() => {
     isStreakReminderEnabled().then(setStreakRemindersOn);
     isRevisionReminderEnabled().then(setRevisionRemindersOn);
-    getRevisionReminderHour().then(setReminderHour);
+    getRevisionReminderTime().then(({ hour, minute }) => {
+      setReminderHour(hour);
+      setReminderMinute(minute);
+    });
   }, []);
 
   const handleToggleStreakReminders = async (value: boolean) => {
@@ -127,9 +133,11 @@ export function SettingsScreen() {
     }
   };
 
-  const handleSelectReminderHour = async (hour: number) => {
-    await setRevisionReminderHour(hour);
+  const handleSelectReminderTime = async (hour: number, minute: number) => {
+    setTimePickerOpen(false);
+    await setRevisionReminderTime(hour, minute);
     setReminderHour(hour);
+    setReminderMinute(minute);
     // Si un rappel est déjà programmé, le remettre à jour tout de suite
     // avec la nouvelle heure plutôt que d'attendre le prochain chargement
     // du forecast (Dashboard/écran Révision).
@@ -535,7 +543,7 @@ export function SettingsScreen() {
           tint: colors.tintPrimary,
           iconColor: colors.primaryDark,
           title: 'Rappels de révision',
-          subtitle: `Un rappel à ${reminderHour}h avec le nombre de cartes à réviser`,
+          subtitle: `Un rappel à ${formatReminderTime(reminderHour, reminderMinute)} avec le nombre de cartes à réviser`,
           right: (
             <Switch
               value={revisionRemindersOn}
@@ -548,25 +556,32 @@ export function SettingsScreen() {
             />
           ),
         })}
-        {revisionRemindersOn && (
-          <View style={styles.hourPickerRow}>
-            {[7, 9, 12, 18, 21].map((hour) => (
-              <TouchableOpacity
-                key={hour}
-                onPress={() => handleSelectReminderHour(hour)}
-                style={[styles.hourChip, reminderHour === hour && styles.hourChipActive]}
-                accessibilityRole="button"
-                accessibilityLabel={`Rappel à ${hour} heures`}
-                accessibilityState={{ selected: reminderHour === hour }}
-              >
-                <Text style={[styles.hourChipText, reminderHour === hour && styles.hourChipTextActive]}>
-                  {hour}h
+        {revisionRemindersOn &&
+          renderRow({
+            icon: 'time-outline',
+            tint: colors.surfaceAlt,
+            iconColor: colors.textSecondary,
+            title: 'Heure du rappel',
+            onPress: () => setTimePickerOpen(true),
+            right: (
+              <View style={styles.timePill} accessibilityLabel="Modifier l'heure du rappel">
+                <Text style={styles.timePillText}>
+                  {pad2(reminderHour)}:{pad2(reminderMinute)}
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                <Ionicons name="chevron-forward" size={16} color={colors.primaryText} />
+              </View>
+            ),
+          })}
       </View>
+
+      <TimePickerSheet
+        visible={timePickerOpen}
+        title="Heure du rappel de révision"
+        hour={reminderHour}
+        minute={reminderMinute}
+        onCancel={() => setTimePickerOpen(false)}
+        onConfirm={handleSelectReminderTime}
+      />
 
       {/* SÉCURITÉ */}
       <Text style={styles.sectionLabel}>Sécurité</Text>
@@ -903,30 +918,21 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.primaryText,
     },
-    hourPickerRow: {
+    timePill: {
       flexDirection: "row",
-      gap: 8,
-      paddingBottom: 14,
-      marginTop: -2,
-    },
-    hourChip: {
-      flex: 1,
-      minHeight: 40,
-      borderRadius: 12,
-      backgroundColor: colors.surfaceAlt,
       alignItems: "center",
-      justifyContent: "center",
+      gap: 4,
+      paddingLeft: 12,
+      paddingRight: 8,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.tintPrimary,
     },
-    hourChipActive: {
-      backgroundColor: colors.action,
-    },
-    hourChipText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    hourChipTextActive: {
-      color: colors.onAction,
+    timePillText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.primaryText,
+      fontVariant: ["tabular-nums"],
     },
     logoutButton: {
       flexDirection: "row",
