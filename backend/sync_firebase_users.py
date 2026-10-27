@@ -31,12 +31,18 @@ def sync_users(db, users: Iterable) -> int:
 
 def main() -> None:
     load_dotenv()
+    import firebase_admin
     from firebase_admin import auth
 
     from app import _init_firebase, create_app
 
     app = create_app()
     _init_firebase()
+    if not firebase_admin._apps:
+        raise SystemExit(
+            "Firebase Admin n'a pas pu s'initialiser : ajoute les variables FIREBASE_* "
+            "(clé du compte de service) dans backend/.env, comme sur la VM."
+        )
     total = sync_users(app.db, auth.list_users().iterate_all())
     print(f"{total} compte(s) Firebase synchronisé(s) dans user_stats.")
 
