@@ -29,9 +29,10 @@ class Config:
     MAX_PDF_BYTES = 20 * 1024 * 1024
 
     # --- Garde-fous de coût IA (Vertex AI est facturé au token) ---
-    # Modèles : Flash coûte ~4x moins cher que Pro. Surchargeable par variable d'env.
-    AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "gemini-2.5-flash")
-    AI_COURSE_MODEL = os.getenv("AI_COURSE_MODEL", "gemini-2.5-flash")
+    # Modèles, surchargeables par variable d'env. Gemini 2.5 Pro est le seul
+    # disponible sur le projet Vertex (les modèles « flash » y renvoient 404).
+    AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "gemini-2.5-pro")
+    AI_COURSE_MODEL = os.getenv("AI_COURSE_MODEL", "gemini-2.5-pro")
     # Plafond de tokens générés par appel (réflexion du modèle comprise).
     AI_MAX_OUTPUT_TOKENS = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "8192"))
     # Quotas par utilisateur (glissants) : messages de chat et imports de PDF.

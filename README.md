@@ -113,12 +113,14 @@ Optionnel : `AI_PROVIDER=ollama` (+ `OLLAMA_BASE_URL`, `OLLAMA_MODEL`), `ENABLE_
 
 | Variable | Rôle |
 |---|---|
-| `AI_CHAT_MODEL` (`gemini-2.5-flash`) | Modèle du chat |
-| `AI_COURSE_MODEL` (`gemini-2.5-flash`) | Modèle de génération des cours |
+| `AI_CHAT_MODEL` (`gemini-2.5-pro`) | Modèle du chat |
+| `AI_COURSE_MODEL` (`gemini-2.5-pro`) | Modèle de génération des cours |
 | `AI_MAX_OUTPUT_TOKENS` (`8192`) | Plafond de tokens générés par appel |
 | `AI_CHAT_PER_MINUTE` / `AI_CHAT_PER_DAY` (`6` / `60`) | Messages au chat par compte |
 | `AI_PROCESS_PER_HOUR` / `AI_PROCESS_PER_DAY` (`5` / `10`) | Imports de PDF par compte |
 | `AI_GLOBAL_PER_DAY` (`2000`) | Appels IA sur 24 h, tous comptes confondus |
+
+Les modèles disponibles dépendent du projet Vertex AI : un modèle absent fait échouer toutes les générations (`404 Publisher model … was not found` dans les logs du backend).
 
 Au-delà, l’API répond `429`. En production, l’IA est aussi réservée aux comptes dont l’email est vérifié (`403`). Pense à créer une **alerte budget** dans la console GCP (Facturation → Budgets et alertes).
 
