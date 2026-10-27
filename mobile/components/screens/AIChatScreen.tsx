@@ -756,6 +756,7 @@ export function AIChatScreen() {
                 ref={inputRef}
                 value={input}
                 onChangeText={setInput}
+                maxLength={2000}
                 placeholder="Écris ta question…"
                 accessibilityLabel="Message à l'assistant IA"
                 style={styles.input}
