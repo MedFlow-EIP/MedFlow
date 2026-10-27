@@ -39,6 +39,14 @@ const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 const PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const ACCEPTED_TYPES = ["application/pdf", DOCX, PPTX, "image/jpeg", "image/png", "image/webp"];
 
+type Difficulty = "facile" | "normal" | "difficile";
+
+const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
+  { value: "facile", label: "Facile", hint: "Notions principales, réponses évidentes à éliminer" },
+  { value: "normal", label: "Normal", hint: "Connaissances et compréhension" },
+  { value: "difficile", label: "Difficile", hint: "Cas cliniques et pièges d’examen" },
+];
+
 type PickedFile = { uri: string; name: string; size?: number | null; mimeType: string };
 
 const formatSize = (bytes?: number | null) =>
@@ -79,6 +87,7 @@ export function UploadCourseScreen() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<CourseTab>("resume");
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
 
   const navigation = useNavigation<any>();
 
@@ -164,6 +173,8 @@ export function UploadCourseScreen() {
         name: file.name,
         type: file.mimeType,
       } as any);
+
+      formData.append("difficulty", difficulty);
 
       // « Régénérer » remplace le cours déjà créé au lieu d'en ajouter un second.
       if (data?.courseId) formData.append("replace_course_id", data.courseId);
@@ -276,6 +287,32 @@ export function UploadCourseScreen() {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* DIFFICULTÉ DU QUIZ */}
+            <View style={styles.difficultyCard}>
+              <Text style={styles.infoTitle}>Difficulté du quiz</Text>
+              <View style={styles.segment} accessibilityRole="radiogroup">
+                {DIFFICULTIES.map((d) => {
+                  const active = d.value === difficulty;
+                  return (
+                    <TouchableOpacity
+                      key={d.value}
+                      style={[styles.segmentItem, active && styles.segmentItemActive]}
+                      onPress={() => setDifficulty(d.value)}
+                      disabled={loading}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      accessibilityHint={d.hint}
+                    >
+                      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{d.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.infoItemDetail}>
+                {DIFFICULTIES.find((d) => d.value === difficulty)?.hint}
+              </Text>
+            </View>
 
             {/* CE QUE L'IA VA GÉNÉRER */}
             <View style={styles.infoCard}>
@@ -549,6 +586,51 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
+    },
+
+    difficultyCard: {
+      gap: 10,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+
+    segment: {
+      flexDirection: "row",
+      gap: 4,
+      padding: 4,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceAlt,
+    },
+
+    segmentItem: {
+      flex: 1,
+      minHeight: 40,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 9,
+    },
+
+    segmentItemActive: {
+      backgroundColor: colors.surface,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+
+    segmentText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+
+    segmentTextActive: {
+      fontWeight: "600",
+      color: colors.primaryText,
     },
 
     infoTitle: {

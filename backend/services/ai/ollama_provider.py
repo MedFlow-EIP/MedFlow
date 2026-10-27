@@ -4,7 +4,7 @@ import os
 
 import requests
 
-from .base import AIProvider
+from .base import QUIZ_DIFFICULTY, AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ Retourne uniquement le HTML."""
             logger.error("OllamaProvider.generate_summary error: %s", e)
             return f"<p><strong>Erreur résumé :</strong> {e}</p>"
 
-    def generate_quiz(self, text: str, num_questions: int = 5) -> list:
+    def generate_quiz(self, text: str, num_questions: int = 5, difficulty: str = "normal") -> list:
         try:
             truncated = text[:4000]
             prompt = f"""Voici un texte médical :
@@ -104,6 +104,7 @@ Retourne uniquement le HTML."""
 {truncated}
 
 Crée {num_questions} QCM avec 4 options (A, B, C, D).
+{QUIZ_DIFFICULTY.get(difficulty, QUIZ_DIFFICULTY["normal"])}
 Retourne UNIQUEMENT du JSON valide :
 [
   {{
@@ -140,4 +141,4 @@ Exemple : Cardiologie - Bases essentielles"""
             return title
         except Exception as e:
             logger.error("OllamaProvider.generate_title error: %s", e)
-            return os.path.splitext(filename)[0]
+            return os.path.splitext(filename)[0]

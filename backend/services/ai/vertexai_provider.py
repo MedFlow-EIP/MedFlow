@@ -6,7 +6,7 @@ import vertexai
 from vertexai.generative_models import GenerationConfig, GenerativeModel, Part
 from google.oauth2 import service_account
 
-from .base import AIProvider
+from .base import QUIZ_DIFFICULTY, AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ class VertexAIProvider(AIProvider):
             logger.error("Erreur résumé: %s", e)
             return "<p><strong>Le résumé n'a pas pu être généré.</strong></p>"
 
-    def generate_quiz(self, text: str, num_questions: int = 5) -> list:
+    def generate_quiz(self, text: str, num_questions: int = 5, difficulty: str = "normal") -> list:
         try:
             truncated = text[:4000]
             prompt = f"""
@@ -160,6 +160,7 @@ class VertexAIProvider(AIProvider):
         {truncated}
 
         Crée {num_questions} QCM avec 4 options (A, B, C, D).
+        {QUIZ_DIFFICULTY.get(difficulty, QUIZ_DIFFICULTY["normal"])}
         Format JSON:
         [
           {{
@@ -301,4 +302,4 @@ class VertexAIProvider(AIProvider):
 
             logger.error("Erreur medical_chat: %s", e)
 
-            return "Une erreur est survenue."
+            return "Une erreur est survenue."

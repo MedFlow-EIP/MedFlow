@@ -19,7 +19,8 @@ class MockAIProvider(AIProvider):
     def generate_summary(self, text: str) -> str:
         return "<h2>Résumé Mock</h2><p>Contenu de test généré par MockAIProvider.</p>"
 
-    def generate_quiz(self, text: str, num_questions: int = 5) -> list:
+    def generate_quiz(self, text: str, num_questions: int = 5, difficulty: str = "normal") -> list:
+        self.last_quiz_difficulty = difficulty
         return [
             {
                 "question": f"Question QCM {i + 1}",

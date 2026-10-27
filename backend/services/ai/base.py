@@ -1,6 +1,24 @@
 from abc import ABC, abstractmethod
 
 
+# Consigne ajoutée au prompt du quiz selon la difficulté choisie à l'import (F53).
+QUIZ_DIFFICULTY = {
+    "facile": (
+        "Niveau FACILE : questions directes sur les notions principales et les définitions. "
+        "Les mauvaises réponses sont clairement fausses pour qui a lu le cours."
+    ),
+    "normal": (
+        "Niveau NORMAL : mélange de questions de connaissance et de compréhension, "
+        "avec des mauvaises réponses vraisemblables."
+    ),
+    "difficile": (
+        "Niveau DIFFICILE : questions d'application et de raisonnement (cas cliniques courts, "
+        "comparaisons, mécanismes). Les mauvaises réponses sont très plausibles, proches de la "
+        "bonne réponse, et reprennent les confusions et pièges classiques des examens."
+    ),
+}
+
+
 class AIProvider(ABC):
     """Abstract base class for AI content generation providers."""
 
@@ -15,8 +33,10 @@ class AIProvider(ABC):
         ...
 
     @abstractmethod
-    def generate_quiz(self, text: str, num_questions: int = 5) -> list:
-        """Generate a list of MCQ dicts {question, options{A,B,C,D}, correct}."""
+    def generate_quiz(self, text: str, num_questions: int = 5, difficulty: str = "normal") -> list:
+        """Generate a list of MCQ dicts {question, options{A,B,C,D}, correct}.
+
+        difficulty : "facile", "normal" ou "difficile" (voir QUIZ_DIFFICULTY)."""
         ...
 
     @abstractmethod

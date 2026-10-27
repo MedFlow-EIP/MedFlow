@@ -133,7 +133,7 @@ class TestImportFormats:
 
     def test_failed_generation_saves_nothing(self, client, app, db):
         app.ai.generate_flashcards = lambda text, n=5: [{"question": "Erreur", "answer": "x"}]
-        app.ai.generate_quiz = lambda text, n=5: [{"question": "Erreur", "options": {"A": "x"}, "correct": "A"}]
+        app.ai.generate_quiz = lambda text, *args: [{"question": "Erreur", "options": {"A": "x"}, "correct": "A"}]
         resp = _upload(client, _docx("Le coeur a quatre cavités."), "cours.docx")
         assert resp.status_code == 502
         assert db.fetch_courses("u1") == []
