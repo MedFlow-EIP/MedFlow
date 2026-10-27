@@ -128,6 +128,17 @@ async function fetchServerConversations(): Promise<ServerConversation[] | null> 
  * autre téléphone). On garde la copie locale quand elle est à jour, car elle
  * contient les aperçus des pièces jointes que le serveur ne stocke pas.
  */
+/** Isole chaque message : s'il ne peut pas s'afficher, on montre un texte simple. */
+class MessageBoundary extends React.Component<{ text: string; color: string; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? <Text style={{ color: this.props.color }}>{this.props.text}</Text> : this.props.children;
+  }
+}
+
 function mergeWithServer(local: Conversation[], server: ServerConversation[] | null): Conversation[] {
   if (!server) return local;
   const serverIds = new Set(server.map((s) => s.conversation_id));
@@ -748,6 +759,7 @@ export function AIChatScreen() {
               style={message.type === 'user' ? styles.userRow : styles.aiRow}
             >
               <View style={message.type === 'user' ? styles.userBubble : message.error ? styles.errorBubble : styles.aiBubble}>
+                <MessageBoundary text={String(message.text ?? '')} color={colors.textPrimary}>
                 {message.attachments?.map((att, idx) => (
                   <View key={idx} style={styles.attachmentPreview}>
                     {/* Sans uri : pièce jointe venue d'un autre appareil, seul le nom est connu. */}
@@ -817,6 +829,7 @@ export function AIChatScreen() {
                 ) : (
                   <Text style={styles.userText}>{message.text}</Text>
                 )}
+                </MessageBoundary>
               </View>
 
               {message.type === 'ai' && message.error && index === (currentConv?.messages.length ?? 0) - 1 && (

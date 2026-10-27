@@ -254,13 +254,18 @@ export function RevisionScreen() {
   const explain = () => {
     const current = items[currentIndex];
     if (!current || !answerResult) return;
-    navigation.navigate('AIChat', {
-      prompt: explainPrompt({
-        question: current.question,
-        correctAnswer: (current.options || {})[answerResult.correct_answer],
-        chosenAnswer: selectedOption ? (current.options || {})[selectedOption] : undefined,
-        courseName: current.course_nom,
-      }),
+    // L'onglet IA Chat (et non une copie du chat par-dessus) : la barre
+    // d'onglets reste visible et il n'y a jamais deux chats ouverts à la fois.
+    navigation.navigate('MainTabs', {
+      screen: 'AIChat',
+      params: {
+        prompt: explainPrompt({
+          question: current.question,
+          correctAnswer: (current.options || {})[answerResult.correct_answer],
+          chosenAnswer: selectedOption ? (current.options || {})[selectedOption] : undefined,
+          courseName: current.course_nom,
+        }),
+      },
     });
   };
 

@@ -75,7 +75,6 @@ const Tab = createBottomTabNavigator();
 
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
-  AIChat: { prompt?: string } | undefined;
   CourseDetail: { courseId: string };
   UploadCourse: undefined;
   LessonScreen: { path: any; lesson: any };
@@ -452,7 +451,6 @@ export function AppNavigator() {
         {user ? (
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="AIChat" component={AIChatScreen} />
             <Stack.Screen name="UploadCourse" component={UploadCourseScreen} />
             <Stack.Screen name="Path" component={PathScreen} />
             <Stack.Screen name="Lesson" component={LessonScreen} />

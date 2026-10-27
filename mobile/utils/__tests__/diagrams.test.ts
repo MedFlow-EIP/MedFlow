@@ -13,6 +13,16 @@ describe('schémas du chat', () => {
     expect(parts[1].content).toBe(SVG);
   });
 
+  it('ne plante pas sur un message vide ou absent', () => {
+    expect(splitDiagrams(undefined as any)).toEqual([]);
+    expect(stripDiagrams(null as any)).toBe('');
+  });
+
+  it('trouve plusieurs schémas dans la même réponse', () => {
+    const parts = splitDiagrams('```svg\n<svg></svg>\n``` puis ```svg\n<svg></svg>\n```');
+    expect(parts.map((p) => p.type)).toEqual(['svg', 'text', 'svg']);
+  });
+
   it('ignore un bloc qui n’est pas un SVG', () => {
     expect(splitDiagrams('```svg\n<div>pas un svg</div>\n```').map((p) => p.type)).toEqual([]);
   });
