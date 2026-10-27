@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { auth } from '../../firebaseConfig';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { AuthButton, AuthError, AuthField, AuthLayout, AuthLink, authErrorMessage } from '../auth/AuthKit';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 
 export function RegisterScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -38,6 +39,10 @@ export function RegisterScreen({ navigation }: any) {
       const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
       // Le nom est connu du backend dès la première requête (classement, recherche d'amis).
       await updateProfile(user, { displayName: `${firstName.trim()} ${lastName.trim()}` });
+      // L'IA est réservée aux emails vérifiés : le lien part tout de suite.
+      sendEmailVerification(user).catch(() => {
+        // Non bloquant : le bandeau de l'accueil permet de le renvoyer.
+      });
     } catch (e: any) {
       setError(authErrorMessage(e?.code));
     } finally {
@@ -109,6 +114,7 @@ export function RegisterScreen({ navigation }: any) {
 
       <AuthError message={error} />
       <AuthButton label="Créer mon compte" loading={loading} onPress={handleRegister} />
+      <GoogleSignInButton />
     </AuthLayout>
   );
 }

@@ -8,6 +8,11 @@ jest.mock('../../../theme/ThemeContext', () => ({
   useTheme: () => ({ colors: require('../../../theme/colors').lightColors, isDark: false }),
 }));
 
+// Le bandeau dépend de firebaseConfig (SDK Firebase réel) : hors sujet ici.
+jest.mock('../../auth/EmailVerificationBanner', () => ({
+  EmailVerificationBanner: () => null,
+}));
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
 }));

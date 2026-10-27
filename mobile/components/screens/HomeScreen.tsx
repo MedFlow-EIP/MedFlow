@@ -15,6 +15,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '@/utils/authHeaders';
 import { useScreenInsets } from '../navigation/constants';
+import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 
 interface HomeScreenProps {
   navigation: any;
@@ -133,6 +134,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             </View>
           )}
         </View>
+
+        <EmailVerificationBanner />
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           Parcours d'apprentissage

@@ -44,6 +44,7 @@ import { navigationRef } from "../../navigationRef";
 import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
 import { TimePickerSheet, formatReminderTime, pad2 } from '../ui/TimePickerSheet';
+import { DeleteAccountSheet } from '../ui/DeleteAccountSheet';
 
 export function SettingsScreen() {
   const navigation = useNavigation();
@@ -61,6 +62,9 @@ export function SettingsScreen() {
   const [reminderHour, setReminderHour] = useState(9);
   const [reminderMinute, setReminderMinute] = useState(0);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  // Les comptes Google n'ont pas de mot de passe MedFlow à changer.
+  const hasPassword = !!user?.providerData?.some((p) => p.providerId === "password");
 
   useEffect(() => {
     isStreakReminderEnabled().then(setStreakRemindersOn);
@@ -307,7 +311,12 @@ export function SettingsScreen() {
 
       appAlert("Succès", "Mot de passe mis à jour");
     } catch (e: any) {
-      appAlert("Erreur", e.message);
+      appAlert(
+        "Erreur",
+        e?.code === "auth/requires-recent-login"
+          ? "Par sécurité, déconnecte-toi puis reconnecte-toi avant de changer ton mot de passe."
+          : "Le mot de passe n'a pas pu être changé. Réessaie."
+      );
     } finally {
       setLoading(false);
     }
@@ -584,6 +593,7 @@ export function SettingsScreen() {
       />
 
       {/* SÉCURITÉ */}
+      {hasPassword && <>
       <Text style={styles.sectionLabel}>Sécurité</Text>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Changer de mot de passe</Text>
@@ -629,6 +639,7 @@ export function SettingsScreen() {
           <Text style={styles.primaryButtonText}>Mettre à jour le mot de passe</Text>
         </TouchableOpacity>
       </View>
+      </>}
 
       {/* AIDE */}
       <Text style={styles.sectionLabel}>Aide</Text>
@@ -677,6 +688,16 @@ export function SettingsScreen() {
         <Ionicons name="log-out-outline" size={20} color={colors.dangerText} />
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => setDeleteSheetVisible(true)}
+        style={styles.deleteAccountButton}
+        accessibilityRole="button"
+      >
+        <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
+      </TouchableOpacity>
+
+      <DeleteAccountSheet visible={deleteSheetVisible} onClose={() => setDeleteSheetVisible(false)} />
     </ScrollView>
   );
 }
@@ -796,7 +817,7 @@ function makeStyles(colors: ThemeColors) {
     avatarText: {
       fontSize: 28,
       fontWeight: "700",
-      color: "#ffffff",
+      color: colors.onAction,
     },
     editAvatarButton: {
       position: "absolute",
@@ -948,6 +969,18 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 16,
       fontWeight: "600",
       color: colors.dangerText,
+    },
+    deleteAccountButton: {
+      alignSelf: "center",
+      minHeight: 44,
+      paddingHorizontal: 16,
+      justifyContent: "center",
+    },
+    deleteAccountText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      textDecorationLine: "underline",
     },
   });
 }

@@ -5,6 +5,10 @@ import { SettingsScreen } from '../SettingsScreen';
 import * as revisionNotifications from '../../../utils/revisionNotifications';
 import * as streakNotifications from '../../../utils/streakNotifications';
 
+jest.mock('../../ui/DeleteAccountSheet', () => ({
+  DeleteAccountSheet: () => null,
+}));
+
 jest.mock('../../../theme/ThemeContext', () => ({
   useTheme: () => ({
     colors: require('../../../theme/colors').lightColors,

@@ -5,6 +5,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { AuthButton, AuthError, AuthField, AuthLayout, AuthLink, authErrorMessage } from '../auth/AuthKit';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 
 export function LoginScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -74,6 +75,7 @@ export function LoginScreen({ navigation }: any) {
 
       <AuthError message={error} />
       <AuthButton label="Se connecter" loading={loading} onPress={handleLogin} />
+      <GoogleSignInButton />
     </AuthLayout>
   );
 }
