@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from 'firebase/auth';
@@ -58,8 +59,9 @@ async function persist(uid: string) {
 }
 
 async function notify(job: ImportJob) {
+  // App ouverte : le bandeau dans l'app suffit (JobDoneBanner).
   // Avec les push actives, le serveur envoie déjà la notification.
-  if (isPushActive()) return;
+  if (AppState.currentState === 'active' || isPushActive()) return;
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;

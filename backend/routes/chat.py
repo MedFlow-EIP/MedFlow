@@ -1,6 +1,7 @@
 import base64
 import binascii
 import logging
+import re
 import uuid
 
 from flask import Blueprint, current_app, g, jsonify, request
@@ -95,6 +96,19 @@ def transcribe():
         return jsonify({"error": "Erreur interne de l'assistant"}), 500
 
 
+def _courses_context(db, uid: str) -> str:
+    """Cours de l'étudiant pour le chat : leurs titres (20 plus récents) et le
+    résumé du dernier importé. Vide s'il n'en a pas."""
+    courses = sorted(db.fetch_courses(uid), key=lambda c: c.created_at or "", reverse=True)
+    if not courses:
+        return ""
+    latest = courses[0]
+    summary = re.sub(r"<[^>]+>", " ", latest.summary or "")
+    summary = re.sub(r"\s+", " ", summary).strip()[:2500]
+    names = "\n".join(f"- {c.nom}" for c in courses[:20])
+    return f"Cours importés (du plus récent au plus ancien) :\n{names}\n\nDernier cours : « {latest.nom} »\nRésumé : {summary}"
+
+
 @chat_bp.route("/chat", methods=["POST"])
 @require_auth
 def medical_chat():
@@ -132,7 +146,8 @@ def medical_chat():
 
         # Une conversation inconnue ou appartenant à quelqu'un d'autre
         # repart de zéro : on ne mélange jamais les historiques.
-        if not conversation_id or db.get_chat_conversation_owner(conversation_id) != uid:
+        is_new = not conversation_id or db.get_chat_conversation_owner(conversation_id) != uid
+        if is_new:
             conversation_id = str(uuid.uuid4())
             title = message[:30] + "..." if len(message) > 30 else message
             db.create_chat_conversation(uid=uid, title=title, conversation_id=conversation_id)
@@ -161,6 +176,7 @@ def medical_chat():
             user_message=message,
             history=history,
             attachments=[(a["data"], a["mime_type"]) for a in attachments],
+            context=_courses_context(db, uid),
         )
 
         db.save_chat_message(
@@ -170,7 +186,14 @@ def medical_chat():
             content=ai_response,
         )
 
-        return jsonify({"conversation_id": conversation_id, "response": ai_response})
+        # Première réponse : un vrai titre (le début du message ne dit pas de quoi on parle).
+        title = None
+        if is_new:
+            title = (ai_provider.generate_chat_title(message, ai_response) or "").strip() or None
+            if title:
+                db.update_chat_conversation_title(uid, conversation_id, title)
+
+        return jsonify({"conversation_id": conversation_id, "response": ai_response, "title": title})
 
     except Exception:
         logger.exception("Erreur chat médical")

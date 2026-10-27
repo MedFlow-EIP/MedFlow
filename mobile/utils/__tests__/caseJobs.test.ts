@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { resumeCaseJobs, startBackgroundCase } from '../caseJobs';
@@ -25,6 +26,8 @@ beforeEach(async () => {
   jest.useFakeTimers();
   await AsyncStorage.clear();
   jest.clearAllMocks();
+  // App en arrière-plan : la notification système prend le relais.
+  Object.defineProperty(AppState, 'currentState', { value: 'background', configurable: true, writable: true });
 });
 afterEach(() => jest.useRealTimers());
 
@@ -65,4 +68,14 @@ it('reprend le suivi au redémarrage', async () => {
   expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
     expect.objectContaining({ content: expect.objectContaining({ title: 'Cas clinique non créé' }) })
   );
+});
+
+it('app ouverte : pas de notification système (le bandeau la remplace)', async () => {
+  Object.defineProperty(AppState, 'currentState', { value: 'active', configurable: true, writable: true });
+  await AsyncStorage.setItem('@case_jobs:u1', JSON.stringify([{ caseId: 5, label: 'Asthme' }]));
+  global.fetch = jest.fn().mockResolvedValue(json(200, { status: 'ready', title: 'Crise d’asthme' })) as any;
+  await resumeCaseJobs(user);
+  await flushPoll();
+  await Promise.resolve();
+  expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
 });

@@ -66,6 +66,7 @@ import { isFirstTimeUser } from '../../utils/firstTime';
 import { checkSocialNotifications, resetSocialBadge, useSocialBadge } from '../../utils/socialNotifications';
 import { resetImportJobs, resumeImportJobs, useImportJobs } from '../../utils/importJobs';
 import { resetCaseJobs, resumeCaseJobs, useCaseJobs } from '../../utils/caseJobs';
+import { JobDoneBanner } from '../ui/JobDoneBanner';
 import * as Notifications from 'expo-notifications';
 import { notificationTarget, registerForPushNotifications } from '../../utils/pushNotifications';
 import { TAB_BAR_HEIGHT, useScreenInsets } from './constants';
@@ -490,6 +491,11 @@ export function AppNavigator() {
           qui faisait disparaître le Modal du tutoriel dès qu'on changeait d'onglet
           quand il vivait à l'intérieur de HomeScreen. À ce niveau, il ne peut
           jamais être détaché. */}
+      {user && (
+        <JobDoneBanner
+          onOpen={(target) => navigationRef.isReady() && (navigationRef as any).navigate(target.screen, target.params)}
+        />
+      )}
       {user && (
         <TutorialScreen
           visible={tutorialVisible}

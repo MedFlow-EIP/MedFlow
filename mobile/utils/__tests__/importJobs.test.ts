@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { resumeImportJobs, startBackgroundImport } from '../importJobs';
@@ -21,6 +22,7 @@ beforeEach(async () => {
   jest.useFakeTimers();
   await AsyncStorage.clear();
   jest.clearAllMocks();
+  Object.defineProperty(AppState, 'currentState', { value: 'background', configurable: true, writable: true });
 });
 afterEach(() => jest.useRealTimers());
 

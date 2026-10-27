@@ -286,6 +286,20 @@ class VertexAIProvider(AIProvider):
             logger.error("Erreur cas clinique: %s", e)
             return None
 
+    def generate_chat_title(self, question: str, answer: str) -> str:
+        """Titre court (3 à 6 mots) d'une conversation, d'après le premier échange."""
+        try:
+            prompt = (
+                "Donne un titre de 3 à 6 mots, en français, qui résume le sujet de cet échange. "
+                "Réponds uniquement par le titre, sans guillemets ni ponctuation finale.\n\n"
+                f"Question : {question[:1000]}\n\nRéponse : {answer[:1500]}"
+            )
+            title = self._generate(prompt, model=self.chat_model).strip().strip('"«» .')
+            return title[:60]
+        except Exception as e:
+            logger.error("Erreur titre conversation: %s", e)
+            return ""
+
     def transcribe_audio(self, data: bytes, mime_type: str) -> str:
         """Dictée vocale du chat : retranscrit mot pour mot ce que l'utilisateur a dit."""
         try:
@@ -305,8 +319,10 @@ class VertexAIProvider(AIProvider):
         user_message: str,
         history: list | None = None,
         attachments: list | None = None,
+        context: str | None = None,
     ) -> str:
-        """``attachments`` : liste de (octets, mime_type) — images ou PDF lus par Gemini."""
+        """``attachments`` : liste de (octets, mime_type) — images ou PDF lus par Gemini.
+        ``context`` : les cours de l'étudiant, pour répondre à « mon dernier cours »."""
 
         try:
 
@@ -337,7 +353,11 @@ class VertexAIProvider(AIProvider):
     - structurées
     - pédagogiques
     - précises
-    - en français
+    - en français, en tutoyant l'étudiant
+
+    - Quand l'étudiant parle de « mon cours », « mes cours » ou « mon dernier
+      cours », appuie-toi sur la section « Cours de l'étudiant » ci-dessous
+      au lieu de lui demander de préciser.
 
     - Schémas : quand l'utilisateur demande un schéma, un dessin ou un
       diagramme (ou quand un schéma aide vraiment à comprendre), ajoute UN
@@ -357,6 +377,9 @@ class VertexAIProvider(AIProvider):
     """
 
             prompt = system_prompt + "\n\n"
+
+            if context:
+                prompt += f"Cours de l'étudiant :\n{context}\n\n"
 
             if history:
 

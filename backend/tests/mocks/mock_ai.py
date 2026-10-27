@@ -69,6 +69,11 @@ class MockAIProvider(AIProvider):
         self.transcribe_calls.append(mime_type)
         return self.transcription
 
-    def medical_chat(self, user_message: str, history: list | None = None, attachments: list | None = None) -> str:
-        self.last_chat_call = {"user_message": user_message, "history": history or [], "attachments": attachments or []}
+    def generate_chat_title(self, question: str, answer: str) -> str:
+        return "Cycle cardiaque"
+
+    def medical_chat(self, user_message: str, history: list | None = None, attachments: list | None = None,
+                     context: str | None = None) -> str:
+        self.last_chat_call = {"user_message": user_message, "history": history or [], "attachments": attachments or [],
+                               "context": context}
         return f"Réponse mock à : {user_message}"

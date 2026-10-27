@@ -53,6 +53,10 @@ class AIProvider(ABC):
         Renvoie None si le fournisseur ne sait pas le faire ou en cas d'échec."""
         return None
 
+    def generate_chat_title(self, question: str, answer: str) -> str:
+        """Titre court d'une conversation. Chaîne vide si non pris en charge."""
+        return ""
+
     def transcribe_audio(self, data: bytes, mime_type: str) -> str:
         """Retranscrit une question dictée (F45). Chaîne vide si non pris en charge."""
         return ""

@@ -2697,6 +2697,13 @@ class Database:
                 if "uid" in columns:
                     conn.execute(f'DELETE FROM "{table}" WHERE uid = ?', (uid,))
 
+    def update_chat_conversation_title(self, uid: str, conversation_id: str, title: str) -> None:
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE chat_conversations SET title=? WHERE conversation_id=? AND uid=?",
+                (title[:80], conversation_id, uid),
+            )
+
     def delete_chat_conversation(self, uid: str, conversation_id: str) -> bool:
         """Supprime une conversation de l'utilisateur. False si elle n'est pas à lui."""
         with self.transaction() as conn:

@@ -43,6 +43,7 @@ import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/ne
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
 import { useVoiceDictation } from '../../utils/voiceDictation';
 import { splitDiagrams, stripDiagrams } from '../../utils/diagrams';
+import { worthFlashcards } from '../../utils/chatAnswers';
 import { ChatDiagram } from '../chat/ChatDiagram';
 
 type Message = {
@@ -198,7 +199,20 @@ export function AIChatScreen() {
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  // Conversations qui attendent une réponse : changer de conversation ne
+  // doit pas y afficher les « … » d'une autre.
+  const [pendingConvs, setPendingConvs] = useState<Set<string>>(() => new Set());
+  const isTyping = !!currentConvId && pendingConvs.has(currentConvId);
+  // Conversation affichée au moment où la réponse arrive (lecture vocale).
+  const currentConvIdRef = useRef(currentConvId);
+  currentConvIdRef.current = currentConvId;
+  const setPending = (convId: string, pending: boolean) =>
+    setPendingConvs((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(convId);
+      else next.delete(convId);
+      return next;
+    });
   const [isLoading, setIsLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
@@ -340,7 +354,7 @@ export function AIChatScreen() {
     message: string,
     serverId: string | undefined,
     files: PendingAttachment[]
-  ): Promise<{ response: string; conversationId?: string; error?: boolean }> => {
+  ): Promise<{ response: string; conversationId?: string; title?: string; error?: boolean }> => {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("Non connecté");
@@ -379,7 +393,11 @@ export function AIChatScreen() {
         };
       }
 
-      return { response: data.response, conversationId: data.conversation_id };
+      return {
+        response: data.response,
+        conversationId: data.conversation_id,
+        title: typeof data.title === "string" && data.title ? data.title : undefined,
+      };
     } catch (error) {
       console.error("Erreur AI:", error);
 
@@ -393,7 +411,8 @@ export function AIChatScreen() {
   const sendMessage = async (textOverride?: string, filesOverride?: PendingAttachment[]) => {
     const text = textOverride ?? input;
     const outgoing = filesOverride ?? (attachments as PendingAttachment[]);
-    if ((!text.trim() && outgoing.length === 0) || !currentConvId) return;
+    const convId = currentConvId;
+    if ((!text.trim() && outgoing.length === 0) || !convId || pendingConvs.has(convId)) return;
 
     const userMessage: Message = {
       type: "user",
@@ -422,12 +441,12 @@ export function AIChatScreen() {
       setAttachments([]);
     }
     setIsAttachMenuOpen(false);
-    setIsTyping(true);
+    setPending(convId, true);
 
     try {
-      const { response: aiResponse, conversationId, error } = await askMedicalAI(text, serverId, files);
+      const { response: aiResponse, conversationId, title, error } = await askMedicalAI(text, serverId, files);
 
-      setIsTyping(false);
+      setPending(convId, false);
 
       const aiMessage: Message = {
         type: "ai",
@@ -438,13 +457,13 @@ export function AIChatScreen() {
 
       setConversations(prev =>
         prev.map(c =>
-          c.id === currentConvId
-            ? { ...c, serverId: conversationId ?? c.serverId, messages: [...c.messages, aiMessage] }
+          c.id === convId
+            ? { ...c, serverId: conversationId ?? c.serverId, title: title ?? c.title, messages: [...c.messages, aiMessage] }
             : c
         )
       );
 
-      if (isAISpeaking && !error) {
+      if (isAISpeaking && !error && convId === currentConvIdRef.current) {
         Speech.speak(stripDiagrams(aiResponse), {
           language: "fr",
           pitch: 1,
@@ -452,7 +471,7 @@ export function AIChatScreen() {
         });
       }
     } catch (error) {
-      setIsTyping(false);
+      setPending(convId, false);
 
       appAlert(
         "Erreur",
@@ -845,7 +864,7 @@ export function AIChatScreen() {
                 </TouchableOpacity>
               )}
 
-              {message.type === 'ai' && !message.error && message.text.length >= 40 && (
+              {message.type === 'ai' && !message.error && worthFlashcards(message.text) && (
                 <TouchableOpacity
                   style={styles.messageAction}
                   onPress={() => setFlashcardSource(stripDiagrams(message.text))}
