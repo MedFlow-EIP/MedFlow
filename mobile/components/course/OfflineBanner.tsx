@@ -5,14 +5,18 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 
 /** Bandeau affiché quand l'écran montre la copie locale d'un cours, faute de réseau. */
-export function OfflineBanner() {
+export function OfflineBanner({
+  message = 'Hors ligne : version enregistrée sur ton téléphone.',
+}: {
+  message?: string;
+}) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <View style={styles.banner} accessibilityLiveRegion="polite">
       <Ionicons name="cloud-offline-outline" size={18} color={colors.warningText} />
-      <Text style={styles.text}>Hors ligne : version enregistrée sur ton téléphone.</Text>
+      <Text style={styles.text}>{message}</Text>
     </View>
   );
 }
