@@ -18,6 +18,8 @@ import type { ThemeColors } from '../../theme/colors';
 import { AvatarBubble } from '../../components/AvatarBubble';
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
+import { ChallengeSection } from '../challenge/ChallengeSection';
+import { ChallengeCreateSheet } from '../challenge/ChallengeCreateSheet';
 
 type SearchResult = {
   uid: string;
@@ -44,7 +46,7 @@ export function FriendsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { top: insetTop, bottom: insetBottom } = useScreenInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -54,6 +56,9 @@ export function FriendsScreen() {
   const [received, setReceived] = useState<PendingRequest[]>([]);
   const [sent, setSent] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  // Ami à défier (feuille de création ouverte quand non nul).
+  const [challengeTarget, setChallengeTarget] = useState<Friend | null>(null);
+  const [challengesKey, setChallengesKey] = useState(0);
 
   const loadAll = useCallback(async () => {
     const user = auth.currentUser;
@@ -308,6 +313,8 @@ export function FriendsScreen() {
                 </View>
               )}
 
+              <ChallengeSection refreshKey={challengesKey} />
+
               <View style={styles.section}>
                 <Text style={styles.sectionTitle} accessibilityRole="header">
                   Tes amis {friends.length > 0 ? `(${friends.length})` : ''}
@@ -329,6 +336,15 @@ export function FriendsScreen() {
                         </View>
                       </View>
                       <TouchableOpacity
+                        onPress={() => setChallengeTarget(f)}
+                        style={styles.challengeButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Défier ${f.displayName}`}
+                      >
+                        <Ionicons name="flash-outline" size={16} color={colors.primaryText} />
+                        <Text style={styles.challengeButtonText}>Défier</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
                         onPress={() => confirmRemoveFriend(f.uid, f.displayName)}
                         style={styles.removeButton}
                         accessibilityRole="button"
@@ -344,6 +360,17 @@ export function FriendsScreen() {
           }
         />
       )}
+
+      <ChallengeCreateSheet
+        friend={challengeTarget}
+        onClose={() => setChallengeTarget(null)}
+        onCreated={(challengeId) => {
+          setChallengeTarget(null);
+          setChallengesKey((k) => k + 1);
+          // Le créateur joue tout de suite ; son ami jouera de son côté.
+          navigation.navigate('Challenge', { challengeId });
+        }}
+      />
     </View>
   );
 }
@@ -353,6 +380,20 @@ function makeStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    challengeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minHeight: 40,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: colors.tintPrimary,
+    },
+    challengeButtonText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.primaryText,
     },
     header: {
       flexDirection: 'row',
@@ -510,4 +551,4 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
   });
-}
+}

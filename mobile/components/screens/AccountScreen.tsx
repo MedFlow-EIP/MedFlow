@@ -447,6 +447,8 @@ export function AccountScreen() {
                           ? "shield-checkmark"
                           : item.type === "mock_exam"
                           ? "timer"
+                          : item.type === "challenge"
+                          ? "flash"
                           : isQuest
                           ? "flag"
                           : "school"
