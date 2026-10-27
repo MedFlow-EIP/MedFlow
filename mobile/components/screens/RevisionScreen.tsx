@@ -11,6 +11,7 @@ import { scheduleRevisionReminder } from '../../utils/revisionNotifications';
 import { ProgressBar } from '../ui/progress';
 import { shuffle } from '../../utils/shuffle';
 import { StateView } from '../ui/StateView';
+import { logEvent } from '../../utils/analytics';
 import { useScreenInsets } from '../navigation/constants';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow, UserFacingError } from '../../utils/network';
@@ -75,6 +76,7 @@ export function RevisionScreen() {
     // l'ordre (ou la position de la bonne réponse) plutôt que le contenu.
     // Les clés (A/B/C/D) restent celles du serveur pour /api/revision/answer.
     setItems(shuffle(list).map((it) => ({ ...it, optionOrder: shuffle(Object.keys(it.options || {})) })));
+    if (list.length > 0) logEvent('revision_started');
     setCurrentIndex(0);
     setSelectedOption(null);
     setAnswerResult(null);
@@ -242,6 +244,7 @@ export function RevisionScreen() {
 
     if (currentIndex + 1 >= items.length) {
       setFinished(true);
+      logEvent('revision_finished', mode);
       finishSession(newCorrectCount, items.length);
     } else {
       setCurrentIndex(currentIndex + 1);

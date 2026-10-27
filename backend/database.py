@@ -358,6 +358,11 @@ class Database:
                 )
                 """
             )
+            # Précision libre sur un événement (ex. type de fichier importé).
+            try:
+                conn.execute("ALTER TABLE analytics_events ADD COLUMN detail TEXT")
+            except sqlite3.OperationalError:
+                pass
 
             conn.execute(
                 """
@@ -856,6 +861,7 @@ class Database:
         path_id: str | None = None,
         lesson_id: str | None = None,
         screen: str | None = None,
+        detail: str | None = None,
     ) -> None:
         """Journal d'événements purement analytique, distinct de
         activity_log (qui alimente 'Actions récentes' côté utilisateur —
@@ -867,10 +873,10 @@ class Database:
         with self.transaction() as conn:
             conn.execute(
                 """
-                INSERT INTO analytics_events (uid, event_type, path_id, lesson_id, screen, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO analytics_events (uid, event_type, path_id, lesson_id, screen, detail, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (uid, event_type, path_id, lesson_id, screen, datetime.now(timezone.utc).isoformat()),
+                (uid, event_type, path_id, lesson_id, screen, detail, datetime.now(timezone.utc).isoformat()),
             )
 
     def log_activity(

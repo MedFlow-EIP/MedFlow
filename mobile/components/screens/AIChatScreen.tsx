@@ -35,7 +35,7 @@ import RenderHTML from 'react-native-render-html';
 import { useWindowDimensions } from "react-native";
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
-import { logScreenView } from '../../utils/analytics';
+import { logEvent, logScreenView } from '../../utils/analytics';
 
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
@@ -444,6 +444,7 @@ export function AIChatScreen() {
     }
     setIsAttachMenuOpen(false);
     setPending(convId, true);
+    logEvent('chat_message_sent', outgoing.length > 0 ? 'avec_fichier' : undefined);
 
     try {
       const { response: aiResponse, conversationId, title, error } = await askMedicalAI(text, serverId, files);
@@ -1078,6 +1079,7 @@ export function AIChatScreen() {
         onClose={() => setFlashcardSource(null)}
         onAdded={(count, courseName) => {
           setFlashcardSource(null);
+          logEvent('chat_flashcards_added', String(count));
           showToast(
             `${count} flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « ${courseName} »`,
             'checkmark-circle',

@@ -313,6 +313,38 @@ def export_account():
         return internal_error("Erreur export")
 
 
+# Étapes des parcours clés, pour voir où les gens s'arrêtent (objectif 2 du
+# track EIP). Liste fermée : on ne stocke que ce qu'on sait analyser.
+ANALYTICS_EVENTS = {
+    "demo_course_added",
+    "import_started", "import_done", "import_failed",
+    "revision_started", "revision_finished",
+    "chat_message_sent", "chat_flashcards_added",
+    "case_started", "case_finished",
+    "mock_exam_started", "mock_exam_finished",
+    "exam_added",
+    "error_reported", "feedback_opened",
+}
+
+
+@account_bp.route("/api/analytics/event", methods=["POST"])
+@require_auth
+def log_event():
+    """Body: {"event": "import_started", "detail": "pdf"} (detail facultatif)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        event = data.get("event")
+        if event not in ANALYTICS_EVENTS:
+            return jsonify({"error": "événement inconnu"}), 400
+        detail = data.get("detail")
+        detail = str(detail)[:100] if detail is not None else None
+        current_app.db.log_analytics_event(g.uid, event, detail=detail)
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur analytics event")
+        return internal_error("Erreur interne")
+
+
 @account_bp.route("/api/analytics/screen-view", methods=["POST"])
 @require_auth
 def log_screen_view():

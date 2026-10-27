@@ -7,6 +7,7 @@ import { API_URL } from '@/services/api';
 import { getAuthHeaders } from './authHeaders';
 import { fetchWithTimeout, httpErrorMessage, UserFacingError } from './network';
 import { isPushActive } from './pushNotifications';
+import { logEvent } from './analytics';
 
 // Imports de cours en arrière-plan : le serveur génère le cours pendant que
 // l'utilisateur navigue ailleurs ; l'app suit l'avancement et prévient
@@ -110,6 +111,7 @@ function poll(user: User, jobId: string) {
           error: data.error ?? undefined,
         };
         upsert(done);
+        logEvent(done.status === 'done' ? 'import_done' : 'import_failed');
         polling.delete(jobId);
         await persist(user.uid);
         await notify(done);
@@ -152,6 +154,7 @@ export async function startBackgroundImport(
 
   const job: ImportJob = { jobId: body.job_id, fileName, status: 'processing' };
   upsert(job);
+  logEvent('import_started', fileName.split('.').pop()?.toLowerCase());
   await persist(user.uid);
   poll(user, job.jobId);
   return { job };

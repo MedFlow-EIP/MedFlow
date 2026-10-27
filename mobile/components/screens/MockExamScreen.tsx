@@ -9,6 +9,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { logEvent } from '../../utils/analytics';
 import { useScreenInsets } from '../navigation/constants';
 import { QuizRunner, type RunnerQuestion } from '../quiz/QuizRunner';
 import { QuizCorrection, type CorrectionItem } from '../quiz/QuizCorrection';
@@ -103,6 +104,7 @@ export function MockExamScreen() {
         body: JSON.stringify({ answers: answersRef.current }),
       });
       setResult(await readJsonOrThrow<Result>(res, 'Correction impossible.'));
+      logEvent('mock_exam_finished');
       setPhase('result');
     } catch (err) {
       submittedRef.current = false;
@@ -144,6 +146,7 @@ export function MockExamScreen() {
       );
       submittedRef.current = false;
       setExamId(data.exam_id);
+      logEvent('mock_exam_started');
       setQuestions(data.questions);
       setAnswers({});
       setResult(null);

@@ -8,6 +8,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { logEvent } from '../../utils/analytics';
 import { useScreenInsets } from '../navigation/constants';
 import { ProgressBar } from '../ui/progress';
 import { StateView } from '../ui/StateView';
@@ -91,6 +92,7 @@ export function ClinicalCaseScreen() {
       setLastResult(data.case.played[data.case.played.length - 1]);
       setXpGained((x) => x + data.xp_gained);
       setState(data.case);
+      if (data.case.finished) logEvent('case_finished');
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err) {
       setError(errorMessage(err, 'Réponse non enregistrée. Réessaie.'));

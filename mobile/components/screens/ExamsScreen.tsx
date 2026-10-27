@@ -20,6 +20,7 @@ import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/network';
+import { logEvent } from '../../utils/analytics';
 import { countdownLabel, syncExamReminders } from '../../utils/examReminders';
 import { useScreenInsets } from '../navigation/constants';
 import { DatePickerSheet, formatLongDate } from '../ui/DatePickerSheet';
@@ -265,6 +266,7 @@ function AddExamSheet({
         body: JSON.stringify({ title: title.trim(), exam_date: examDate, course_ids: [...selected] }),
       });
       onCreated(await readJsonOrThrow<Exam>(res, 'Enregistrement impossible.'));
+      logEvent('exam_added');
       reset();
     } catch (err) {
       setError(errorMessage(err, 'Enregistrement impossible.'));

@@ -7,6 +7,7 @@ import { API_URL } from '@/services/api';
 import { getAuthHeaders } from '../utils/authHeaders';
 import { appAlert } from '../utils/appAlert';
 import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../utils/network';
+import { logEvent } from '../utils/analytics';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemeColors } from '../theme/colors';
 
@@ -30,6 +31,7 @@ export function DemoCourseButton() {
         headers: await getAuthHeaders(user),
       });
       const data = await readJsonOrThrow<{ course_id: string }>(res, 'Le cours d’exemple n’a pas pu être ajouté.');
+      logEvent('demo_course_added');
       navigation.navigate('CourseDetail', { courseId: data.course_id });
     } catch (err) {
       appAlert('Cours d’exemple', errorMessage(err, 'Le cours d’exemple n’a pas pu être ajouté.'));
