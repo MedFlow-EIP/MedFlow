@@ -40,6 +40,10 @@ class MockAIProvider(AIProvider):
         self.transcription = "Texte lu sur la photo : le coeur a quatre cavités."
         self.transcribe_calls = []
 
+    def transcribe_audio(self, data: bytes, mime_type: str) -> str:
+        self.audio_calls = getattr(self, "audio_calls", []) + [mime_type]
+        return getattr(self, "audio_transcription", "Quels sont les signes d'un infarctus ?")
+
     def transcribe_document(self, data: bytes, mime_type: str) -> str:
         self.transcribe_calls.append(mime_type)
         return self.transcription

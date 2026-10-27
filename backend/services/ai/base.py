@@ -44,6 +44,10 @@ class AIProvider(ABC):
         """Generate a short descriptive course title (max 10 words)."""
         ...
 
+    def transcribe_audio(self, data: bytes, mime_type: str) -> str:
+        """Retranscrit une question dictée (F45). Chaîne vide si non pris en charge."""
+        return ""
+
     def transcribe_document(self, data: bytes, mime_type: str) -> str:
         """Retranscrit le texte d'une image ou d'un PDF scanné (OCR).
 

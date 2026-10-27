@@ -237,6 +237,20 @@ class VertexAIProvider(AIProvider):
             logger.error("Erreur lecture document: %s", e)
             return ""
 
+    def transcribe_audio(self, data: bytes, mime_type: str) -> str:
+        """Dictée vocale du chat : retranscrit mot pour mot ce que l'utilisateur a dit."""
+        try:
+            prompt = (
+                "Retranscris mot pour mot ce que dit la personne dans cet enregistrement, en français, "
+                "avec la ponctuation. Écris correctement les termes médicaux. Ne réponds pas à la question, "
+                "n'ajoute rien. Si rien n'est compréhensible, réponds uniquement : AUCUN_TEXTE"
+            )
+            text = self._generate([self._part(data, mime_type), prompt], model=self.chat_model).strip()
+            return "" if text == "AUCUN_TEXTE" else text
+        except Exception as e:
+            logger.error("Erreur dictée: %s", e)
+            return ""
+
     def medical_chat(
         self,
         user_message: str,

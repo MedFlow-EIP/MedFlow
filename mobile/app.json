@@ -31,6 +31,12 @@
     "plugins": [
       "expo-font",
       [
+        "expo-av",
+        {
+          "microphonePermission": "MedFlow utilise le micro pour dicter tes questions à l’assistant."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "MedFlow utilise l’appareil photo pour importer une page de cours.",
