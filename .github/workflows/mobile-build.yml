@@ -1,23 +1,35 @@
 name: Mobile Build (APK)
 
+# APK compilé directement sur GitHub (Gradle), sans passer par la file
+# d'attente EAS. Signé avec la clé EAS : même SHA-1 que celui déclaré chez
+# Google, donc la connexion Google fonctionne.
+#
+# Secrets nécessaires (Settings > Secrets and variables > Actions) :
+#   MOBILE_ENV                 contenu complet de mobile/.env
+#   ANDROID_KEYSTORE_BASE64    keystore EAS encodé en base64
+#   ANDROID_KEYSTORE_PASSWORD  mot de passe du keystore
+#   ANDROID_KEY_ALIAS          alias de la clé
+#   ANDROID_KEY_PASSWORD       mot de passe de la clé
+
 on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-build.yml"
   workflow_dispatch:
-    inputs:
-      profile:
-        description: "Profil EAS à utiliser"
-        required: true
-        default: "preview"
-        type: choice
-        options:
-          - preview
-          - production
 
 permissions:
   contents: write
 
+concurrency:
+  group: mobile-build
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile
@@ -31,55 +43,86 @@ jobs:
           cache: "npm"
           cache-dependency-path: mobile/package-lock.json
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          packager: npm
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build APK on EAS (cloud build)
+      - name: Write .env
+        env:
+          MOBILE_ENV: ${{ secrets.MOBILE_ENV }}
         run: |
-          eas build \
-            --platform android \
-            --profile "${{ github.event.inputs.profile || 'preview' }}" \
-            --non-interactive \
-            --wait
+          if [ -z "$MOBILE_ENV" ]; then echo "::error::Secret MOBILE_ENV manquant"; exit 1; fi
+          printf '%s\n' "$MOBILE_ENV" > .env
 
-      - name: Get latest build artifact URL
-        id: build_info
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Sign with the EAS key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          URL=$(eas build:list --platform android --status finished --limit 1 --non-interactive --json | node -e "
-            let data = '';
-            process.stdin.on('data', d => data += d);
-            process.stdin.on('end', () => {
-              const builds = JSON.parse(data);
-              console.log(builds[0].artifacts.buildUrl);
-            });
-          ")
-          echo "apk_url=$URL" >> "$GITHUB_OUTPUT"
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::Secret ANDROID_KEYSTORE_BASE64 manquant"; exit 1; fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/medflow-release.jks
+          # Le projet généré signe les builds release avec la clé de debug :
+          # ce bloc, ajouté à la fin, les fait signer avec la clé EAS.
+          cat >> android/app/build.gradle <<'EOF'
 
-      - name: Download APK
-        run: curl -L "${{ steps.build_info.outputs.apk_url }}" -o medflow.apk
+          android {
+              signingConfigs {
+                  medflowRelease {
+                      storeFile file("medflow-release.jks")
+                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.medflowRelease
+                  }
+              }
+          }
+          EOF
+
+      - name: Build the APK
+        working-directory: mobile/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          NODE_ENV: production
+        # arm64 pour les téléphones, x86_64 pour l'émulateur : deux fois plus
+        # rapide que de compiler les 4 architectures.
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -PreactNativeArchitectures=arm64-v8a,x86_64 \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+          cp app/build/outputs/apk/release/app-release.apk ../medflow.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: medflow-apk-${{ github.run_number }}
           path: mobile/medflow.apk
-          retention-days: 30
+          retention-days: 14
 
-      - name: Publish GitHub Release with APK
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: mobile-build-${{ github.run_number }}
-          name: "MedFlow mobile build #${{ github.run_number }}"
-          files: mobile/medflow.apk
-          body: |
-            Build automatique généré depuis le commit ${{ github.sha }}.
-            Profil EAS : ${{ github.event.inputs.profile || 'preview' }}
-            Télécharge le `.apk` ci-dessous et installe-le sur un appareil Android
-            (autoriser "sources inconnues" si demandé).
+      # Une seule release « apk-latest », remplacée à chaque build : le lien
+      # de téléchargement ne change jamais (pratique depuis le téléphone).
+      - name: Publish as the latest APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest medflow.apk \
+            --prerelease \
+            --title "MedFlow — dernier APK" \
+            --notes "Build #${{ github.run_number }}, commit ${{ github.sha }}. Installe medflow.apk sur Android (autoriser les sources inconnues si demandé)." \
+            --target "${{ github.sha }}"

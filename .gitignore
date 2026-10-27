@@ -58,3 +58,9 @@ node_modules/
 # Clés de comptes de service (écrites par la CI, jamais commitées)
 *credentials*.json
 *.pem
+
+# Projets natifs générés par "expo prebuild" (CI) et clés de signature
+mobile/android/
+mobile/ios/
+*.jks
+*.keystore
