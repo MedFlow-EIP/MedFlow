@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from middleware.auth import require_auth
 from routes.errors import internal_error
+from user_clock import user_today
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def create_exam():
             exam_date = date.fromisoformat(str(body.get("exam_date") or ""))
         except ValueError:
             return jsonify({"error": "Date invalide"}), 400
-        today = date.today()
+        today = user_today()
         if exam_date < today:
             return jsonify({"error": "La date de l'examen est déjà passée"}), 400
         if exam_date > today + timedelta(days=MAX_DAYS_AHEAD):

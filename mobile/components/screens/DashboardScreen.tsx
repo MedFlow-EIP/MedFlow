@@ -247,7 +247,10 @@ export function DashboardScreen() {
     );
   }
 
-  const maxCount = Math.max(1, ...forecast.map((d) => d.count));
+  // Aujourd'hui : on compte les mêmes cartes que la liste en dessous (nouvelles
+  // cartes comprises), sinon la barre affichait 0 au-dessus de 16 cartes.
+  const days = forecast.map((d, i) => (i === 0 ? { ...d, count: Math.max(d.count, dueToday.length) } : d));
+  const maxCount = Math.max(1, ...days.map((d) => d.count));
   const dayLabel = (date: string, idx: number) =>
     idx === 0
       ? 'Auj.'
@@ -255,7 +258,7 @@ export function DashboardScreen() {
           .toLocaleDateString('fr-FR', { weekday: 'short' })
           .replace('.', '')
           .replace(/^./, (c) => c.toUpperCase());
-  const selected = forecast[selectedDay];
+  const selected = days[selectedDay];
   // Aujourd'hui : cartes dues réelles (nouvelles cartes incluses). Jours à venir : prévision SM-2 par cours.
   const selectedGroups =
     selectedDay === 0
@@ -418,7 +421,7 @@ export function DashboardScreen() {
             </View>
 
             <View style={styles.forecastRow}>
-              {forecast.map((day, idx) => {
+              {days.map((day, idx) => {
                 const isSelected = idx === selectedDay;
                 const barHeight = day.count === 0 ? 6 : Math.max(14, (day.count / maxCount) * BAR_MAX_HEIGHT);
                 const label = dayLabel(day.date, idx);

@@ -23,5 +23,8 @@ export async function getAuthHeaders(user: User): Promise<Record<string, string>
     'X-User-Avatar': user.photoURL ?? '',
     // Lu seulement en mode dev (FIREBASE_VERIFY=False) ; en prod, l'email vient du token vérifié.
     'X-User-Email': user.email ?? '',
+    // Décalage horaire en minutes (60 pour Paris l'hiver) : le serveur, en UTC,
+    // compte « aujourd'hui » comme le téléphone (cartes du jour, série…).
+    'X-TZ-Offset': String(-new Date().getTimezoneOffset()),
   };
 }

@@ -19,6 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
 from spaced_repetition import CardSchedule, next_review_date, next_schedule
+from user_clock import user_today
 
 
 logger = logging.getLogger(__name__)
@@ -918,7 +919,7 @@ class Database:
     def get_weekly_progress(self, uid: str) -> Dict:
         """Nombre de leçons complétées depuis le début de la semaine courante
         (lundi 00:00 UTC), vs l'objectif hebdomadaire."""
-        today = date.today()
+        today = user_today()
         monday = today - timedelta(days=today.weekday())
         monday_start_iso = monday.isoformat()
 
@@ -1409,7 +1410,7 @@ class Database:
         prochaine leçon)."""
         if not streak or not last_activity:
             return 0
-        missed = ((today or date.today()) - date.fromisoformat(last_activity)).days - 1
+        missed = ((today or user_today()) - date.fromisoformat(last_activity)).days - 1
         return streak if missed <= (freezes or 0) else 0
 
     def complete_lesson(self, uid: str, lesson_id: str) -> List[Dict]:
@@ -1451,7 +1452,7 @@ class Database:
 
             # Calcul du streak (jours consécutifs d'activité), avec les
             # protections de série pour les jours manqués.
-            today = date.today()
+            today = user_today()
             stats_row = conn.execute(
                 "SELECT streak, last_activity, streak_freezes FROM user_stats WHERE uid=?",
                 (uid,)
@@ -1630,7 +1631,7 @@ class Database:
         cartes dues aujourd'hui et taux de bonnes réponses. Un cours à plusieurs
         tags compte dans chacune de ses spécialités."""
         courses = self.fetch_courses(uid)
-        today = date.today().isoformat()
+        today = user_today().isoformat()
         with self.connection() as conn:
             schedule = {
                 (r["course_id"], r["item_index"]): r
@@ -1818,7 +1819,7 @@ class Database:
         if not uid:
             raise ValueError("UID is required")
 
-        today = date.today()
+        today = user_today()
         with self.connection() as conn:
             rows = conn.execute(
                 """
@@ -1877,7 +1878,7 @@ class Database:
             for row in schedule_rows
         }
 
-        today = date.today().isoformat()
+        today = user_today().isoformat()
         exams = self.get_exam_priorities(uid)
         due: List[Dict] = []
         new: List[Dict] = []
@@ -1905,7 +1906,7 @@ class Database:
                     new.append(item)
                 elif scheduled_for <= today:
                     item["overdue_days"] = (
-                        date.today() - date.fromisoformat(scheduled_for)
+                        user_today() - date.fromisoformat(scheduled_for)
                     ).days
                     due.append(item)
                 elif exam and exam["days_left"] <= self.EXAM_CRAM_DAYS and scheduled_for > exam["exam_date"]:
@@ -1930,7 +1931,7 @@ class Database:
 
     def get_exam_priorities(self, uid: str) -> Dict[str, Dict]:
         """Pour chaque cours lié à un examen à venir (≤ 30 jours), l'examen le plus proche."""
-        today = date.today()
+        today = user_today()
         horizon = (today + timedelta(days=self.EXAM_PRIORITY_DAYS)).isoformat()
         with self.connection() as conn:
             rows = conn.execute(
@@ -1971,7 +1972,7 @@ class Database:
             ).fetchall()
         schedule = {(r["course_id"], r["card_key"]): r for r in rows}
         exams = self.get_exam_priorities(uid)
-        today = date.today().isoformat()
+        today = user_today().isoformat()
 
         due, new = [], []
         for course in courses:
@@ -1995,7 +1996,7 @@ class Database:
                 if row is None:
                     new.append(item)
                 elif row["next_review_date"] <= today:
-                    item["overdue_days"] = (date.today() - date.fromisoformat(row["next_review_date"])).days
+                    item["overdue_days"] = (user_today() - date.fromisoformat(row["next_review_date"])).days
                     due.append(item)
 
         def priority(entry):
@@ -2051,7 +2052,7 @@ class Database:
     def get_activity_calendar(self, uid: str, days: int = 126) -> Dict:
         """Activité par jour sur les ``days`` derniers jours (calendrier façon GitHub) :
         réponses (quiz, flashcards, examens blancs) + leçons terminées."""
-        today = date.today()
+        today = user_today()
         start = today - timedelta(days=days - 1)
         counts: Dict[str, int] = {}
         with self.connection() as conn:
@@ -2097,7 +2098,7 @@ class Database:
 
     def fetch_exams(self, uid: str) -> List[Dict]:
         """Examens de l'utilisateur, du plus proche au plus lointain, avec les cours liés."""
-        today = date.today()
+        today = user_today()
         names = {c.id: c.nom for c in self.fetch_courses(uid)}
         with self.connection() as conn:
             rows = conn.execute(
@@ -2247,7 +2248,7 @@ class Database:
         que le streak de leçons (complete_lesson), mais totalement
         indépendant : réviser sans jamais compléter de leçon (ou
         l'inverse) fait progresser l'un sans toucher à l'autre."""
-        today = date.today()
+        today = user_today()
 
         conn.execute(
             "INSERT OR IGNORE INTO user_stats (uid, xp, streak) VALUES (?, 0, 0)",
@@ -2299,7 +2300,7 @@ class Database:
         last_activity_str = row["last_revision_activity"]
         if not last_activity_str:
             return 0
-        delta_days = (date.today() - date.fromisoformat(last_activity_str)).days
+        delta_days = (user_today() - date.fromisoformat(last_activity_str)).days
         if delta_days > 1:
             return 0
         return row["revision_streak"]

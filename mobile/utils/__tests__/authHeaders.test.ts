@@ -24,6 +24,15 @@ describe('getAuthHeaders', () => {
     expect(headers.Authorization).toBe('Bearer abc123');
   });
 
+  it('envoie le décalage horaire du téléphone en minutes', async () => {
+    jest.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-60); // Paris l'hiver
+
+    const headers = await getAuthHeaders(makeMockUser());
+
+    expect(headers['X-TZ-Offset']).toBe('60');
+    jest.restoreAllMocks();
+  });
+
   it('appelle getIdToken() exactement une fois', async () => {
     const user = makeMockUser();
 
@@ -65,13 +74,13 @@ describe('getAuthHeaders', () => {
     expect(headers['X-User-Avatar']).toBe('');
   });
 
-  it('renvoie exactement les 5 headers attendus, rien de plus', async () => {
+  it('renvoie exactement les 6 headers attendus, rien de plus', async () => {
     const user = makeMockUser();
 
     const headers = await getAuthHeaders(user);
 
     expect(Object.keys(headers).sort()).toEqual(
-      ['Authorization', 'X-User-Avatar', 'X-User-Email', 'X-User-Name', 'X-User-UID'].sort()
+      ['Authorization', 'X-TZ-Offset', 'X-User-Avatar', 'X-User-Email', 'X-User-Name', 'X-User-UID'].sort()
     );
   });
 });

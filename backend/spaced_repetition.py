@@ -13,6 +13,8 @@ carte est bien sue, plus l'intervalle avant la prochaine révision s'allonge
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from user_clock import user_today
+
 
 @dataclass
 class CardSchedule:
@@ -62,5 +64,5 @@ def next_schedule(current: CardSchedule, quality: int) -> CardSchedule:
 
 def next_review_date(schedule: CardSchedule, from_date: date | None = None) -> date:
     """Date de la prochaine révision, calculée depuis ``from_date`` (aujourd'hui par défaut)."""
-    base = from_date or date.today()
-    return base + timedelta(days=schedule.interval_days)
+    base = from_date or user_today()
+    return base + timedelta(days=schedule.interval_days)
