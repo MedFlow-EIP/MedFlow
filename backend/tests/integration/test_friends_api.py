@@ -151,19 +151,19 @@ class TestFriendRequests:
         assert any(r["uid"] == "u-b" for r in sent_a)
 
     def test_search_reflects_friendship_status(self, client, db):
-        client.get("/api/users/search?q=x", headers=_headers("u-a", "A"))
-        client.get("/api/users/search?q=x", headers=_headers("u-b", "B"))
+        client.get("/api/users/search?q=xx", headers=_headers("u-a", "Alpha"))
+        client.get("/api/users/search?q=xx", headers=_headers("u-b", "Bravo"))
 
-        client.post("/api/friends/request", headers=_headers("u-a", "A"), json={"uid": "u-b"})
+        client.post("/api/friends/request", headers=_headers("u-a", "Alpha"), json={"uid": "u-b"})
 
         results = client.get(
-            "/api/users/search?q=B", headers=_headers("u-a", "A")
+            "/api/users/search?q=Br", headers=_headers("u-a", "Alpha")
         ).get_json()["results"]
         b_result = next(r for r in results if r["uid"] == "u-b")
         assert b_result["friendshipStatus"] == "request_sent"
 
         results_from_b = client.get(
-            "/api/users/search?q=A", headers=_headers("u-b", "B")
+            "/api/users/search?q=Al", headers=_headers("u-b", "Bravo")
         ).get_json()["results"]
         a_result = next(r for r in results_from_b if r["uid"] == "u-a")
         assert a_result["friendshipStatus"] == "request_received"

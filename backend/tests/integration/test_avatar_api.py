@@ -74,7 +74,7 @@ class TestUploadAvatar:
     ):
         import os
 
-        png_data = {"file": (io.BytesIO(b"fake png"), "avatar.png")}
+        png_data = {"file": (io.BytesIO(b"\x89PNG\r\n\x1a\n fake png"), "avatar.png")}
         client.post(
             "/api/account/avatar",
             headers=auth_headers,
@@ -82,7 +82,7 @@ class TestUploadAvatar:
             content_type="multipart/form-data",
         )
 
-        jpg_data = {"file": (io.BytesIO(b"fake jpg"), "avatar.jpg")}
+        jpg_data = {"file": (io.BytesIO(b"\xff\xd8\xff fake jpg"), "avatar.jpg")}
         client.post(
             "/api/account/avatar",
             headers=auth_headers,
@@ -112,4 +112,4 @@ class TestServeAvatar:
         # Pas de headers d'auth ici : doit quand même répondre, comme
         # n'importe quelle URL de CDN public.
         resp = client.get("/avatars/test-user-123.jpg")
-        assert resp.status_code == 200
+        assert resp.status_code == 200

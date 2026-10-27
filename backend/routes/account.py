@@ -96,6 +96,15 @@ def get_leaderboard():
         return internal_error("Erreur interne")
 
 
+def _looks_like_image(head: bytes) -> bool:
+    """Signature JPEG, PNG ou WebP."""
+    return (
+        head.startswith(b"\xff\xd8\xff")
+        or head.startswith(b"\x89PNG\r\n\x1a\n")
+        or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
+    )
+
+
 def _avatars_folder() -> str:
     folder = os.path.join(current_app.config.get("UPLOAD_FOLDER", "uploads"), "avatars")
     os.makedirs(folder, exist_ok=True)
@@ -124,6 +133,13 @@ def upload_avatar():
             return jsonify({
                 "error": "Format non supporté (jpg, jpeg, png, webp uniquement)"
             }), 400
+
+        # Le contenu doit être une vraie image (pas seulement l'extension) :
+        # sinon n'importe quel fichier pourrait être hébergé sous /avatars.
+        head = file.stream.read(16)
+        file.stream.seek(0)
+        if not _looks_like_image(head):
+            return jsonify({"error": "Ce fichier n'est pas une image valide"}), 400
 
         # Un seul avatar par utilisateur : nom de fichier basé sur l'uid,
         # écrase automatiquement l'ancien à chaque nouvel upload.

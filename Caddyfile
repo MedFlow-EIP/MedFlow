@@ -3,5 +3,22 @@
 # un nom gratuit qui pointe vers l'IP de la VM). Ports 80 et 443 à ouvrir.
 {$MEDFLOW_DOMAIN} {
 	encode gzip
-	reverse_proxy backend:8080
+
+	# Documentation et routes de debug : jamais exposées publiquement.
+	@private path /api/docs* /flasgger_static* /api/debug/*
+	respond @private 404
+
+	header {
+		# HTTPS obligatoire pendant 1 an, y compris si quelqu'un tape http://.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		# Ne pas annoncer les logiciels (et leurs versions) utilisés.
+		-Server
+	}
+
+	reverse_proxy backend:8080 {
+		header_down -Server
+	}
 }

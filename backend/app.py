@@ -25,8 +25,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
+# INFO par défaut : en DEBUG, les bibliothèques (requêtes HTTP, Google) écrivent
+# des détails inutiles, voire sensibles, dans les logs de production.
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -69,7 +71,10 @@ def create_app(config=None):
         config = config_map.get(env, DevelopmentConfig)
     app.config.from_object(config)
 
-    CORS(app)
+    # Pas de client web : CORS seulement pour les origines déclarées (dev : toutes).
+    if app.config.get("CORS_ORIGINS"):
+        CORS(app, origins=app.config["CORS_ORIGINS"])
+    logging.getLogger().setLevel(app.config.get("LOG_LEVEL", "INFO"))
 
     @app.errorhandler(413)
     def _payload_too_large(_error):
@@ -123,9 +128,11 @@ def create_app(config=None):
     app.register_blueprint(challenges_bp)
 
     # ------------------------------------------------------------------
-    # Swagger / OpenAPI docs at /api/docs
+    # Swagger / OpenAPI docs at /api/docs (jamais en production : le schéma
+    # complet de l'API n'a pas à être public)
     # ------------------------------------------------------------------
-    _init_swagger(app)
+    if app.config.get("ENABLE_API_DOCS"):
+        _init_swagger(app)
 
     return app
 
