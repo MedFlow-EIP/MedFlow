@@ -283,6 +283,13 @@ class Database:
             except sqlite3.OperationalError:
                 pass
 
+            # Protections de série : une gagnée tous les 7 jours de série,
+            # utilisée automatiquement pour chaque jour manqué.
+            try:
+                conn.execute("ALTER TABLE user_stats ADD COLUMN streak_freezes INTEGER NOT NULL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+
             # Email (en minuscules) pour la recherche d'amis par adresse exacte.
             try:
                 conn.execute("ALTER TABLE user_stats ADD COLUMN email TEXT")
@@ -1210,6 +1217,51 @@ class Database:
         entries.sort(key=lambda e: e["xp"], reverse=True)
         return entries
 
+    MAX_STREAK_FREEZES = 2
+    STREAK_FREEZE_EVERY = 7  # jours de série pour gagner une protection
+
+    @classmethod
+    def next_streak(cls, current: int, last_activity: Optional[str], freezes: int, today: date):
+        """Série après une activité aujourd'hui. Renvoie
+        (série, protections restantes, protections utilisées, protection gagnée).
+
+        Chaque jour manqué consomme une protection ; s'il n'y en a pas assez,
+        la série repart de 1. Tous les 7 jours de série, une protection est
+        gagnée (2 au maximum)."""
+        current = current or 0
+        freezes = freezes or 0
+        used = 0
+        if not last_activity:
+            new_streak = 1
+        else:
+            delta = (today - date.fromisoformat(last_activity)).days
+            if delta <= 0:
+                return current, freezes, 0, False  # déjà actif aujourd'hui
+            missed = delta - 1
+            if missed == 0:
+                new_streak = current + 1
+            elif missed <= freezes:
+                used = missed
+                freezes -= missed
+                new_streak = current + 1
+            else:
+                new_streak = 1
+
+        earned = new_streak % cls.STREAK_FREEZE_EVERY == 0 and freezes < cls.MAX_STREAK_FREEZES
+        if earned:
+            freezes += 1
+        return new_streak, freezes, used, earned
+
+    @classmethod
+    def displayed_streak(cls, streak: int, last_activity: Optional[str], freezes: int, today: Optional[date] = None) -> int:
+        """Série à afficher : 0 si trop de jours ont été manqués pour être couverts
+        par les protections (la valeur en base n'est mise à jour qu'à la
+        prochaine leçon)."""
+        if not streak or not last_activity:
+            return 0
+        missed = ((today or date.today()) - date.fromisoformat(last_activity)).days - 1
+        return streak if missed <= (freezes or 0) else 0
+
     def complete_lesson(self, uid: str, lesson_id: str) -> List[Dict]:
         """Marque une leçon comme complétée, met à jour XP/streak, journalise
         l'activité et débloque les badges éligibles. Renvoie les badges
@@ -1247,41 +1299,28 @@ class Database:
                 (xp, uid)
             )
 
-            # Calcul du streak (jours consécutifs d'activité). La colonne
-            # existait déjà dans le schéma mais n'était jamais mise à jour.
+            # Calcul du streak (jours consécutifs d'activité), avec les
+            # protections de série pour les jours manqués.
             today = date.today()
             stats_row = conn.execute(
-                "SELECT streak, last_activity FROM user_stats WHERE uid=?",
+                "SELECT streak, last_activity, streak_freezes FROM user_stats WHERE uid=?",
                 (uid,)
             ).fetchone()
 
-            last_activity_str = stats_row["last_activity"] if stats_row else None
-            current_streak = stats_row["streak"] if stats_row else 0
-
-            if last_activity_str:
-                last_activity = date.fromisoformat(last_activity_str)
-                delta_days = (today - last_activity).days
-
-                if delta_days == 0:
-                    # Déjà actif aujourd'hui : le streak ne bouge pas.
-                    new_streak = current_streak
-                elif delta_days == 1:
-                    # Actif hier : la série continue.
-                    new_streak = current_streak + 1
-                else:
-                    # Au moins un jour sauté : la série repart de 1.
-                    new_streak = 1
-            else:
-                # Toute première activité de cet utilisateur.
-                new_streak = 1
+            new_streak, freezes, used, earned = self.next_streak(
+                stats_row["streak"] if stats_row else 0,
+                stats_row["last_activity"] if stats_row else None,
+                stats_row["streak_freezes"] if stats_row else 0,
+                today,
+            )
 
             conn.execute(
                 """
                 UPDATE user_stats
-                SET streak = ?, last_activity = ?
+                SET streak = ?, last_activity = ?, streak_freezes = ?
                 WHERE uid = ?
                 """,
-                (new_streak, today.isoformat(), uid)
+                (new_streak, today.isoformat(), freezes, uid)
             )
 
             path_id_row = conn.execute(
@@ -1307,6 +1346,16 @@ class Database:
                         "UPDATE user_lessons SET status='available' WHERE uid=? AND lesson_id=?",
                         (uid, next_lesson["lesson_id"])
                     )
+
+        if used:
+            self.log_activity(
+                uid,
+                "streak_freeze_used",
+                "Série protégée",
+                f"{used} protection{'s' if used > 1 else ''} utilisée{'s' if used > 1 else ''}",
+            )
+        if earned:
+            self.log_activity(uid, "streak_freeze_earned", "Protection de série gagnée", f"{new_streak} jours de série")
 
         # Hors de la transaction ci-dessus : ces deux appels ont besoin de
         # relire les stats (xp/streak) fraîchement commitées.

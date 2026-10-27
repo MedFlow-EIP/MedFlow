@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { PathCard } from '../../components/PathCard';
 import { Path } from '../../types';
@@ -17,6 +18,7 @@ import { getAuthHeaders } from '@/utils/authHeaders';
 import { useScreenInsets } from '../navigation/constants';
 import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 import { QuestsCard } from '../QuestsCard';
+import { StreakSheet } from '../StreakSheet';
 
 interface HomeScreenProps {
   navigation: any;
@@ -30,6 +32,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const [paths, setPaths] = useState<Path[]>([]);
   const [streak, setStreak] = useState<number | null>(null);
+  const [freezes, setFreezes] = useState({ count: 0, max: 2 });
+  const [streakSheet, setStreakSheet] = useState(false);
   const [nextLessonTitle, setNextLessonTitle] = useState<string | undefined>();
 
   const user = getAuth().currentUser;
@@ -63,6 +67,10 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           });
           const data = await res.json();
           setStreak(typeof data?.stats?.streak === 'number' ? data.stats.streak : null);
+          setFreezes({
+            count: data?.stats?.streakFreezes ?? 0,
+            max: data?.stats?.maxStreakFreezes ?? 2,
+          });
         } catch (err) {
           console.error(err);
         }
@@ -125,14 +133,21 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.subtitle}>Prêt pour ta session du jour ?</Text>
           </View>
           {streak !== null && (
-            <View
+            <TouchableOpacity
               style={styles.streakChip}
-              accessible
-              accessibilityLabel={`Série de ${streak} jour${streak > 1 ? 's' : ''}`}
+              onPress={() => setStreakSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Série de ${streak} jour${streak > 1 ? 's' : ''}, ${freezes.count} protection${freezes.count > 1 ? 's' : ''}`}
             >
               <Ionicons name="flame" size={16} color={colors.warningText} />
               <Text style={styles.streakText}>{streak} j</Text>
-            </View>
+              {freezes.count > 0 && (
+                <>
+                  <Ionicons name="shield-checkmark" size={14} color={colors.primaryText} />
+                  <Text style={styles.freezeText}>{freezes.count}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           )}
         </View>
 
@@ -166,6 +181,14 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           ))
         )}
       </ScrollView>
+
+      <StreakSheet
+        visible={streakSheet}
+        streak={streak ?? 0}
+        freezes={freezes.count}
+        maxFreezes={freezes.max}
+        onClose={() => setStreakSheet(false)}
+      />
     </View>
   );
 }
@@ -208,12 +231,18 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      minHeight: 40,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 999,
       backgroundColor: colors.tintWarning,
     },
 
+    freezeText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.primaryText,
+    },
     streakText: {
       fontSize: 13,
       fontWeight: '600',
