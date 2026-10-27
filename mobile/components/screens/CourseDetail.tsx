@@ -21,6 +21,8 @@ import { CourseTabs, CourseTab, FlashcardList, QuizList, SummaryCard } from '../
 import { OfflineBanner } from '../course/OfflineBanner';
 import { EditCourseSheet } from '../course/EditCourseSheet';
 import { StateView } from '../ui/StateView';
+import { shareRevisionSheet } from '../../utils/revisionSheet';
+import { appAlert } from '../../utils/appAlert';
 import { useScreenInsets } from '../navigation/constants';
 import { courseCacheName, readOffline, saveOffline } from '../../utils/offlineCache';
 
@@ -58,6 +60,20 @@ export function CourseDetailScreen({ route }: Props) {
   const [offline, setOffline] = useState(false);
   const [editing, setEditing] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Fiche PDF (F51) : marche aussi hors ligne, depuis la copie du cours.
+  const exportSheet = async () => {
+    if (!course || exporting) return;
+    setExporting(true);
+    try {
+      await shareRevisionSheet(course);
+    } catch {
+      appAlert('Fiche indisponible', 'Impossible de créer le PDF. Réessaie dans un instant.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const loadCourse = async () => {
     const user = auth.currentUser;
@@ -167,6 +183,21 @@ export function CourseDetailScreen({ route }: Props) {
               </View>
             )}
           </View>
+
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={exportSheet}
+            disabled={exporting}
+            accessibilityLabel="Exporter la fiche de révision en PDF"
+            accessibilityRole="button"
+            accessibilityState={{ busy: exporting }}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color={colors.primaryDark} />
+            ) : (
+              <Ionicons name="document-attach-outline" size={21} color={colors.textPrimary} />
+            )}
+          </TouchableOpacity>
 
           {/* Hors ligne : modification impossible, le bouton est masqué. */}
           {!offline && (
