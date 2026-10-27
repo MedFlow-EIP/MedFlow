@@ -9,4 +9,7 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "app.py"]
+# Serveur de production (le serveur intégré de Flask n'est fait que pour le
+# développement). Un seul processus, plusieurs threads : les imports en
+# arrière-plan et les caches en mémoire restent dans le même processus.
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "8", "--timeout", "200", "--access-logfile", "-", "app:create_app()"]

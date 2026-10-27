@@ -19,8 +19,12 @@ def search_users():
         db = current_app.db
         db.upsert_user_profile(g.uid, g.display_name)
 
-        query = request.args.get("q", default="", type=str)
-        results = db.search_users(query, exclude_uid=g.uid)
+        query = request.args.get("q", default="", type=str).strip()
+        if len(query) < 2:
+            return jsonify({"results": []})
+        if db.hit_rate_limit(g.uid, "search", 60, current_app.config.get("SEARCH_PER_MINUTE", 30)):
+            return jsonify({"error": "Trop de recherches. Réessaie dans une minute."}), 429
+        results = db.search_users(query[:100], exclude_uid=g.uid)
         return jsonify({"results": results})
     except Exception as e:
         logger.exception("Erreur recherche utilisateurs")
@@ -61,6 +65,9 @@ def send_friend_request():
         if not target_uid:
             return jsonify({"error": "uid requis"}), 400
 
+        limit = current_app.config.get("FRIEND_REQUESTS_PER_DAY", 50)
+        if current_app.db.hit_rate_limit(g.uid, "friend_request", 86400, limit):
+            return jsonify({"error": "Trop de demandes d'ami aujourd'hui. Réessaie demain."}), 429
         status = current_app.db.send_friend_request(g.uid, target_uid)
         app = current_app._get_current_object()
         if status == "pending":

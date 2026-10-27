@@ -25,6 +25,14 @@ class Config:
     ENABLE_DEBUG_ROUTES = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
     # Taille max d'une requête (PDF de 20 Mo + marge multipart, pièces jointes du chat en base64).
     MAX_CONTENT_LENGTH = 32 * 1024 * 1024
+    # Documentation Swagger (/api/docs) : jamais publique en production.
+    ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
+    # Origines web autorisées (CORS). L'app mobile n'en a pas besoin : vide = CORS désactivé.
+    CORS_ORIGINS = [o for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    # Limites anti-abus (par compte) hors IA : recherche d'utilisateurs, demandes d'ami.
+    SEARCH_PER_MINUTE = 30
+    FRIEND_REQUESTS_PER_DAY = 50
     # Taille max d'un PDF importé.
     MAX_PDF_BYTES = 20 * 1024 * 1024
 
@@ -58,6 +66,9 @@ class Config:
 class DevelopmentConfig(Config):
     """Local development: skip token verification for convenience."""
     FIREBASE_VERIFY = False
+    ENABLE_API_DOCS = True
+    CORS_ORIGINS = ["*"]
+    LOG_LEVEL = "DEBUG"
 
 
 class ProductionConfig(Config):
@@ -76,6 +87,8 @@ class TestingConfig(Config):
     AI_PROCESS_PER_HOUR = 1000
     AI_PROCESS_PER_DAY = 1000
     AI_GLOBAL_PER_DAY = 100000
+    SEARCH_PER_MINUTE = 1000
+    FRIEND_REQUESTS_PER_DAY = 1000
     # Jamais de vraie notification push pendant les tests.
     PUSH_ENABLED = False
     PUSH_ASYNC = False

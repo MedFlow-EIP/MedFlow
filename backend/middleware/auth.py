@@ -61,6 +61,8 @@ def _verify_firebase_token() -> str | None:
         # Email certifié par Firebase : seule source fiable pour la recherche
         # d'amis par email (un header pourrait être falsifié).
         g.token_email = decoded.get("email")
+        # Nom du profil Firebase : fait foi, l'en-tête X-User-Name pourrait être falsifié.
+        g.token_name = decoded.get("name")
         g.email_verified = bool(decoded.get("email_verified"))
         # Date de la dernière vraie connexion (pas du rafraîchissement du token) :
         # sert à exiger une reconnexion récente avant de supprimer le compte.
@@ -98,11 +100,25 @@ def require_auth(f):
         if not _UID_PATTERN.fullmatch(uid):
             return jsonify({"error": "UID invalide"}), 400
         g.uid = uid
-        g.display_name = request.headers.get("X-User-Name") or "Utilisateur"
+        g.display_name = _display_name()
         g.photo_url = request.headers.get("X-User-Avatar") or None
         _register_user(uid)
         return f(*args, **kwargs)
     return decorated
+
+
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+MAX_DISPLAY_NAME = 60
+
+
+def _display_name() -> str:
+    """Nom affiché aux autres (classement, amis, notifications).
+
+    En production, celui du token Firebase vérifié ; à défaut (ancien token
+    sans nom), l'en-tête de l'app, nettoyé et tronqué."""
+    name = getattr(g, "token_name", None) or request.headers.get("X-User-Name") or ""
+    name = _CONTROL_CHARS.sub("", name).strip()[:MAX_DISPLAY_NAME]
+    return name or "Utilisateur"
 
 
 def _register_user(uid: str) -> None:
@@ -110,7 +126,7 @@ def _register_user(uid: str) -> None:
     authentifiée, pour qu'il apparaisse au classement et dans la recherche
     d'amis même s'il n'a encore ouvert ni Compte ni Amis. Ne doit jamais
     faire échouer la requête."""
-    display_name = request.headers.get("X-User-Name") or None
+    display_name = g.display_name if g.display_name != "Utilisateur" else None
     if current_app.config.get("FIREBASE_VERIFY", True):
         email = getattr(g, "token_email", None)
     else:

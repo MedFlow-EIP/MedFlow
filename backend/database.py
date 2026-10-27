@@ -127,6 +127,11 @@ BADGE_CATALOG: List[Dict] = [
 ]
 
 
+def _escape_like(text: str) -> str:
+    """Neutralise % et _ : « % » ne doit pas permettre de lister tous les comptes."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class Database:
     """Small helper wrapping the SQLite database used by the API."""
 
@@ -526,6 +531,19 @@ class Database:
                 ON ai_usage(created_at)
                 """
             )
+
+            # Limites de débit hors IA (recherche, demandes d'ami).
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_rate_limits ON rate_limits(uid, kind, created_at)")
 
             # Calendrier d'examens : les cours liés passent en priorité en révision.
             conn.execute(
@@ -1090,13 +1108,13 @@ class Database:
                 FROM user_stats
                 WHERE uid != ?
                   AND (
-                    (display_name IS NOT NULL AND display_name LIKE ?)
+                    (display_name IS NOT NULL AND display_name LIKE ? ESCAPE '\\')
                     OR (email IS NOT NULL AND email = ?)
                   )
                 ORDER BY display_name ASC
                 LIMIT ?
                 """,
-                (exclude_uid, f"%{query}%", query.lower(), limit),
+                (exclude_uid, f"%{_escape_like(query)}%", query.lower(), limit),
             ).fetchall()
 
         results = []
@@ -2486,6 +2504,24 @@ class Database:
             conn.execute("DELETE FROM chat_messages WHERE conversation_id = ?", (conversation_id,))
             conn.execute("DELETE FROM chat_conversations WHERE conversation_id = ?", (conversation_id,))
         return True
+
+    def hit_rate_limit(self, uid: str, kind: str, window_seconds: int, max_calls: int) -> bool:
+        """Enregistre un appel ; renvoie True si la limite est déjà atteinte (appel refusé)."""
+        now = datetime.now(timezone.utc)
+        since = (now - timedelta(seconds=window_seconds)).isoformat()
+        with self.transaction() as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM rate_limits WHERE uid=? AND kind=? AND created_at>?",
+                (uid, kind, since),
+            ).fetchone()[0]
+            if count >= max_calls:
+                return True
+            conn.execute(
+                "INSERT INTO rate_limits (uid, kind, created_at) VALUES (?, ?, ?)",
+                (uid, kind, now.isoformat()),
+            )
+            conn.execute("DELETE FROM rate_limits WHERE created_at < ?", ((now - timedelta(days=2)).isoformat(),))
+        return False
 
     def consume_ai_quota(
         self,
