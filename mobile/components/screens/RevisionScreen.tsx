@@ -308,7 +308,7 @@ export function RevisionScreen() {
           mode === 'practice'
             ? "Ce cours n'a pas encore de quiz généré."
             : mode === 'leeches'
-            ? "Bien joué — aucune carte n'a été ratée plusieurs fois d'affilée récemment."
+            ? "Bien joué, aucune carte n'a été ratée plusieurs fois d'affilée récemment."
             : "Le planning te propose ce qui est vraiment utile à revoir maintenant."
         }
         primary={
@@ -329,7 +329,7 @@ export function RevisionScreen() {
         tone="warning"
         title="Session terminée !"
         subtitle={`${correctCount} / ${items.length} bonnes réponses (${scorePercent}%)`}
-        hint={mode === 'practice' ? "Mode libre — ce résultat n'affecte pas ton planning de révision." : undefined}
+        hint={mode === 'practice' ? "Mode libre : ce résultat n'affecte pas ton planning de révision." : undefined}
         primary={{ label: 'Terminer', onPress: () => navigation.goBack() }}
         secondary={{ label: 'Recommencer', onPress: () => load(mode) }}
       />
@@ -445,9 +445,9 @@ export function RevisionScreen() {
         </View>
 
         {answerResult?.is_leech && (
-          <View style={styles.leechBadge} accessible={true} accessibilityLabel="Carte difficile — plusieurs échecs récents">
+          <View style={styles.leechBadge} accessible={true} accessibilityLabel="Carte difficile, plusieurs échecs récents">
             <Ionicons name="flame-outline" size={16} color={colors.warningText} />
-            <Text style={styles.leechBadgeText}>Carte difficile — retravaille-la plus souvent</Text>
+            <Text style={styles.leechBadgeText}>Carte difficile : retravaille-la plus souvent</Text>
           </View>
         )}
 

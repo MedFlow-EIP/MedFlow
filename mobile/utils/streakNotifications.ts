@@ -99,7 +99,7 @@ export async function scheduleReminderIfNeeded(lastActivityIso: string | null): 
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: '🔥 Ne perds pas ta série !',
-      body: "Tu n'as pas encore révisé aujourd'hui — quelques minutes suffisent pour garder ton streak.",
+      body: "Tu n'as pas encore révisé aujourd'hui : quelques minutes suffisent pour garder ton streak.",
     },
     trigger: { seconds: secondsUntilTarget },
   });

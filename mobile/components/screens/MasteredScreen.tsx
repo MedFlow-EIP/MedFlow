@@ -104,7 +104,7 @@ export function MasteredScreen() {
         icon="trophy-outline"
         tone="warning"
         title="Pas encore de carte maîtrisée"
-        subtitle="Une carte apparaît ici une fois bien sue plusieurs fois de suite — continue à réviser régulièrement !"
+        subtitle="Une carte apparaît ici une fois bien sue plusieurs fois de suite. Continue à réviser régulièrement !"
         primary={{ label: 'Réviser maintenant', onPress: () => navigation.navigate('Revision') }}
         onClose={() => navigation.goBack()}
       />

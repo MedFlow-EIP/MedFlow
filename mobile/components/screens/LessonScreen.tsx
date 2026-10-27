@@ -200,7 +200,7 @@ export function LessonScreen({ route, navigation }: LessonScreenProps) {
                 )}
               </View>
               {streak !== null && (
-                <Text style={styles.statValue}>{streak === -1 ? 'Série : —' : `Série : ${streak}j`}</Text>
+                <Text style={styles.statValue}>{streak === -1 ? 'Série' : `Série : ${streak}j`}</Text>
               )}
             </View>
             <View style={styles.statCard}>

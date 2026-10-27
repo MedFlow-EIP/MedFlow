@@ -272,7 +272,7 @@ export function DashboardScreen() {
     {
       icon: 'trending-up-outline' as const,
       color: colors.warning,
-      value: stats.avgScore !== null ? `${Math.round(stats.avgScore)} %` : '—',
+      value: stats.avgScore !== null ? `${Math.round(stats.avgScore)} %` : 'Aucun',
       label: 'Score',
     },
   ];

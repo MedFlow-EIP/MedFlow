@@ -27,7 +27,7 @@ export type Challenge = {
 /** Texte d'état d'un défi, du point de vue de l'utilisateur. */
 export function challengeStatusText(c: Challenge): string {
   if (c.status === 'done') {
-    const score = `${c.my_score}–${c.their_score}`;
+    const score = `${c.my_score} à ${c.their_score}`;
     return c.outcome === 'win' ? `Gagné ${score}` : c.outcome === 'loss' ? `Perdu ${score}` : `Égalité ${score}`;
   }
   if (c.status === 'declined') return c.role === 'challenger' ? 'Refusé' : 'Tu as refusé';

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 # SDK « google-genai » : remplace vertexai.generative_models, retiré par Google
 # en juin 2026 (voir docs Vertex AI « genai-vertexai-sdk »).
@@ -49,6 +50,9 @@ _SYSTEM_INSTRUCTION = """
     "Je suis spécialisé uniquement dans le domaine médical et de la santé."
 
     Les salutations simples sont autorisées.
+
+    N'utilise jamais de tiret (—, –, -) pour séparer deux idées ou deux
+    parties d'un titre : préfère une virgule, deux-points ou une phrase courte.
     """
 
 
@@ -246,9 +250,10 @@ class VertexAIProvider(AIProvider):
 
         Donne UNIQUEMENT un titre clair et court (max 10 mots).
         Pas de phrases complètes, pas de guillemets, pas de ponctuation.
-        Exemple : "Cardiologie - Bases essentielles"
+        Exemple : "Bases essentielles de cardiologie"
         """
-            title = self._generate(prompt).strip()
+            # Pas de « Cardiologie - Bases » : un tiret entre deux idées devient « : ».
+            title = re.sub(r"\s+[-–—]+\s+", " : ", self._generate(prompt).strip())
             if not title or len(title) < 3:
                 return os.path.splitext(filename)[0]
             return title

@@ -199,7 +199,7 @@ describe('LessonScreen — affichage du streak (régression connue : loader infi
     });
   });
 
-  it('affiche "—" (pas un loader bloqué) si la récupération du streak échoue', async () => {
+  it('affiche "Série" sans chiffre (pas un loader bloqué) si la récupération du streak échoue', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/complete')) {
         return Promise.resolve(mockJsonResponse({ success: true, newBadges: [] }));
@@ -211,7 +211,7 @@ describe('LessonScreen — affichage du streak (régression connue : loader infi
     await goThroughAllSteps();
 
     await waitFor(() => {
-      expect(screen.getByText('Série : —')).toBeTruthy();
+      expect(screen.getByText('Série')).toBeTruthy();
     });
     expect(screen.UNSAFE_queryByType(ActivityIndicator)).toBeFalsy();
   });

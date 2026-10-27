@@ -130,8 +130,8 @@ export async function scheduleRevisionReminder(dueCount: number): Promise<void> 
 
   const body =
     dueCount === 1
-      ? 'Tu as 1 carte à réviser aujourd\'hui — ça prend 2 minutes.'
-      : `Tu as ${dueCount} cartes à réviser aujourd'hui — ça prend quelques minutes.`;
+      ? 'Tu as 1 carte à réviser aujourd\'hui, ça prend 2 minutes.'
+      : `Tu as ${dueCount} cartes à réviser aujourd'hui, ça prend quelques minutes.`;
 
   const id = await Notifications.scheduleNotificationAsync({
     content: {
