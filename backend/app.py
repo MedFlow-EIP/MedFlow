@@ -57,6 +57,10 @@ def create_app(config=None):
     from routes.mock_exam import mock_exam_bp
     from routes.challenges import challenges_bp
     from services.ai import get_ai_provider
+    from services.monitoring import init_sentry
+
+    # Erreurs serveur vers Sentry, seulement si SENTRY_DSN est défini.
+    init_sentry()
 
     app = Flask(__name__)
     # Derrière Caddy (HTTPS) : reprend le schéma et l'hôte d'origine pour que
