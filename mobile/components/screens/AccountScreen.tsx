@@ -25,6 +25,10 @@ import { scheduleReminderIfNeeded } from "../../utils/streakNotifications";
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
 import { unregisterPushNotifications } from '../../utils/pushNotifications';
+import { logEvent } from '../../utils/analytics';
+
+// Formulaire de retour des testeurs (beta test) ; la carte n'apparaît que s'il est défini.
+const FEEDBACK_URL = process.env.EXPO_PUBLIC_FEEDBACK_URL ?? '';
 
 type Badge = {
   id: string;
@@ -503,6 +507,27 @@ export function AccountScreen() {
           MedFlow accompagne les étudiants en médecine dans leurs révisions grâce à des cours interactifs,
           des flashcards et des outils d’apprentissage assistés par IA.
         </Text>
+
+        {!!FEEDBACK_URL && (
+          <TouchableOpacity
+            style={[styles.contactCard, { marginBottom: 12 }]}
+            onPress={() => {
+              logEvent('feedback_opened');
+              openLink(FEEDBACK_URL);
+            }}
+            accessibilityRole="link"
+            accessibilityLabel="Donner mon avis sur MedFlow"
+          >
+            <View style={[styles.contactIcon, { backgroundColor: colors.tintPrimary }]}>
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primaryDark} />
+            </View>
+            <View style={styles.contactContent}>
+              <Text style={styles.contactTitle}>Donner mon avis</Text>
+              <Text style={styles.contactSubtitle}>5 minutes pour nous aider à améliorer MedFlow</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.contactCard}
