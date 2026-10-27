@@ -11,22 +11,27 @@ const MAX_SVG_CHARS = 40_000;
 /** Découpe une réponse en morceaux de texte et de schémas, dans l'ordre. */
 export function splitDiagrams(text: string): MessagePart[] {
   const parts: MessagePart[] = [];
+  const source = typeof text === 'string' ? text : '';
+  // Boucle exec plutôt que matchAll : disponible sur tous les moteurs JS.
+  const re = new RegExp(SVG_BLOCK.source, 'gi');
   let last = 0;
-  for (const match of text.matchAll(SVG_BLOCK)) {
-    const before = text.slice(last, match.index);
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(source)) !== null) {
+    const before = source.slice(last, match.index);
     if (before.trim()) parts.push({ type: 'text', content: before });
     const svg = sanitizeSvg(match[1]);
     if (svg) parts.push({ type: 'svg', content: svg });
-    last = (match.index ?? 0) + match[0].length;
+    last = match.index + match[0].length;
   }
-  const rest = text.slice(last);
+  const text_ = source;
+  const rest = text_.slice(last);
   if (rest.trim()) parts.push({ type: 'text', content: rest });
   return parts;
 }
 
 /** Réponse sans ses schémas (lecture à voix haute, création de flashcards). */
 export function stripDiagrams(text: string): string {
-  return text.replace(SVG_BLOCK, '').replace(/\n{3,}/g, '\n\n').trim();
+  return (typeof text === 'string' ? text : '').replace(SVG_BLOCK, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /** SVG sûr à afficher, ou null s'il n'en est pas un. */
