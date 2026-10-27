@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LessonNode } from '../../components/LessonNode';
+import Svg, { Path as SvgPath } from 'react-native-svg';
+import { LessonNode, LESSON_NODE_WIDTH, lessonNodeSize } from '../../components/LessonNode';
 import { Lesson, Path } from '../../types';
 import { getAuth } from 'firebase/auth';
 import { API_URL } from '@/services/api';
@@ -10,6 +11,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
 import { getAuthHeaders } from '../../utils/authHeaders';
+import { useScreenInsets } from '../navigation/constants';
 
 interface PathScreenProps {
   route: any;
@@ -21,9 +23,18 @@ type Stats = {
   streak: number;
 };
 
+// Géométrie du zigzag : 2 colonnes fixes de part et d'autre du centre, et un
+// tracé courbe qui passe par le centre de chaque nœud (plus de ligne cassée).
+const COLUMN_OFFSET = 65;
+const ROW_HEIGHT = 180;
+const FIRST_CENTER_Y = 70;
+const CURVE = 100;
+
 export function PathScreen({ route, navigation }: PathScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { width } = useWindowDimensions();
+  const { top, bottom } = useScreenInsets();
 
   const { path }: { path: Path } = route.params;
 
@@ -87,7 +98,8 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
   // Dérivé de `lessons` (rafraîchi à chaque focus), pas de `path` qui vient
   // de route.params et reste figé à l'état du moment où on est arrivé sur
   // cet écran — sinon le niveau affiché ne bouge jamais après une leçon.
-  const completedCount = lessons.filter((l) => l.status === 'completed').length;
+  const safeLessons = Array.isArray(lessons) ? lessons : [];
+  const completedCount = safeLessons.filter((l) => l.status === 'completed').length;
 
   const handleLessonPress = (lesson: Lesson) => {
     if (lesson.status !== 'locked') {
@@ -95,55 +107,81 @@ export function PathScreen({ route, navigation }: PathScreenProps) {
     }
   };
 
+  const centers = safeLessons.map((_, i) => ({
+    x: width / 2 + (i % 2 === 0 ? -COLUMN_OFFSET : COLUMN_OFFSET),
+    y: FIRST_CENTER_Y + i * ROW_HEIGHT,
+  }));
+  const trackHeight = safeLessons.length > 0 ? FIRST_CENTER_Y + (safeLessons.length - 1) * ROW_HEIGHT + 140 : 0;
+
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { backgroundColor: path.color + '15' }]}>
-        <View style={styles.headerLeft}>
+      <View style={[styles.header, { paddingTop: top }]}>
+        <View style={styles.headerTop}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            style={styles.backButton}
             accessibilityLabel="Retour"
             accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
+
+          {stats && (
+            <View style={styles.statsRow}>
+              <View style={styles.statChip} accessible accessibilityLabel={`${stats.xp} points d'expérience`}>
+                <Ionicons name="star-outline" size={16} color={colors.primaryText} />
+                <Text style={[styles.statChipText, { color: colors.primaryText }]}>{stats.xp} XP</Text>
+              </View>
+              <View style={styles.statChip} accessible accessibilityLabel={`Série de ${stats.streak} jours`}>
+                <Ionicons name="flame-outline" size={16} color={colors.warningText} />
+                <Text style={[styles.statChipText, { color: colors.warningText }]}>{stats.streak} j</Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {stats && (
-          <View style={styles.statsRow}>
-            <View style={styles.statBadge}>
-              <Ionicons name="star" size={14} color={colors.primary} />
-              <Text style={styles.statBadgeText}>{stats.xp} XP</Text>
-            </View>
-            <View style={styles.statBadge}>
-              <Ionicons name="flame" size={14} color={colors.warning} />
-              <Text style={styles.statBadgeText}>{stats.streak}j</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.headerContent}>
-          <Text style={styles.levelText}>Niveau {completedCount + 1}</Text>
-          <Text style={styles.pathTitle} accessibilityRole="header">{path.title}</Text>
-        </View>
+        <Text style={styles.levelText}>Niveau {completedCount + 1}</Text>
+        <Text style={styles.pathTitle} accessibilityRole="header">{path.title}</Text>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottom + 24 }]}
       >
-        <View style={styles.pathContainer}>
-          <View style={styles.connectingLine} />
+        <View style={{ height: trackHeight }}>
+          <Svg width={width} height={trackHeight} style={StyleSheet.absoluteFill}>
+            {centers.slice(1).map((to, i) => {
+              const from = centers[i];
+              const done = safeLessons[i + 1].status !== 'locked';
+              return (
+                <SvgPath
+                  key={i}
+                  d={`M${from.x} ${from.y} C${from.x} ${from.y + CURVE} ${to.x} ${to.y - CURVE} ${to.x} ${to.y}`}
+                  stroke={done ? '#FFC300' : '#CBD5E1'}
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  strokeDasharray={done ? undefined : '0.5 14'}
+                  fill="none"
+                />
+              );
+            })}
+          </Svg>
 
-          {lessons.map((lesson) => (
-            <View key={lesson.id} style={styles.lessonWrapper}>
-              <LessonNode
-                {...lesson}
-                color={path.color}
-                onPress={() => handleLessonPress(lesson)}
-              />
-            </View>
-          ))}
+          {safeLessons.map((lesson, i) => {
+            const half = lessonNodeSize(lesson.status) / 2 + 8;
+            return (
+              <View
+                key={lesson.id}
+                style={[
+                  styles.node,
+                  { left: centers[i].x - LESSON_NODE_WIDTH / 2, top: centers[i].y - half },
+                ]}
+              >
+                <LessonNode {...lesson} onPress={() => handleLessonPress(lesson)} />
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
@@ -157,22 +195,48 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.background,
     },
     header: {
+      backgroundColor: colors.tintPrimary,
       paddingHorizontal: 20,
-      paddingTop: 60,
-      paddingBottom: 24,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingBottom: 20,
+      gap: 14,
     },
-    headerContent: {
+    headerTop: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    statChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
+    statChipText: {
+      fontSize: 13,
+      fontWeight: '600',
     },
     levelText: {
       fontSize: 14,
-      color: colors.textSecondary,
-      marginBottom: 4,
+      fontWeight: '600',
+      color: colors.primaryText,
     },
     pathTitle: {
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: '700',
       color: colors.textPrimary,
     },
@@ -180,59 +244,10 @@ function makeStyles(colors: ThemeColors) {
       flex: 1,
     },
     scrollContent: {
-      paddingVertical: 32,
-      paddingBottom: 100,
+      paddingTop: 24,
     },
-    pathContainer: {
-      position: 'relative',
-      paddingHorizontal: 20,
-    },
-    connectingLine: {
+    node: {
       position: 'absolute',
-      left: '50%',
-      top: 0,
-      bottom: 0,
-      width: 3,
-      backgroundColor: colors.border,
-      marginLeft: -1.5,
-      zIndex: -1,
-    },
-    lessonWrapper: {
-      marginBottom: 32,
-      alignItems: 'center',
-    },
-    headerLeft: {
-      position: 'absolute',
-      left: 20,
-      top: 60,
-      zIndex: 2,
-    },
-    statsRow: {
-      position: 'absolute',
-      right: 20,
-      top: 58,
-      zIndex: 2,
-      flexDirection: 'row',
-      gap: 8,
-    },
-    statBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: colors.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 14,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 1,
-    },
-    statBadgeText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.textPrimary,
     },
   });
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,637 +6,215 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { Lesson } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemeColors } from '../theme/colors';
 
-const { width } = Dimensions.get('window');
-
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-interface LessonNodeProps extends Lesson {
-  color: string;
-  onPress: () => void;
-  index?: number;
-  isLast?: boolean;
-  isFirst?: boolean;
+/** Largeur du bloc d'un nœud (cercle + titre), centré sur la colonne. */
+export const LESSON_NODE_WIDTH = 220;
+
+/** Diamètre du cercle selon l'état : la leçon disponible est mise en avant. */
+export function lessonNodeSize(status: Lesson['status']) {
+  if (status === 'available') return 104;
+  if (status === 'completed') return 92;
+  return 84;
 }
 
-export function LessonNode({
-  title,
-  type,
-  status,
-  stars,
-  position,
-  color,
-  onPress,
-  index = 0,
-  isLast = false,
-  isFirst = false,
-}: LessonNodeProps) {
-  const { colors, isDark } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+const RING = 8;
 
-  const [currentStatus, setCurrentStatus] = useState(status);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const completedGlowAnim = useRef(new Animated.Value(0)).current;
+const GRADIENTS: Record<Lesson['status'], [string, string]> = {
+  completed: ['#FFD700', '#FFA500'],
+  available: ['#3B82F6', '#8B5CF6'],
+  locked: ['#CBD5E1', '#CBD5E1'],
+};
+
+interface LessonNodeProps extends Lesson {
+  onPress: () => void;
+  /** XP rapportés par la leçon, affichés dans la pastille de la leçon disponible. */
+  xp?: number;
+}
+
+export function LessonNode({ title, type, status, xp, onPress }: LessonNodeProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    setCurrentStatus(status);
+    if (status !== 'available') return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.04, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
   }, [status]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (currentStatus === 'completed') {
-        Animated.sequence([
-          Animated.timing(completedGlowAnim, {
-            toValue: 1,
-            duration: 500,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.delay(1000),
-          Animated.timing(completedGlowAnim, {
-            toValue: 0,
-            duration: 500,
-            easing: Easing.in(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    }, [currentStatus])
-  );
-
-  useEffect(() => {
-    if (currentStatus === 'available') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scaleAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    }
-
-    if (currentStatus === 'completed') {
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.bounce,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.elastic(1),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [currentStatus]);
-
-  const getIconConfig = (): { 
-    name: IconName; 
-    bg: string[];
-    color: string;
-  } => {
-    switch (type) {
-      case 'lesson':
-        return { 
-          name: 'school', 
-          bg: ['#4158D0', '#C850C0'],
-          color: '#ffffff',
-        };
-      case 'review':
-        return { 
-          name: 'refresh', 
-          bg: ['#FF8008', '#FFC837'],
-          color: '#ffffff',
-        };
-      case 'test':
-        return { 
-          name: 'trophy', 
-          bg: ['#8E2DE2', '#4A00E0'],
-          color: '#ffffff',
-        };
-      default:
-        return { 
-          name: 'document-text', 
-          bg: ['#00B4DB', '#0083B0'],
-          color: '#ffffff',
-        };
-    }
-  };
-
-  const getStatusColors = () => {
-    switch (currentStatus) {
-      case 'completed':
-        return {
-          border: ['#FFD700', '#FFA500'],
-          glow: '#FFD700',
-          icon: '#ffffff',
-        };
-      case 'available':
-        return {
-          border: ['#FF6B6B', '#4ECDC4'],
-          glow: color,
-          icon: '#ffffff',
-        };
-      case 'locked':
-        return {
-          border: ['#95a5a6', '#7f8c8d'],
-          glow: '#95a5a6',
-          icon: '#bdc3c7',
-        };
-      default:
-        return {
-          border: ['#95a5a6', '#7f8c8d'],
-          glow: '#95a5a6',
-          icon: '#bdc3c7',
-        };
-    }
-  };
-
-  const getPositionStyle = () => {
-    const randomOffset = Math.sin(index * 0.5) * 10;
-    switch (position) {
-      case 'left':
-        return {
-          transform: [
-            { translateX: -30 + randomOffset },
-            { translateY: Math.sin(index) * 5 },
-          ],
-        };
-      case 'right':
-        return {
-          transform: [
-            { translateX: 30 - randomOffset },
-            { translateY: Math.cos(index) * 5 },
-          ],
-        };
-      default:
-        return {
-          transform: [
-            { translateY: Math.sin(index * 0.5) * 8 },
-          ],
-        };
-    }
-  };
-
-  const iconConfig = getIconConfig();
-  const statusColors = getStatusColors();
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '10deg'],
-  });
+  const size = lessonNodeSize(status);
+  const iconName: IconName = type === 'review' ? 'refresh' : type === 'test' ? 'trophy' : 'school';
+  const typeLabel = type === 'lesson' ? 'Leçon' : type === 'review' ? 'Révision' : 'Test';
+  const isLocked = status === 'locked';
 
   return (
-    <Animated.View 
-      style={[
-        styles.container, 
-        getPositionStyle(),
-        !isLast && styles.withConnector,
-        isFirst && styles.firstNode,
-      ]}
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      disabled={isLocked}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`${typeLabel} ${title}${
+        status === 'completed' ? ', complétée' : isLocked ? ', verrouillée' : ', disponible'
+      }`}
+      accessibilityState={{ disabled: isLocked }}
     >
-      {!isLast && currentStatus !== 'locked' && (
-        <Animated.View 
-          style={[
-            styles.connector,
-            {
-              backgroundColor: currentStatus === 'completed' ? '#FFD700' : color,
-              transform: [{ scaleY: scaleAnim }],
-            },
-          ]} 
-        />
-      )}
-
-      {currentStatus === 'completed' && (
-        <>
-          <Animated.View
-            style={[
-              styles.completedGlow,
-              {
-                opacity: glowAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.3, 0.8],
-                }),
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.completedGlowLarge,
-              {
-                opacity: completedGlowAnim,
-              },
-            ]}
-          />
-        </>
-      )}
-
-      {currentStatus === 'available' && (
-        <Animated.View
-          style={[
-            styles.glowEffect,
-            {
-              opacity: glowAnim,
-              backgroundColor: statusColors.glow,
-            },
-          ]}
-        />
-      )}
-
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={currentStatus === 'locked'}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}${
-          currentStatus === 'completed' ? ', terminée' : currentStatus === 'locked' ? ', verrouillée' : ', disponible'
-        }`}
-        accessibilityState={{ disabled: currentStatus === 'locked' }}
+      <Animated.View
+        style={[
+          styles.ring,
+          { width: size + RING * 2, height: size + RING * 2, borderRadius: (size + RING * 2) / 2 },
+          { transform: [{ scale: pulse }] },
+        ]}
       >
-        <Animated.View
-          style={[
-            styles.nodeWrapper,
-            {
-              transform: [
-                { scale: currentStatus === 'available' ? scaleAnim : 1 },
-                { translateY: bounceAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -10],
-                })},
-              ],
-            },
-          ]}
+        <LinearGradient
+          colors={GRADIENTS[status]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
         >
-          {currentStatus === 'completed' && (
-            <LinearGradient
-              colors={['rgba(255,215,0,0.4)', 'rgba(255,165,0,0.2)']}
-              style={styles.completedOverlay}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-          )}
+          <Ionicons name={iconName} size={Math.round(size * 0.45)} color="#ffffff" />
+        </LinearGradient>
 
-          <LinearGradient
-            colors={statusColors.border}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.outerRing}
-          />
+        {status === 'completed' && (
+          <View style={[styles.badge, styles.badgeCompleted]}>
+            <Ionicons name="checkmark" size={16} color="#ffffff" />
+          </View>
+        )}
+        {status === 'available' && (
+          <View style={[styles.badge, styles.badgePlay]}>
+            <Ionicons name="play" size={22} color={colors.primaryDark} />
+          </View>
+        )}
+        {isLocked && (
+          <View style={[styles.badge, styles.badgeLocked]}>
+            <Ionicons name="lock-closed" size={15} color="#ffffff" />
+          </View>
+        )}
+      </Animated.View>
 
-          <LinearGradient
-            colors={currentStatus === 'locked' 
-              ? ['#bdc3c7', '#95a5a6']
-              : currentStatus === 'completed'
-              ? ['#FFD700', '#FFA500']
-              : iconConfig.bg
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.node}
-          >
-            {currentStatus === 'completed' && (
-              <>
-                <Animated.View style={[styles.particle, styles.particle1, { transform: [{ rotate: spin }] }]} />
-                <Animated.View style={[styles.particle, styles.particle2, { transform: [{ rotate: spin }] }]} />
-                <Animated.View style={[styles.particle, styles.particle3, { transform: [{ rotate: spin }] }]} />
-                <Animated.View style={[styles.particle, styles.particle4, { transform: [{ rotate: spin }] }]} />
-              </>
-            )}
-
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <Ionicons 
-                name={iconConfig.name}
-                size={36} 
-                color={statusColors.icon}
-              />
-            </Animated.View>
-
-            {currentStatus === 'completed' && stars > 0 && (
-              <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.starsBadge}>
-                <View style={styles.starsRow}>
-                  {[1, 2, 3].map((i) => (
-                    <Ionicons
-                      key={i}
-                      name="star"
-                      size={12}
-                      color={i <= stars ? '#FFD700' : '#ffffff80'}
-                    />
-                  ))}
-                </View>
-              </BlurView>
-            )}
-
-            {currentStatus === 'locked' && (
-              <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.lockContainer}>
-                <Ionicons name="lock-closed" size={20} color="#ffffff" />
-              </BlurView>
-            )}
-
-            {currentStatus === 'available' && (
-              <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.availableBadge}>
-                <Ionicons name="play" size={12} color="#ffffff" />
-              </BlurView>
-            )}
-          </LinearGradient>
-        </Animated.View>
-      </TouchableOpacity>
-
-      <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={[
-        styles.titleContainer,
-        currentStatus === 'completed' && styles.titleContainerCompleted
-      ]}>
-        <Text 
-          style={[
-            styles.title, 
-            currentStatus === 'locked' && styles.titleLocked,
-            currentStatus === 'completed' && styles.titleCompleted
-          ]} 
-          numberOfLines={2}
-        >
+      <View style={styles.label}>
+        <Text style={[styles.title, isLocked && styles.titleLocked]} numberOfLines={2}>
           {title}
         </Text>
-      </BlurView>
-
-      <View style={[
-        styles.typeIndicator, 
-        { 
-          backgroundColor: currentStatus === 'completed' 
-            ? '#FFD700' + '30'
-            : color + '30' 
-        }
-      ]}>
-        <Text style={[
-          styles.typeText, 
-          { 
-            color: currentStatus === 'completed' 
-              ? '#FFD700' 
-              : color 
-          }
-        ]}>
-          {type === 'lesson' ? 'Leçon' : type === 'review' ? 'Révision' : 'Test'}
-        </Text>
+        {status === 'completed' && (
+          <View style={[styles.chip, { backgroundColor: colors.tintSuccess }]}>
+            <Ionicons name="checkmark" size={14} color={colors.successText} />
+            <Text style={[styles.chipText, { color: colors.successText }]}>Complété</Text>
+          </View>
+        )}
+        {status === 'available' && (
+          <View style={[styles.chip, { backgroundColor: colors.tintPrimary }]}>
+            <Text style={[styles.chipText, { color: colors.primaryText }]}>
+              {xp ? `${typeLabel} · ${xp} XP` : typeLabel}
+            </Text>
+          </View>
+        )}
+        {isLocked && (
+          <View style={[styles.chip, { backgroundColor: colors.surfaceAlt }]}>
+            <Ionicons name="lock-closed" size={14} color={colors.textSecondary} />
+            <Text style={[styles.chipText, { color: colors.textSecondary }]}>Verrouillé</Text>
+          </View>
+        )}
       </View>
-
-      {currentStatus === 'completed' && (
-        <View style={styles.completedRibbon}>
-          <LinearGradient
-            colors={['#FFD700', '#FFA500']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.completedRibbonGradient}
-          >
-            <Text style={styles.completedRibbonText}>✅ Complété</Text>
-          </LinearGradient>
-        </View>
-      )}
-    </Animated.View>
+    </TouchableOpacity>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
+      width: LESSON_NODE_WIDTH,
       alignItems: 'center',
-      width: 120,
-      marginBottom: 30,
-      position: 'relative',
     },
-    withConnector: {
-      marginBottom: 40,
-    },
-    firstNode: {
-      marginTop: 20,
-    },
-    connector: {
-      position: 'absolute',
-      bottom: -30,
-      width: 4,
-      height: 30,
-      borderRadius: 2,
-      zIndex: -1,
-    },
-    glowEffect: {
-      position: 'absolute',
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      opacity: 0.3,
-      zIndex: -2,
-    },
-    completedGlow: {
-      position: 'absolute',
-      width: 110,
-      height: 110,
-      borderRadius: 55,
-      backgroundColor: '#FFD700',
-      opacity: 0.3,
-      zIndex: -2,
-    },
-    completedGlowLarge: {
-      position: 'absolute',
-      width: 130,
-      height: 130,
-      borderRadius: 65,
-      backgroundColor: '#FFD700',
-      opacity: 0.1,
-      zIndex: -3,
-    },
-    nodeWrapper: {
-      position: 'relative',
-      marginBottom: 8,
-    },
-    outerRing: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      right: -4,
-      bottom: -4,
-      borderRadius: 50,
-      opacity: 0.5,
-    },
-    node: {
-      width: 90,
-      height: 90,
-      borderRadius: 45,
+    ring: {
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 8,
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      elevation: 6,
+    },
+    badge: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 3,
-      borderColor: 'rgba(255,255,255,0.3)',
     },
-    completedOverlay: {
-      position: 'absolute',
-      width: '100%',
-      height: '100%',
-      borderRadius: 45,
-      zIndex: 1,
+    // Pastille check en haut à droite (remplace le ruban de 8 px).
+    badgeCompleted: {
+      top: 2,
+      right: 0,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.success,
+      borderColor: '#ffffff',
     },
-    particle: {
-      position: 'absolute',
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: '#FFD700',
+    // Badge play 46 px avec icône 22 px (au lieu de 24/12).
+    badgePlay: {
+      bottom: 4,
+      right: -4,
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: '#ffffff',
+      borderColor: colors.primaryDark,
     },
-    particle1: {
-      top: -10,
-      right: 10,
-    },
-    particle2: {
-      bottom: -10,
-      left: 20,
-    },
-    particle3: {
-      top: 20,
-      left: -10,
-    },
-    particle4: {
-      bottom: 20,
-      right: -10,
-    },
-    starsBadge: {
-      position: 'absolute',
-      top: -8,
-      right: -8,
-      borderRadius: 12,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      overflow: 'hidden',
-    },
-    starsRow: {
-      flexDirection: 'row',
-      gap: 2,
-    },
-    lockContainer: {
-      position: 'absolute',
-      bottom: -5,
-      right: -5,
+    badgeLocked: {
+      bottom: 8,
+      right: 2,
       width: 30,
       height: 30,
       borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.5)',
+      backgroundColor: colors.muted,
+      borderColor: '#ffffff',
     },
-    availableBadge: {
-      position: 'absolute',
-      bottom: -5,
-      right: -5,
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+    label: {
+      marginTop: 6,
       alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.5)',
-    },
-    titleContainer: {
-      borderRadius: 15,
-      paddingHorizontal: 12,
+      gap: 6,
+      paddingHorizontal: 10,
       paddingVertical: 6,
-      overflow: 'hidden',
-      marginTop: 4,
-      maxWidth: 100,
-    },
-    titleContainerCompleted: {
-      borderWidth: 1,
-      borderColor: '#FFD700',
+      borderRadius: 12,
+      backgroundColor: colors.background,
+      maxWidth: LESSON_NODE_WIDTH,
     },
     title: {
-      fontSize: 12,
+      fontSize: 18,
       fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
     },
     titleLocked: {
-      color: colors.muted,
+      color: colors.textSecondary,
     },
-    titleCompleted: {
-      color: '#FFD700',
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 999,
     },
-    typeIndicator: {
-      marginTop: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 10,
-    },
-    typeText: {
-      fontSize: 10,
+    chipText: {
+      fontSize: 13,
       fontWeight: '600',
-    },
-    completedRibbon: {
-      position: 'absolute',
-      top: -5,
-      right: -15,
-      transform: [{ rotate: '15deg' }],
-    },
-    completedRibbonGradient: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
-      elevation: 3,
-    },
-    completedRibbonText: {
-      color: '#ffffff',
-      fontSize: 8,
-      fontWeight: '700',
     },
   });
 }

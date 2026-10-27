@@ -146,7 +146,7 @@ describe('PathScreen — affichage des leçons et stats', () => {
     await waitFor(() => {
       expect(screen.getByText('250 XP')).toBeTruthy();
     });
-    expect(screen.getByText('4j')).toBeTruthy();
+    expect(screen.getByText('4 j')).toBeTruthy();
   });
 
   it('n\'affiche pas les badges de stats avant qu\'elles soient chargées', () => {

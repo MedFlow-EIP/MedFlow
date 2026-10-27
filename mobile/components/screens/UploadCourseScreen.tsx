@@ -7,12 +7,10 @@ import {
   ScrollView,
   Alert,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 
 import { API_URL } from "@/services/api";
 import * as DocumentPicker from "expo-document-picker";
-import RenderHTML from "react-native-render-html";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../../firebaseConfig";
@@ -20,10 +18,28 @@ import { getAuthHeaders } from "../../utils/authHeaders";
 import { logScreenView } from "../../utils/analytics";
 import { useTheme } from "../../theme/ThemeContext";
 import type { ThemeColors } from "../../theme/colors";
+import {
+  CourseTabs,
+  CourseTab,
+  FlashcardList,
+  QuizList,
+  SummaryCard,
+} from "../course/CourseContent";
+import { useScreenInsets } from "../navigation/constants";
+
+const formatSize = (bytes?: number) =>
+  bytes ? `${(bytes / 1024 / 1024).toFixed(2).replace(".", ",")} Mo` : "";
+
+const AI_OUTPUTS = [
+  { title: "Un résumé structuré", detail: "titres, définitions, points clés" },
+  { title: "Des flashcards", detail: "révisées ensuite en répétition espacée" },
+  { title: "Un quiz", detail: "pour vérifier que c’est acquis" },
+];
 
 export function UploadCourseScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { top, bottom } = useScreenInsets();
 
   useEffect(() => {
     logScreenView('UploadCourseScreen');
@@ -33,12 +49,9 @@ export function UploadCourseScreen() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("resume");
-  const [quizAnswers, setQuizAnswers] = useState<any>({});
-  const [quizValidation, setQuizValidation] = useState(false);
+  const [activeTab, setActiveTab] = useState<CourseTab>("resume");
 
-  const { width } = useWindowDimensions();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   const pickDocument = async () => {
     try {
@@ -55,6 +68,12 @@ export function UploadCourseScreen() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    setData(null);
+    setError("");
   };
 
   const handleGenerate = async () => {
@@ -93,14 +112,12 @@ export function UploadCourseScreen() {
 
       setData({
         resume: result.summary,
-        flashcards: result.flashcards,
-        quiz: result.quiz,
+        flashcards: Array.isArray(result.flashcards) ? result.flashcards : [],
+        quiz: Array.isArray(result.quiz) ? result.quiz : [],
         courseId: result.id,
         courseName: result.nom,
       });
 
-      setQuizAnswers({});
-      setQuizValidation(false);
       setActiveTab("resume");
     } catch (err: any) {
       setError(err.message || "Erreur inconnue");
@@ -109,190 +126,184 @@ export function UploadCourseScreen() {
     }
   };
 
+  const generateLabel = loading
+    ? "Analyse du PDF…"
+    : data
+    ? "Régénérer le contenu"
+    : "Générer le contenu";
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: top, paddingBottom: bottom + 110 }]} showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Retour"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
 
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Retour"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, marginLeft: 10, marginTop: 30 }}>
-          <Text style={styles.title} accessibilityRole="header">Importer un cours</Text>
-          <Text style={styles.subtitle}>
-            PDF → résumé, flashcards & quiz IA
-          </Text>
-        </View>
-      </View>
-
-      {/* UPLOAD CARD */}
-      <TouchableOpacity style={styles.uploadCard} onPress={pickDocument}>
-        <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
-        <Text style={styles.uploadText}>
-          {file ? "Changer de PDF" : "Importer un PDF"}
-        </Text>
-        <Text style={styles.uploadHint}>
-          Analyse automatique par IA
-        </Text>
-      </TouchableOpacity>
-
-      {/* FILE */}
-      {file && (
-        <View style={styles.fileCard}>
-          <Ionicons name="document-text" size={20} color={colors.success} />
-          <View style={{ marginLeft: 10 }}>
-            <Text style={styles.fileName}>{file.name}</Text>
-            <Text style={styles.fileSize}>
-              {(file.size / 1024 / 1024).toFixed(2)} MB
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* GENERATE */}
-      {file && (
-        <TouchableOpacity
-          style={styles.generateBtn}
-          onPress={handleGenerate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.onAccent} accessibilityLabel="Génération en cours" />
+          {data ? (
+            <Text style={styles.titleGenerated} accessibilityRole="header">Contenu généré</Text>
           ) : (
-            <Text style={styles.generateText}>
-              Générer le contenu
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {/* ERROR */}
-      {!!error && <Text style={styles.error}>{error}</Text>}
-
-      {/* RESULT */}
-      {data && (
-        <View style={{ marginTop: 25 }}>
-          <Text style={styles.success}>
-            {data.courseName}
-          </Text>
-
-          {/* TABS */}
-          <View style={styles.tabs}>
-            {["resume", "flashcards", "quiz"].map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                onPress={() => setActiveTab(tab)}
-                style={[
-                  styles.tabButton,
-                  activeTab === tab && styles.activeTab,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === tab && styles.tabTextActive,
-                  ]}
-                >
-                  {tab === "resume"
-                    ? "Résumé"
-                    : tab === "flashcards"
-                    ? "Flashcards"
-                    : "Quiz"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* RESUME */}
-          {activeTab === "resume" && (
-            <View style={styles.card}>
-              <RenderHTML
-                contentWidth={width}
-                source={{ html: data.resume }}
-                baseStyle={{ color: colors.textSecondary }}
-              />
-            </View>
-          )}
-
-          {/* FLASHCARDS */}
-          {activeTab === "flashcards" && (
-            <View>
-              {data.flashcards.map((card: any, i: number) => (
-                <View key={i} style={styles.flashcard}>
-                  <Text style={styles.question}>{card.question}</Text>
-                  <Text style={styles.answer}>{card.answer}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* QUIZ */}
-          {activeTab === "quiz" && (
-            <View>
-              {data.quiz.map((q: any, i: number) => (
-                <View key={i} style={styles.quizBox}>
-                  <Text style={styles.question}>{q.question}</Text>
-
-                  {Object.entries(q.options).map(([key, value]: any) => {
-                    const isCorrect = key === q.correct;
-                    const isSelected = quizAnswers[i] === key;
-
-                    let bg = colors.surfaceAlt;
-
-                    if (quizValidation) {
-                      if (isCorrect) bg = colors.success;
-                      else if (isSelected) bg = colors.danger;
-                    } else if (isSelected) {
-                      bg = colors.primary;
-                    }
-
-                    // bg peut être un fond neutre (surfaceAlt) ou un fond
-                    // accentué (primary/success/danger) selon l'état — la
-                    // couleur du texte doit suivre, sinon le texte devient
-                    // illisible sur le fond neutre clair (blanc sur quasi-blanc).
-                    const optionTextColor =
-                      bg === colors.surfaceAlt ? colors.textPrimary : colors.onAccent;
-
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        disabled={quizValidation}
-                        onPress={() =>
-                          setQuizAnswers({
-                            ...quizAnswers,
-                            [i]: key,
-                          })
-                        }
-                        style={[styles.optionButton, { backgroundColor: bg }]}
-                      >
-                        <Text style={[styles.optionText, { color: optionTextColor }]}>
-                          {key}. {value}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))}
-
-              {!quizValidation && (
-                <TouchableOpacity
-                  style={styles.validateBtn}
-                  onPress={() => setQuizValidation(true)}
-                >
-                  <Text style={styles.generateText}>Valider</Text>
-                </TouchableOpacity>
-              )}
+            <View style={styles.headerText}>
+              <Text style={styles.title} accessibilityRole="header">Importer un cours</Text>
+              <Text style={styles.subtitle}>PDF → résumé, flashcards & quiz IA</Text>
             </View>
           )}
         </View>
-      )}
-    </ScrollView>
+
+        {!data && (
+          <>
+            {/* ZONE D'IMPORT : entièrement cliquable */}
+            <TouchableOpacity
+              style={styles.dropZone}
+              onPress={pickDocument}
+              accessibilityRole="button"
+              accessibilityLabel={file ? "Changer de PDF" : "Importer un PDF"}
+            >
+              <View style={styles.dropIcon}>
+                <Ionicons name="cloud-upload-outline" size={30} color={colors.primaryDark} />
+              </View>
+              <Text style={styles.dropTitle}>{file ? "Changer de PDF" : "Importer un PDF"}</Text>
+              <Text style={styles.dropHint}>PDF · 20 Mo max · analyse automatique par IA</Text>
+            </TouchableOpacity>
+
+            {/* FICHIER SÉLECTIONNÉ */}
+            {file && (
+              <View style={styles.fileCard}>
+                <View style={styles.fileIcon}>
+                  <Ionicons name="document-text" size={22} color={colors.success} />
+                </View>
+                <View style={styles.fileInfo}>
+                  <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
+                  <Text style={styles.fileSize}>{formatSize(file.size)} · prêt à être analysé</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeBtn}
+                  onPress={removeFile}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retirer le fichier"
+                >
+                  <Ionicons name="close" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* CE QUE L'IA VA GÉNÉRER */}
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>L’IA va générer</Text>
+              {AI_OUTPUTS.map((item) => (
+                <View key={item.title} style={styles.infoRow}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                  <View style={styles.infoText}>
+                    <Text style={styles.infoItemTitle}>{item.title}</Text>
+                    <Text style={styles.infoItemDetail}>{item.detail}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* ERREUR */}
+        {!!error && (
+          <View style={styles.errorCard} accessibilityLiveRegion="polite">
+            <Ionicons name="alert-circle" size={20} color={colors.dangerText} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/* RÉSULTAT */}
+        {data && (
+          <>
+            <View style={styles.savedBanner} accessibilityLiveRegion="polite">
+              <View style={styles.savedIcon}>
+                <Ionicons name="checkmark" size={16} color="#ffffff" />
+              </View>
+              <View style={styles.savedText}>
+                <Text style={styles.savedTitle}>Cours enregistré</Text>
+                <Text style={styles.savedDetail}>Retrouve-le dans tes stats, rubrique « Mes cours ».</Text>
+              </View>
+              {data.courseId ? (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("CourseDetail", { courseId: data.courseId })}
+                  style={styles.savedLink}
+                  accessibilityRole="link"
+                  accessibilityLabel="Voir le cours dans Mes cours"
+                >
+                  <Text style={styles.savedLinkText}>Voir</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <Text style={styles.courseTitle}>{data.courseName}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="document-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {file?.name} · {data.flashcards.length} flashcards · 1 quiz
+              </Text>
+            </View>
+
+            <CourseTabs value={activeTab} onChange={setActiveTab} />
+
+            {activeTab === "resume" && <SummaryCard html={data.resume} />}
+            {activeTab === "flashcards" && <FlashcardList cards={data.flashcards} />}
+            {activeTab === "quiz" && <QuizList questions={data.quiz} mode="answer" />}
+          </>
+        )}
+      </ScrollView>
+
+      {/* BARRE D'ACTIONS FIXE */}
+      <View style={[styles.actionBar, { paddingBottom: bottom + 12 }]}>
+        {data ? (
+          <>
+            <TouchableOpacity
+              style={[styles.secondaryBtn, loading && styles.btnDisabled]}
+              onPress={handleGenerate}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Régénérer le contenu"
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.primaryText} accessibilityLabel="Génération en cours" />
+              ) : (
+                <Ionicons name="sync-outline" size={18} color={colors.primaryText} />
+              )}
+              <Text style={styles.secondaryBtnText}>{loading ? "Analyse…" : "Régénérer"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => navigation.navigate("Revision", { courseId: data.courseId })}
+              accessibilityRole="button"
+            >
+              <Ionicons name="play" size={18} color={colors.onAction} />
+              <Text style={styles.primaryBtnText}>Réviser ce cours</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={[styles.primaryBtn, (!file || loading) && styles.btnDisabled]}
+            onPress={handleGenerate}
+            disabled={!file || loading}
+            accessibilityRole="button"
+            accessibilityLabel={generateLabel}
+            accessibilityState={{ disabled: !file || loading, busy: loading }}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.onAction} accessibilityLabel="Génération en cours" />
+            ) : (
+              <Ionicons name="flash-outline" size={20} color={colors.onAction} />
+            )}
+            <Text style={styles.primaryBtnText}>{generateLabel}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -306,14 +317,15 @@ function makeStyles(colors: ThemeColors) {
     },
 
     content: {
-      padding: 20,
+      paddingHorizontal: 20,
+      gap: 16,
     },
 
     header: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 18,
       gap: 12,
+      marginBottom: 4,
     },
 
     backBtn: {
@@ -321,287 +333,290 @@ function makeStyles(colors: ThemeColors) {
       height: 44,
       borderRadius: 22,
       backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
-      elevation: 2,
-      marginTop: 30,
-      marginLeft: 10,
+    },
+
+    headerText: {
+      flex: 1,
+      gap: 4,
     },
 
     title: {
-      fontSize: 18,
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+
+    titleGenerated: {
+      flex: 1,
+      fontSize: 20,
       fontWeight: "700",
       color: colors.textPrimary,
     },
 
     subtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+
+    dropZone: {
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 20,
+      paddingVertical: 28,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderColor: colors.primary,
+      backgroundColor: colors.tintPrimary,
+    },
+
+    dropIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    dropTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: colors.primaryText,
+    },
+
+    dropHint: {
       fontSize: 13,
       color: colors.textSecondary,
-      marginTop: 2,
-    },
-
-    uploadCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 22,
-      alignItems: "center",
-      marginBottom: 16,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      elevation: 2,
-    },
-
-    uploadTitle: {
-      marginTop: 10,
-      fontSize: 15,
-      fontWeight: "700",
-      color: colors.textPrimary,
-    },
-
-    uploadHint: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 4,
-    },
-
-    fileBox: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 12,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
+      textAlign: "center",
     },
 
     fileCard: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.surface,
-      padding: 14,
-      borderRadius: 16,
-      marginTop: 12,
       gap: 12,
-      alignSelf: "center",
-      width: "95%",
+      paddingLeft: 14,
+      paddingRight: 8,
+      paddingVertical: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
 
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
+    fileIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.tintSuccess,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    fileInfo: {
+      flex: 1,
+      gap: 2,
     },
 
     fileName: {
-      color: colors.textPrimary,
+      fontSize: 15,
       fontWeight: "600",
-      fontSize: 14,
+      color: colors.textPrimary,
     },
 
     fileSize: {
+      fontSize: 13,
       color: colors.textSecondary,
-      fontSize: 12,
-      marginTop: 2,
     },
 
-    generateBtn: {
-      backgroundColor: colors.primary,
-      padding: 16,
-      borderRadius: 14,
+    removeBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       alignItems: "center",
-      marginTop: 16,
-      alignSelf: "center",
-      gap: 12,
-      width: "95%",
-
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      elevation: 3,
+      justifyContent: "center",
     },
 
-    generateText: {
-      color: colors.onAccent,
-      fontWeight: "700",
+    infoCard: {
+      gap: 12,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+
+    infoTitle: {
       fontSize: 15,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+    },
+
+    infoText: {
+      flex: 1,
+      gap: 1,
+    },
+
+    infoItemTitle: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.textPrimary,
+    },
+
+    infoItemDetail: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+
+    errorCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: colors.tintDanger,
+    },
+
+    errorText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.dangerText,
+    },
+
+    savedBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 14,
+      backgroundColor: colors.tintSuccess,
+    },
+
+    savedIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.success,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    savedText: {
+      flex: 1,
+      gap: 2,
+    },
+
+    savedTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.successText,
+    },
+
+    savedDetail: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.successText,
+    },
+
+    savedLink: {
+      minHeight: 44,
+      justifyContent: "center",
+      paddingLeft: 4,
+    },
+
+    savedLinkText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.successText,
+    },
+
+    courseTitle: {
+      fontSize: 24,
+      lineHeight: 30,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: -8,
+    },
+
+    metaText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+
+    actionBar: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: "row",
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: 14,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
 
     primaryBtn: {
-      backgroundColor: colors.primary,
-      padding: 16,
-      borderRadius: 14,
-      alignItems: "center",
-      marginTop: 16,
-
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      elevation: 3,
-      
-    },
-
-    primaryText: {
-      color: colors.onAccent,
-      fontWeight: "700",
-    },
-
-    error: {
-      color: colors.danger,
-      marginTop: 10,
-      fontWeight: "500",
-    },
-
-    success: {
-      fontSize: 18,
-      fontWeight: "700",
-      marginBottom: 12,
-      textAlign: "center",
-      color: colors.textPrimary,
-    },
-
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 12,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
-    },
-
-    flashcard: {
-      backgroundColor: colors.surface,
-      padding: 16,
-      borderRadius: 16,
-      marginBottom: 12,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
-    },
-
-    question: {
-      color: colors.textPrimary,
-      fontWeight: "700",
-      marginBottom: 6,
-      
-    },
-
-    answer: {
-      color: colors.textSecondary,
-    },
-
-    quizBox: {
-      backgroundColor: colors.surface,
-      padding: 16,
-      borderRadius: 16,
-      marginBottom: 20,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
-    },
-
-    optionButton: {
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 8,
-    },
-
-    optionText: {
-      fontWeight: "600",
-    },
-
-    uploadText: {
-      color: colors.textPrimary,
-      fontWeight: "700",
-      marginTop: 10,
-      fontSize: 16,
-    },
-
-    tabs: {
-      flexDirection: "row",
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: 14,
-      padding: 4,
-      marginTop: 10,
-      marginBottom: 16,
-      gap: 12,
-      alignSelf: "center",
-      width: "95%",
-    },
-
-    tabButton: {
       flex: 1,
-      paddingVertical: 10,
-      borderRadius: 10,
+      flexDirection: "row",
       alignItems: "center",
-    },
-
-    activeTab: {
-      backgroundColor: colors.primary,
-    },
-
-    tabText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-    },
-
-    tabTextActive: {
-      color: colors.onAccent,
-    },
-
-    validateBtn: {
-      backgroundColor: colors.primary,
-      padding: 16,
+      justifyContent: "center",
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 16,
       borderRadius: 14,
-      alignItems: "center",
-      marginTop: 16,
-      marginBottom: 20,
-
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      elevation: 3,
+      backgroundColor: colors.action,
     },
 
-    validateText: {
-      color: colors.onAccent,
-      fontWeight: "700",
+    primaryBtnText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.onAction,
+    },
+
+    secondaryBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 15,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.surface,
+    },
+
+    secondaryBtnText: {
       fontSize: 15,
+      fontWeight: "600",
+      color: colors.primaryText,
+    },
+
+    btnDisabled: {
+      opacity: 0.5,
     },
   });
 }

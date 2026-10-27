@@ -21,35 +21,45 @@ const baseProps = {
 describe('PathCard — clamp de la progression', () => {
   it('affiche le pourcentage normal tel quel', () => {
     render(<PathCard {...baseProps} progress={42} />);
-    expect(screen.getByText('42%')).toBeTruthy();
+    expect(screen.getByText('42 %')).toBeTruthy();
   });
 
   it('plafonne à 100% une valeur supérieure à 100', () => {
     render(<PathCard {...baseProps} progress={150} />);
-    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('100 %')).toBeTruthy();
   });
 
   it('plancher à 0% une valeur négative', () => {
     render(<PathCard {...baseProps} progress={-10} />);
-    expect(screen.getByText('0%')).toBeTruthy();
+    expect(screen.getByText('0 %')).toBeTruthy();
   });
 });
 
-describe('PathCard — texte selon la progression', () => {
-  it('affiche "Commencer" à 0% de progression', () => {
-    render(<PathCard {...baseProps} progress={0} />);
-    expect(screen.getByText('Commencer →')).toBeTruthy();
+describe('PathCard — carte héros (parcours en cours)', () => {
+  it('affiche "Commencer le parcours" à 0% de progression', () => {
+    render(<PathCard {...baseProps} progress={0} isHero />);
+    expect(screen.getByText('Commencer le parcours')).toBeTruthy();
   });
 
-  it('affiche "Continuer" pour une progression entamée', () => {
+  it('affiche "Continuer la leçon" pour une progression entamée', () => {
+    render(<PathCard {...baseProps} progress={30} isHero />);
+    expect(screen.getByText('Continuer la leçon')).toBeTruthy();
+  });
+
+  it('n\'affiche le bouton que sur la carte héros', () => {
     render(<PathCard {...baseProps} progress={30} />);
-    expect(screen.getByText('Continuer →')).toBeTruthy();
+    expect(screen.queryByText('Continuer la leçon')).toBeNull();
+  });
+
+  it('affiche la prochaine leçon sur la carte héros', () => {
+    render(<PathCard {...baseProps} progress={30} isHero nextLessonTitle="Os du crâne" />);
+    expect(screen.getByText('Os du crâne')).toBeTruthy();
   });
 
   it('affiche "Terminé" à 100% au lieu de "Continuer"', () => {
-    render(<PathCard {...baseProps} progress={100} />);
+    render(<PathCard {...baseProps} progress={100} isHero />);
     expect(screen.getByText('Terminé')).toBeTruthy();
-    expect(screen.queryByText('Continuer →')).toBeNull();
+    expect(screen.queryByText('Continuer la leçon')).toBeNull();
   });
 
   it('affiche le compte de leçons "X/Y leçons"', () => {
@@ -78,7 +88,20 @@ describe('PathCard — interaction', () => {
   });
 
   it('n\'affiche pas de bouton "Commencer/Continuer" quand verrouillé', () => {
-    render(<PathCard {...baseProps} progress={0} isLocked={true} />);
-    expect(screen.queryByText('Commencer →')).toBeNull();
+    render(<PathCard {...baseProps} progress={0} isLocked={true} isHero />);
+    expect(screen.queryByText('Commencer le parcours')).toBeNull();
+  });
+
+  it('affiche la condition de déblocage quand verrouillé', () => {
+    render(
+      <PathCard
+        {...baseProps}
+        progress={0}
+        completedLessons={0}
+        isLocked={true}
+        unlockHint="Termine Anatomie pour débloquer"
+      />
+    );
+    expect(screen.getByText('Termine Anatomie pour débloquer · 0/10 leçons')).toBeTruthy();
   });
 });

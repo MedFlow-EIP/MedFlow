@@ -172,7 +172,7 @@ describe('HomeScreen — affichage normal', () => {
     renderHomeScreen();
 
     await waitFor(() => {
-      expect(screen.getByText('Camille')).toBeTruthy();
+      expect(screen.getByText('Bonjour, Camille')).toBeTruthy();
     });
   });
 
@@ -185,7 +185,7 @@ describe('HomeScreen — affichage normal', () => {
     renderHomeScreen();
 
     await waitFor(() => {
-      expect(screen.getByText('Médecin')).toBeTruthy();
+      expect(screen.getByText('Bonjour, Médecin')).toBeTruthy();
     });
   });
 });
