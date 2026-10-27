@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 
 from middleware.auth import build_user_response, require_auth
 from services.pdf import extract_text_from_pdf
+from routes.errors import internal_error
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def search_courses():
 
     except Exception as e:
         logger.exception("Erreur search")
-        return jsonify({"error": f"Erreur search: {str(e)}"}), 500
+        return internal_error("Erreur search")
 
 
 @courses_bp.route("/api/dashboard", methods=["GET"])
@@ -115,7 +116,7 @@ def get_dashboard():
 
     except Exception as e:
         logger.exception("Erreur dashboard")
-        return jsonify({"error": f"Erreur dashboard: {str(e)}"}), 500
+        return internal_error("Erreur dashboard")
 
 
 @courses_bp.route("/api/course/<course_id>", methods=["GET"])
@@ -129,7 +130,7 @@ def get_course(course_id):
         return jsonify(_course_to_response(course))
     except Exception as e:
         logger.exception("Erreur lecture cours")
-        return jsonify({"error": f"Erreur lecture cours: {str(e)}"}), 500
+        return internal_error("Erreur lecture cours")
 
 
 @courses_bp.route("/api/course/<course_id>", methods=["DELETE"])
@@ -145,7 +146,7 @@ def delete_course(course_id):
         return jsonify({"success": True})
     except Exception as e:
         logger.exception("Erreur suppression cours")
-        return jsonify({"error": f"Erreur suppression: {str(e)}"}), 500
+        return internal_error("Erreur suppression")
 
 
 @courses_bp.route("/api/process", methods=["POST"])
@@ -222,4 +223,4 @@ def process_document():
 
     except Exception as e:
         logger.exception("Erreur traitement document")
-        return jsonify({"error": f"Erreur traitement: {str(e)}"}), 500
+        return internal_error("Erreur traitement")
