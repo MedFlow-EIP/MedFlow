@@ -20,24 +20,29 @@ export function escapeHtml(text: unknown): string {
     .replace(/"/g, '&quot;');
 }
 
+// Balises de mise en forme gardées dans la fiche (sans aucun attribut).
+const SUMMARY_TAGS = new Set([
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u',
+  'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+]);
+
 /**
- * Le résumé est du HTML produit par l'IA : on retire tout ce qui pourrait
- * s'exécuter ou charger une ressource avant de l'insérer dans la fiche.
+ * Le résumé est du HTML produit par l'IA. Tout est d'abord échappé (plus
+ * aucune balise active), puis seules des balises de mise en forme sont
+ * rétablies, sans attributs : rien ne peut s'exécuter ni charger une
+ * ressource dans la fiche, même avec des balises imbriquées pièges.
  */
 export function sanitizeSummary(html: string): string {
-  let clean = html || '';
-  let previous: string;
-  // Répété jusqu'à stabilité : un seul passage laisserait « <scr<script>ipt> » redevenir « <script> ».
-  do {
-    previous = clean;
-    clean = clean
-      // Blocs entiers (balise + contenu), puis balises isolées restantes.
-      .replace(/<(script|style|iframe|object)\b[\s\S]*?<\/\1\s*>/gi, '')
-      .replace(/<\/?(script|style|iframe|object|embed|link|meta)\b[^>]*>/gi, '')
-      .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-      .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '');
-  } while (clean !== previous);
-  return clean;
+  return String(html ?? '')
+    // Les entités déjà valides (&amp;, &eacute;, &#39;) restent telles quelles.
+    .replace(/&(?![a-zA-Z]+;|#\d+;|#x[\da-fA-F]+;)/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // Contenu des scripts et styles retiré (il apparaîtrait sinon en texte).
+    .replace(/&lt;(script|style)\b[\s\S]*?&lt;\/\1\s*&gt;/gi, '')
+    .replace(/&lt;(\/?)([a-z][a-z0-9]*)\b(?:(?!&gt;)[\s\S])*?&gt;/gi, (_tag, slash: string, name: string) =>
+      SUMMARY_TAGS.has(name.toLowerCase()) ? `<${slash}${name.toLowerCase()}>` : ''
+    );
 }
 
 export function buildRevisionSheetHtml(course: SheetCourse, date = new Date()): string {

@@ -49,6 +49,8 @@ export function sanitizeSvg(raw: string): string | null {
       // Gestionnaires d'événements.
       .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
   } while (svg !== previous);
+  // Garde finale : s'il reste malgré tout une balise dangereuse, le schéma est refusé.
+  if (/<\s*\/?\s*(script|foreignObject|style|iframe)\b/i.test(svg)) return null;
   svg = svg
     // Liens vers l'extérieur.
     .replace(/\s(xlink:)?href\s*=\s*("[^"]*"|'[^']*')/gi, (attr, _x, value) =>

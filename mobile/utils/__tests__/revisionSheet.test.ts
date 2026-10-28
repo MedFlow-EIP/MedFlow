@@ -27,6 +27,11 @@ describe('fiche de révision', () => {
     expect(clean).toBe('<p>ok</p>alert(1)');
   });
 
+  it('garde la mise en forme sans attributs, ni images, ni entités doublées', () => {
+    expect(sanitizeSummary('<h2 style="color:red">Cœur &amp; vaisseaux</h2><p onclick="x()">A & B</p><img src=x onerror=alert(1)>'))
+      .toBe('<h2>Cœur &amp; vaisseaux</h2><p>A &amp; B</p>');
+  });
+
   it('contient le titre, les flashcards et le corrigé', () => {
     const html = buildRevisionSheetHtml(course, new Date(2026, 9, 27));
     expect(html).toContain('<h1>Cardio &lt;1&gt;</h1>');
