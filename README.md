@@ -1,6 +1,6 @@
 # MedFlow — Application de révision médicale assistée par IA
 
-MedFlow aide les étudiants en médecine à réviser : ils importent leurs cours PDF, l’IA en tire un résumé, des flashcards et un quiz, puis la répétition espacée (SM-2) leur propose chaque jour ce qu’il faut revoir. L’application est **mobile** (Expo / React Native) et s’appuie sur un **backend Flask**.
+MedFlow aide les étudiants en médecine à réviser : ils importent leurs cours (PDF, photo, Word, PowerPoint), l’IA en tire un résumé, des flashcards, un quiz et des cas cliniques, puis la répétition espacée (SM-2) leur propose chaque jour ce qu’il faut revoir. L’application est **mobile** (Expo / React Native, Android) et s’appuie sur un **backend Flask**.
 
 ## Sommaire
 
@@ -17,11 +17,12 @@ MedFlow aide les étudiants en médecine à réviser : ils importent leurs cours
 ## Structure du dépôt
 
 ```
-backend/   → API Flask : PDF, génération IA, révision SM-2, comptes, amis, chat
-mobile/    → application Expo / React Native
-docs/      → documentation technique
-Caddyfile  → HTTPS (Let's Encrypt) devant le backend
-deploy.sh  → déploiement du backend sur la VM
+backend/     → API Flask : import, génération IA, révision SM-2, comptes, amis, chat, cas cliniques
+mobile/      → application Expo / React Native
+docs/        → documentation technique et livrables de la track
+Caddyfile    → HTTPS (Let's Encrypt) devant le backend
+deploy.sh    → déploiement du backend sur la VM
+backup_db.sh → sauvegarde de la base SQLite
 ```
 
 ## Technologies
@@ -31,20 +32,24 @@ deploy.sh  → déploiement du backend sur la VM
 | Mobile | Expo 51, React Native, React Navigation |
 | Backend | Flask, SQLite, pypdf |
 | Authentification | Firebase Auth (tokens vérifiés côté backend) |
-| IA | Google Vertex AI (Gemini 2.5 Pro), Ollama en option |
-| Infra | Docker Compose, Caddy (HTTPS), GitHub Actions |
+| IA | Google Vertex AI (Gemini 2.5 Pro, SDK `google-genai`), Ollama en option |
+| Notifications | Expo Push (FCM) côté serveur, notifications locales sinon |
+| Suivi des erreurs | Sentry (facultatif, actif seulement si un DSN est défini) |
+| Infra | Docker Compose, Caddy (HTTPS), GitHub Actions (tests, déploiement, APK) |
 
 ## Fonctionnalités
 
-- Import de cours PDF (20 Mo max) → résumé, flashcards et quiz générés par l’IA
-- Parcours gamifiés (leçons, cartes, quiz visuel, défi chronométré)
-- Révision espacée SM-2 : cartes du jour, prévision par cours, cartes difficiles et maîtrisées
-- Assistant IA médical (garde le fil de la conversation, accepte images et PDF, historique synchronisé entre appareils)
-- XP, séries, badges, ligues, classement et amis
-- Rappels de révision et de série à l’heure choisie
-- Consultation des cours hors ligne
-- Connexion par email ou Google (Android), vérification de l’email, suppression du compte
-- Thème clair / sombre / système
+Le détail par écran est dans [docs/features.md](docs/features.md).
+
+- **Import** : PDF (20 Mo max), photo, Word, PowerPoint ou scan, plusieurs documents par cours ; les schémas des PDF sont décrits par l’IA. Génération en arrière-plan, avec une alerte quand le cours est prêt. Cours d’exemple pour essayer sans rien importer.
+- **Contenu généré** : résumé, flashcards, quiz (difficulté au choix), tags de spécialité, fiche de révision en PDF.
+- **Révision** : répétition espacée SM-2 des questions et des flashcards, prévision de la semaine, cartes difficiles et maîtrisées, révision hors ligne, calendrier d’examens qui priorise les bons cours, examen blanc chronométré.
+- **Cas cliniques interactifs** : un patient, des décisions étape par étape, un retour sur chaque choix.
+- **Assistant IA** : garde le fil, connaît les cours de l’étudiant, accepte images, PDF et dictée vocale, dessine des schémas, titres de conversation résumés, historique synchronisé, flashcards tirées d’une réponse.
+- **Motivation** : XP, séries et gel de série, badges, quêtes, ligues, classement, amis et défis, calendrier d’activité.
+- **Confiance et retours** : « Signaler une erreur » sur le contenu, « Donner mon avis », page confidentialité et avertissement médical, consommation de l’IA affichée sur l’accueil.
+- **Compte** : email ou Google (Android), vérification de l’email, export et suppression des données, thème clair / sombre, accessibilité (lecteur d’écran, contraste élevé, taille du texte).
+- **Distribution** : l’app propose le dernier APK publié quand une nouvelle version existe.
 
 ---
 
@@ -118,7 +123,14 @@ Optionnel : `AI_PROVIDER=ollama` (+ `OLLAMA_BASE_URL`, `OLLAMA_MODEL`), `ENABLE_
 | `AI_MAX_OUTPUT_TOKENS` (`8192`) | Plafond de tokens générés par appel |
 | `AI_CHAT_PER_MINUTE` / `AI_CHAT_PER_DAY` (`6` / `60`) | Messages au chat par compte |
 | `AI_PROCESS_PER_HOUR` / `AI_PROCESS_PER_DAY` (`5` / `10`) | Imports de PDF par compte |
+| `AI_CASE_PER_HOUR` / `AI_CASE_PER_DAY` (`5` / `15`) | Cas cliniques par compte |
 | `AI_GLOBAL_PER_DAY` (`2000`) | Appels IA sur 24 h, tous comptes confondus |
+| `COURSE_TEXT_MAX_CHARS` (`30000`) | Texte d’un cours envoyé à l’IA |
+| `MAX_SOURCES_BYTES` (`200 Mo`) | Documents d’origine gardés par compte |
+
+Les quotas sont glissants sur 24 h ; l’app affiche ce qu’il reste (`GET /api/ai/usage`).
+
+Autres variables facultatives : `GCP_LOCATION` (`us-central1`), `SENTRY_DSN` (erreurs serveur vers Sentry), `ENABLE_API_DOCS=true` (Swagger sur `/api/docs`, coupé en production), `CORS_ORIGINS`, `LOG_LEVEL`.
 
 Les modèles disponibles dépendent du projet Vertex AI : un modèle absent fait échouer toutes les générations (`404 Publisher model … was not found` dans les logs du backend).
 
@@ -136,7 +148,13 @@ EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 EXPO_PUBLIC_FIREBASE_APP_ID=
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=      # connexion Google (facultatif)
 EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+EXPO_PUBLIC_FEEDBACK_URL=              # formulaire des testeurs ; sans lien, « Donner mon avis » ouvre un email
+EXPO_PUBLIC_SENTRY_DSN=                # facultatif
 ```
+
+`EXPO_PUBLIC_BUILD_NUMBER` n’est pas à remplir : la CI l’ajoute au build de l’APK pour l’alerte de mise à jour.
+
+**Notifications push** : ajouter l’app Android dans Firebase (package `com.wavitooo.medflowlearning`), mettre le contenu de `google-services.json` dans le secret GitHub `GOOGLE_SERVICES_JSON`, et envoyer la clé de compte de service FCM V1 sur expo.dev (*Credentials → Android → FCM V1 service account key*). Sans ça, l’app prévient seulement quand elle est ouverte.
 
 **Connexion Google (Android)** : activer le fournisseur Google dans Firebase Authentication, puis dans Google Cloud Console → *Identifiants* récupérer l’ID client **Web** (créé par Firebase) et créer un ID client **Android** (package `com.wavitooo.medflowlearning` + empreinte SHA-1 de la clé de signature : `eas credentials` pour un build EAS). Le bouton n’apparaît que dans un build de l’app (APK), pas dans Expo Go. Pour un build EAS, ajouter aussi ces variables dans les variables d’environnement EAS : le `.env` n’est pas envoyé.
 
@@ -161,12 +179,20 @@ Le backend tourne sur la VM avec Docker Compose : le conteneur `backend` (Flask,
 
 Les 14 dernières copies sont gardées dans `backend/data/backups/`. Elles sont sur le même disque que la base : pour se protéger d’une perte de la VM, les copier aussi ailleurs de temps en temps (`scp`).
 
+**Données d’usage pour la track** (étapes clés, écrans vus, erreurs signalées, personnes pseudonymisées) :
+
+```bash
+docker compose exec -T backend python export_analytics.py [AAAA-MM-JJ]
+```
+
+Les CSV arrivent dans `backend/data/exports/` (`events-…`, `summary-…`, `reports-…`).
+
 ## CI/CD
 
 GitHub Actions (`.github/workflows/`) :
 - `ci.yml` : tests backend (pytest), typecheck et tests mobile, build et démarrage Docker sur `main` ;
 - `deploy.yml` : déploiement sur la VM ;
-- `mobile-build.yml` : build APK via EAS (manuel) ;
+- `mobile-build.yml` : APK compilé avec Gradle et signé avec la clé EAS, à chaque push sur `main` qui touche `mobile/` (ou à la main), publié dans la release `apk-latest` ;
 - `mirror.yml` : miroir vers le dépôt Epitech.
 
 Voir [docs/ci-cd.md](docs/ci-cd.md) et [docs/docker.md](docs/docker.md).

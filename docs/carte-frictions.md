@@ -6,6 +6,7 @@
 
 - **Observation** : notes prises pendant les 5 sessions de mesure de départ (`protocole-mesure-usabilite.md`)
 - **Données** : requêtes sur `activity_log`/`analytics_events` (voir requêtes prêtes à l'emploi plus bas)
+  ou export CSV direct sur la VM : `docker compose exec -T backend python export_analytics.py [AAAA-MM-JJ]` (étapes clés : import commencé / terminé / échoué, révision commencée / terminée, chat, cas cliniques, examen blanc ; plus les erreurs de contenu signalées). Les fichiers arrivent dans `backend/data/exports/`.
 - **Beta test** : verbatims collectés par Grégoire/Axel (objectif 1)
 
 ## Carte des frictions
@@ -65,4 +66,4 @@ ORDER BY nb_vues DESC;
 ```sql
 SELECT type, title, detail, created_at FROM activity_log WHERE uid = '<uid>' ORDER BY created_at DESC;
 SELECT event_type, path_id, lesson_id, screen, created_at FROM analytics_events WHERE uid = '<uid>' ORDER BY created_at DESC;
-```
+```

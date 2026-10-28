@@ -28,5 +28,5 @@ Les modifications limitées à `docs/` ou aux fichiers Markdown ne déclenchent 
 
 ## Autres workflows
 
-- `mobile-build.yml` : build APK via EAS (manuel).
+- `mobile-build.yml` : APK Android compilé sur GitHub (`expo prebuild` puis Gradle), signé avec la clé EAS. Se lance à chaque push sur `main` qui touche `mobile/`, ou à la main. L'APK est publié dans la release `apk-latest` (lien fixe) ; le numéro de build est intégré à l'app, qui propose la mise à jour aux testeurs. Secrets : `MOBILE_ENV` (contenu de `mobile/.env`), `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_SERVICES_JSON` (facultatif, pour les notifications push).
 - `mirror.yml` : miroir de `main` vers le dépôt Epitech.
