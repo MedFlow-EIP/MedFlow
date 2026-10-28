@@ -205,7 +205,9 @@
     });
   });
 
-  // ---- Waitlist form (front-end only demo) ----
+  // ---- Inscription : ouvre le formulaire Google, e-mail déjà rempli ----
+  var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfDOL8j-RhOUYkmo_f4lLXKcfXFRLfALpnmdLh-jft2xyzfiw/viewform";
+  var FORM_EMAIL_FIELD = "entry.75417279";
   var form = document.querySelector(".cta-form");
   if (form) {
     form.addEventListener("submit", function (e) {
@@ -213,6 +215,11 @@
       var input = form.querySelector("input[type='email']");
       var button = form.querySelector("button");
       if (!input || !input.value) return;
+      window.open(
+        FORM_URL + "?usp=pp_url&" + FORM_EMAIL_FIELD + "=" + encodeURIComponent(input.value),
+        "_blank",
+        "noopener"
+      );
       var original = button.textContent;
       button.textContent = "Inscrit(e) ✓";
       button.style.background = "#ffffff";
