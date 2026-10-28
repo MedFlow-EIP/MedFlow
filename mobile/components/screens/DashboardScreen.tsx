@@ -286,14 +286,14 @@ export function DashboardScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: top, paddingBottom: tabBarHeight + 24 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.title} accessibilityRole="header">Statistiques</Text>
-            <Text style={styles.subtitle}>Ta progression en un coup d’œil</Text>
+            <Text style={styles.title} accessibilityRole="header">Cours</Text>
+            <Text style={styles.subtitle}>Tes cours, tes révisions et ta progression</Text>
           </View>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Search')}
             accessibilityRole="button"
-            accessibilityLabel="Rechercher"
+            accessibilityLabel="Rechercher dans mes cours"
           >
             <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -301,7 +301,7 @@ export function DashboardScreen() {
             style={styles.iconButton}
             onPress={() => navigation.navigate('Progress')}
             accessibilityRole="button"
-            accessibilityLabel="Statistiques avancées"
+            accessibilityLabel="Progression détaillée"
           >
             <Ionicons name="trending-up-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -309,15 +309,100 @@ export function DashboardScreen() {
 
         {offline && <OfflineBanner />}
 
-        <View style={styles.kpiRow}>
-          {kpis.map((kpi) => (
-            <View key={kpi.label} style={styles.kpi} accessible accessibilityLabel={`${kpi.label} : ${kpi.value}`}>
-              <Ionicons name={kpi.icon} size={20} color={kpi.color} />
-              <Text style={styles.kpiValue}>{kpi.value}</Text>
-              <Text style={styles.kpiLabel}>{kpi.label}</Text>
-            </View>
-          ))}
+        <View style={styles.coursesHeader}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Documents')}
+            style={styles.documentsLink}
+            accessibilityRole="button"
+            accessibilityLabel="Voir mes documents importés"
+          >
+            <Ionicons name="folder-open-outline" size={16} color={colors.primaryText} />
+            <Text style={styles.documentsLinkText}>Mes documents</Text>
+          </TouchableOpacity>
         </View>
+
+        {allTags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tagFilters}
+            accessibilityRole="tablist"
+          >
+            {[null, ...allTags].map((tag) => {
+              const active = tagFilter === tag;
+              return (
+                <TouchableOpacity
+                  key={tag ?? '__all'}
+                  style={[styles.tagFilter, active && styles.tagFilterActive]}
+                  onPress={() => setTagFilter(tag)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.tagFilterText, active && styles.tagFilterTextActive]}>{tag ?? 'Tous'}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {courses.length === 0 ? (
+          <>
+            <Text style={styles.emptyText}>Aucun cours importé</Text>
+            <DemoCourseButton />
+          </>
+        ) : visibleCourses.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun cours dans cette spécialité</Text>
+        ) : (
+          visibleCourses.map((course) => {
+            const meta = [
+              course.tags?.length ? course.tags.join(', ') : '',
+              course.flashcards !== undefined ? plural(course.flashcards, 'flashcard') : '',
+              course.quiz ? '1 quiz' : '',
+              formatShortDate(course.created_at),
+            ]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <View key={course.id} style={styles.courseCard}>
+                <TouchableOpacity
+                  style={styles.courseMain}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${course.nom}, ${meta}`}
+                  onPress={() => navigation.navigate('CourseDetail', { courseId: course.id })}
+                >
+                  <View style={styles.courseIcon}>
+                    <Ionicons name="document-text" size={22} color={colors.primaryDark} />
+                  </View>
+                  <View style={styles.courseText}>
+                    <Text style={styles.courseTitle} numberOfLines={2}>{course.nom}</Text>
+                    <Text style={styles.courseMeta}>{meta}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => confirmDeleteCourse(course)}
+                  style={styles.deleteBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Supprimer le cours ${course.nom}`}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            );
+          })
+        )}
+
+        <TouchableOpacity
+          style={styles.importButton}
+          onPress={() => navigation.navigate('UploadCourse')}
+          accessibilityRole="button"
+        >
+          <Ionicons name="add" size={20} color={colors.primaryText} />
+          <Text style={styles.importButtonText}>Importer un PDF</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.sectionTitle} accessibilityRole="header">Réviser autrement</Text>
 
         <TouchableOpacity
           style={styles.reviseButton}
@@ -492,98 +577,17 @@ export function DashboardScreen() {
           </View>
         )}
 
-        <View style={styles.coursesHeader}>
-          <Text style={styles.sectionTitle} accessibilityRole="header">Mes cours</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Documents')}
-            style={styles.documentsLink}
-            accessibilityRole="button"
-            accessibilityLabel="Voir mes documents importés"
-          >
-            <Ionicons name="folder-open-outline" size={16} color={colors.primaryText} />
-            <Text style={styles.documentsLinkText}>Mes documents</Text>
-          </TouchableOpacity>
+        <Text style={styles.sectionTitle} accessibilityRole="header">Ta progression</Text>
+
+        <View style={styles.kpiRow}>
+          {kpis.map((kpi) => (
+            <View key={kpi.label} style={styles.kpi} accessible accessibilityLabel={`${kpi.label} : ${kpi.value}`}>
+              <Ionicons name={kpi.icon} size={20} color={kpi.color} />
+              <Text style={styles.kpiValue}>{kpi.value}</Text>
+              <Text style={styles.kpiLabel}>{kpi.label}</Text>
+            </View>
+          ))}
         </View>
-
-        {allTags.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tagFilters}
-            accessibilityRole="tablist"
-          >
-            {[null, ...allTags].map((tag) => {
-              const active = tagFilter === tag;
-              return (
-                <TouchableOpacity
-                  key={tag ?? '__all'}
-                  style={[styles.tagFilter, active && styles.tagFilterActive]}
-                  onPress={() => setTagFilter(tag)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text style={[styles.tagFilterText, active && styles.tagFilterTextActive]}>{tag ?? 'Tous'}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
-
-        {courses.length === 0 ? (
-          <>
-            <Text style={styles.emptyText}>Aucun cours importé</Text>
-            <DemoCourseButton />
-          </>
-        ) : visibleCourses.length === 0 ? (
-          <Text style={styles.emptyText}>Aucun cours dans cette spécialité</Text>
-        ) : (
-          visibleCourses.map((course) => {
-            const meta = [
-              course.tags?.length ? course.tags.join(', ') : '',
-              course.flashcards !== undefined ? plural(course.flashcards, 'flashcard') : '',
-              course.quiz ? '1 quiz' : '',
-              formatShortDate(course.created_at),
-            ]
-              .filter(Boolean)
-              .join(' · ');
-            return (
-              <View key={course.id} style={styles.courseCard}>
-                <TouchableOpacity
-                  style={styles.courseMain}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${course.nom}, ${meta}`}
-                  onPress={() => navigation.navigate('CourseDetail', { courseId: course.id })}
-                >
-                  <View style={styles.courseIcon}>
-                    <Ionicons name="document-text" size={22} color={colors.primaryDark} />
-                  </View>
-                  <View style={styles.courseText}>
-                    <Text style={styles.courseTitle} numberOfLines={2}>{course.nom}</Text>
-                    <Text style={styles.courseMeta}>{meta}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => confirmDeleteCourse(course)}
-                  style={styles.deleteBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Supprimer le cours ${course.nom}`}
-                >
-                  <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
-            );
-          })
-        )}
-
-        <TouchableOpacity
-          style={styles.importButton}
-          onPress={() => navigation.navigate('UploadCourse')}
-          accessibilityRole="button"
-        >
-          <Ionicons name="add" size={20} color={colors.primaryText} />
-          <Text style={styles.importButtonText}>Importer un PDF</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );

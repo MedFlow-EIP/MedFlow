@@ -20,8 +20,8 @@ import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 import { QuestsCard } from '../QuestsCard';
 import { ClinicalCaseCard } from '../ClinicalCaseCard';
 import { StreakSheet } from '../StreakSheet';
-import { DemoCourseButton } from '../DemoCourseButton';
 import { AIUsageCard } from '../AIUsageCard';
+import { TodayCard } from '../TodayCard';
 
 interface HomeScreenProps {
   navigation: any;
@@ -156,9 +156,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
         <EmailVerificationBanner />
 
-        <QuestsCard />
+        <TodayCard />
 
-        <AIUsageCard />
+        <QuestsCard />
 
         <ClinicalCaseCard />
 
@@ -173,7 +173,6 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.emptyStateText}>
               Importe un cours pour commencer : l’IA en tire un résumé, des flashcards et un quiz.
             </Text>
-            <DemoCourseButton />
           </View>
         ) : (
           paths.map((path, index) => (
@@ -188,6 +187,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             />
           ))
         )}
+
+        <AIUsageCard />
       </ScrollView>
 
       <StreakSheet

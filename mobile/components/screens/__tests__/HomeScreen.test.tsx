@@ -29,6 +29,10 @@ jest.mock('../../AIUsageCard', () => ({
   AIUsageCard: () => null,
 }));
 
+jest.mock('../../TodayCard', () => ({
+  TodayCard: () => null,
+}));
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
 }));

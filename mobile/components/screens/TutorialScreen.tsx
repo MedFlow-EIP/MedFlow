@@ -63,7 +63,7 @@ export const TUTORIAL_SLIDES: TutorialSlide[] = [
     title: 'Révise au bon moment',
     text: 'La répétition espacée te repropose chaque carte juste avant que tu l’oublies. Un rappel quotidien te prévient quand il y en a à revoir.',
     chips: ['Aujourd’hui', 'Dans 3 j', 'Dans 1 sem.'],
-    where: { icon: 'stats-chart', label: 'Onglet Stats' },
+    where: { icon: 'home', label: 'Accueil, carte « Aujourd’hui »' },
   },
   {
     id: 'assistant',

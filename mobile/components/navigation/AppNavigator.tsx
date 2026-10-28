@@ -123,7 +123,7 @@ const TABS: {
 }[] = [
   { route: 'Home', label: 'Accueil', a11y: 'Accueil', icon: 'home-outline', iconActive: 'home' },
   { route: 'AIChat', label: 'IA Chat', a11y: 'Assistant IA', icon: 'chatbubble-ellipses-outline', iconActive: 'chatbubble-ellipses' },
-  { route: 'Dashboard', label: 'Stats', a11y: 'Stats', icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+  { route: 'Dashboard', label: 'Cours', a11y: 'Mes cours', icon: 'book-outline', iconActive: 'book' },
   { route: 'Account', label: 'Compte', a11y: 'Compte', icon: 'person-outline', iconActive: 'person' },
 ];
 
