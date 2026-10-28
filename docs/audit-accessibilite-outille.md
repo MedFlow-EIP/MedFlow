@@ -8,6 +8,8 @@ Généré le 2026-10-28 par `mobile/scripts/a11y-audit.js` (à relancer à l'ide
 | --- | --- | --- | --- |
 | Bouton sans nom pour le lecteur d'écran | 4.1.2 Nom, rôle, valeur | 1 | Haute |
 | Contraste insuffisant | 1.4.3 / 1.4.11 Contraste | 4 sur 64 paires | Haute si texte, moyenne si icône |
+| Interrupteur sans libellé | 4.1.2 Nom, rôle, valeur | 0 | Haute |
+| Élément tactile sans rôle annoncé | 4.1.2 Nom, rôle, valeur | 18 | Moyenne |
 | Champ de saisie sans libellé | 3.3.2 Étiquettes | 0 | Moyenne |
 | Image sans description ni marquée décorative | 1.1.1 Contenu non textuel | 0 | Moyenne |
 | Texte de moins de 12 px | 1.4.4 Redimensionnement (lisibilité) | 10 | Basse |
@@ -93,6 +95,33 @@ Bouton tactile sans `accessibilityLabel` ni texte visible : TalkBack annonce seu
 
 - `components/chat/ChatDiagram.tsx:77`
 - `components/screens/SettingsScreen.tsx:432`
+
+### Interrupteurs sans libellé (sévérité haute)
+
+- Aucune.
+
+### Éléments tactiles sans rôle (sévérité moyenne)
+
+Sans `accessibilityRole` (« button », « link », « tab »…), TalkBack lit le texte sans dire qu'on peut appuyer dessus.
+
+- `components/ReportErrorSheet.tsx:90`
+- `components/ReportErrorSheet.tsx:91`
+- `components/StreakSheet.tsx:30`
+- `components/challenge/ChallengeCreateSheet.tsx:77`
+- `components/challenge/ChallengeCreateSheet.tsx:78`
+- `components/chat/ChatDiagram.tsx:77`
+- `components/chat/FlashcardsFromChatSheet.tsx:129`
+- `components/chat/FlashcardsFromChatSheet.tsx:130`
+- `components/screens/ClinicalCasesScreen.tsx:294`
+- `components/screens/ClinicalCasesScreen.tsx:295`
+- `components/screens/LeaderboardScreen.tsx:206`
+- `components/screens/LeaderboardScreen.tsx:229`
+- `components/screens/ProgressScreen.tsx:130`
+- `components/screens/TutorialScreen.tsx:228`
+- `components/ui/DatePickerSheet.tsx:85`
+- `components/ui/DeleteAccountSheet.tsx:135`
+- `components/ui/DeleteAccountSheet.tsx:136`
+- `components/ui/TimePickerSheet.tsx:104`
 
 ## 3. Champs de saisie sans libellé (sévérité moyenne)
 

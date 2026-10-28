@@ -122,7 +122,7 @@ function hasText(node) {
 }
 
 function scanCode() {
-  const findings = { button: [], buttonToCheck: [], input: [], image: [], font: [] };
+  const findings = { button: [], buttonToCheck: [], role: [], toggle: [], input: [], image: [], font: [] };
   for (const file of listFiles(path.join(ROOT, 'components')).concat([path.join(ROOT, 'App.tsx')])) {
     const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const where = (n) => `${path.relative(ROOT, file).replace(/\\/g, '/')}:${source.getLineAndCharacterOfPosition(n.getStart()).line + 1}`;
@@ -136,6 +136,11 @@ function scanCode() {
           if (text === 'non') findings.button.push(where(n));
           else if (text === 'inconnu') findings.buttonToCheck.push(where(n));
         }
+        // Rôle : sans accessibilityRole, TalkBack lit le texte sans dire que c'est un bouton.
+        if (TOUCHABLES.has(name) && a.accessible !== '{false}' && !('accessibilityRole' in a) && !('role' in a)) {
+          findings.role.push(where(n));
+        }
+        if (name === 'Switch' && !('accessibilityLabel' in a)) findings.toggle.push(where(n));
         if (name === 'TextInput' && !('accessibilityLabel' in a)) findings.input.push(where(n));
         if ((name === 'Image' || name === 'ExpoImage') && !labelled && !('accessibilityElementsHidden' in a)) {
           findings.image.push(where(n));
@@ -174,6 +179,8 @@ out.push('| Contrôle | Critère WCAG | Non-conformités | Sévérité |');
 out.push('| --- | --- | --- | --- |');
 out.push(`| Bouton sans nom pour le lecteur d'écran | 4.1.2 Nom, rôle, valeur | ${code.button.length} | Haute |`);
 out.push(`| Contraste insuffisant | 1.4.3 / 1.4.11 Contraste | ${failing.length} sur ${contrasts.length} paires | Haute si texte, moyenne si icône |`);
+out.push(`| Interrupteur sans libellé | 4.1.2 Nom, rôle, valeur | ${code.toggle.length} | Haute |`);
+out.push(`| Élément tactile sans rôle annoncé | 4.1.2 Nom, rôle, valeur | ${code.role.length} | Moyenne |`);
 out.push(`| Champ de saisie sans libellé | 3.3.2 Étiquettes | ${code.input.length} | Moyenne |`);
 out.push(`| Image sans description ni marquée décorative | 1.1.1 Contenu non textuel | ${code.image.length} | Moyenne |`);
 out.push(`| Texte de moins de 12 px | 1.4.4 Redimensionnement (lisibilité) | ${code.font.length} | Basse |`);
@@ -197,6 +204,16 @@ out.push('');
 out.push("À vérifier à la main (le contenu du bouton vient d'une variable, l'outil ne voit pas s'il contient un texte) :");
 out.push('');
 out.push(list(code.buttonToCheck));
+out.push('');
+out.push('### Interrupteurs sans libellé (sévérité haute)');
+out.push('');
+out.push(list(code.toggle));
+out.push('');
+out.push('### Éléments tactiles sans rôle (sévérité moyenne)');
+out.push('');
+out.push("Sans `accessibilityRole` (« button », « link », « tab »…), TalkBack lit le texte sans dire qu'on peut appuyer dessus.");
+out.push('');
+out.push(list(code.role));
 out.push('');
 out.push('## 3. Champs de saisie sans libellé (sévérité moyenne)');
 out.push('');
