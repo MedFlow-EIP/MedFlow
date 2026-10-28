@@ -1,5 +1,6 @@
 """Quotas d'appels IA par utilisateur, pour borner la facture Vertex AI."""
 import logging
+from datetime import datetime, timedelta, timezone
 
 from flask import current_app, g, jsonify
 
@@ -19,6 +20,35 @@ def _limits(kind: str, config) -> list:
     if kind == "case":
         return [(3600, config["AI_CASE_PER_HOUR"]), (86400, config["AI_CASE_PER_DAY"])]
     return [(3600, config["AI_PROCESS_PER_HOUR"]), (86400, config["AI_PROCESS_PER_DAY"])]
+
+
+def ai_usage_summary(uid: str) -> list:
+    """Consommation IA de l'utilisateur, pour l'afficher : par type, les appels
+    sur 24 h, la limite quotidienne et, si une limite est atteinte (par minute,
+    heure ou jour), la date à laquelle un appel redevient possible."""
+    config = current_app.config
+    now = datetime.now(timezone.utc)
+    summary = []
+    for kind in ("chat", "process", "case"):
+        limits = _limits(kind, config)
+        day_window, day_limit = limits[-1]
+        times = current_app.db.ai_usage_times(uid, kind, (now - timedelta(seconds=day_window)).isoformat())
+        blocked_until = None
+        for window, max_calls in limits:
+            since = (now - timedelta(seconds=window)).isoformat()
+            in_window = [t for t in times if t > since]
+            if len(in_window) >= max_calls:
+                # Un appel redevient possible quand le plus ancien sort de la fenêtre.
+                frees = datetime.fromisoformat(in_window[len(in_window) - max_calls]) + timedelta(seconds=window)
+                if blocked_until is None or frees > blocked_until:
+                    blocked_until = frees
+        summary.append({
+            "kind": kind,
+            "used": len(times),
+            "limit": day_limit,
+            "blocked_until": blocked_until.isoformat() if blocked_until else None,
+        })
+    return summary
 
 
 def consume_ai_quota(kind: str):

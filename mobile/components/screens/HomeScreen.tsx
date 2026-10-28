@@ -21,6 +21,7 @@ import { QuestsCard } from '../QuestsCard';
 import { ClinicalCaseCard } from '../ClinicalCaseCard';
 import { StreakSheet } from '../StreakSheet';
 import { DemoCourseButton } from '../DemoCourseButton';
+import { AIUsageCard } from '../AIUsageCard';
 
 interface HomeScreenProps {
   navigation: any;
@@ -156,6 +157,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         <EmailVerificationBanner />
 
         <QuestsCard />
+
+        <AIUsageCard />
 
         <ClinicalCaseCard />
 

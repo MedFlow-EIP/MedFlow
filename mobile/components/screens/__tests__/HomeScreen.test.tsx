@@ -25,6 +25,10 @@ jest.mock('../../DemoCourseButton', () => ({
   DemoCourseButton: () => null,
 }));
 
+jest.mock('../../AIUsageCard', () => ({
+  AIUsageCard: () => null,
+}));
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
 }));

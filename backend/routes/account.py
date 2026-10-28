@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request, send_from_directory
 
+from middleware.ai_quota import ai_usage_summary
 from middleware.auth import build_user_response, require_auth
 from routes.errors import internal_error
 
@@ -343,6 +344,17 @@ def log_event():
         return jsonify({"success": True})
     except Exception:
         logger.exception("Erreur analytics event")
+        return internal_error("Erreur interne")
+
+
+@account_bp.route("/api/ai/usage", methods=["GET"])
+@require_auth
+def get_ai_usage():
+    """Ce qu'il reste d'IA aujourd'hui (chat, imports, cas cliniques)."""
+    try:
+        return jsonify({"usage": ai_usage_summary(g.uid)})
+    except Exception:
+        logger.exception("Erreur usage IA")
         return internal_error("Erreur interne")
 
 

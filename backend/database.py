@@ -2827,6 +2827,15 @@ class Database:
                 conn.rollback()
                 raise
 
+    def ai_usage_times(self, uid: str, kind: str, since: str) -> List[str]:
+        """Dates des appels IA de ce type depuis ``since``, du plus ancien au plus récent."""
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT created_at FROM ai_usage WHERE uid = ? AND kind = ? AND created_at > ? ORDER BY created_at",
+                (uid, kind, since),
+            ).fetchall()
+        return [r["created_at"] for r in rows]
+
     def get_chat_conversation_owner(self, conversation_id: str) -> str | None:
         """UID propriétaire d'une conversation, ou None si elle n'existe pas."""
         with self.connection() as conn:
