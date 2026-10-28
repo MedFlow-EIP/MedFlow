@@ -187,4 +187,11 @@ class TestBackground:
         client.post("/api/push-token", json={"token": "ExponentPushToken[abcdefghijklmnop]"}, headers=_h())
         cid = client.post("/api/cases", json={"course_id": "cardio", "background": True}, headers=_h()).get_json()["id"]
         self._wait(client, cid)
+        # Le thread passe le cas à « prêt » puis envoie la notification : on attend aussi l'envoi.
+        import time
+
+        for _ in range(100):
+            if sent:
+                break
+            time.sleep(0.05)
         assert sent and sent[0][0]["data"] == {"screen": "ClinicalCase", "caseId": cid}
