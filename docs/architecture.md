@@ -19,7 +19,7 @@ GitHub Actions ──► release « apk-latest » (APK) ◄── l'app vérifie
 
 ## Mobile (`mobile/`)
 
-- Expo 51, React Navigation (onglets Accueil, Stats, bouton « + », IA Chat, Compte + écrans empilés).
+- Expo 51, React Navigation (onglets Accueil, Cours, bouton « + », IA Chat, Compte + écrans empilés).
 - Firebase Auth côté client ; chaque appel API envoie le token et le décalage horaire du téléphone (`X-TZ-Offset`, pour que « aujourd'hui » soit le jour de l'étudiant) via `utils/authHeaders.ts`.
 - Travaux longs suivis en arrière-plan : imports (`utils/importJobs.ts`) et cas cliniques (`utils/caseJobs.ts`), avec un bandeau quand c'est prêt (`components/ui/JobDoneBanner.tsx`).
 - Analytique sans effet visible : écrans vus et étapes clés (`utils/analytics.ts`).

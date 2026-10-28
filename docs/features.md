@@ -18,13 +18,12 @@
 
 | Onglet | Contenu |
 |---|---|
-| **Accueil** | Série, quêtes du jour et de la semaine, cas cliniques, parcours d'apprentissage, consommation de l'IA sur 24 h |
-| **Stats** | Chiffres clés, « Réviser maintenant », flashcards, cartes difficiles et maîtrisées, examen blanc, prochain examen, semaine à réviser, mes cours et mes documents |
+| **Accueil** | Carte « Aujourd'hui » (questions du jour, flashcards, prochain examen, 3 derniers cours ; sans cours : importer ou essayer le cours d'exemple), série, quêtes, cas cliniques, parcours d'apprentissage, consommation de l'IA sur 24 h |
+| **Cours** | Mes cours et mes documents, « Réviser autrement » (révision, flashcards, cartes difficiles et maîtrisées, examen blanc, examens), semaine à réviser, « Ta progression » (chiffres clés) |
 | **+** (centre) | Importer un cours, créer un cas clinique, lancer un examen blanc, ajouter un examen |
 | **IA Chat** | Assistant, historique des conversations |
 | **Compte** | Profil, classement, amis, badges, activité, avis, contact, confidentialité, paramètres |
 
-Une refonte (révision du jour sur l'accueil, onglet « Stats » renommé « Cours ») est prête dans la PR #153, à livrer après la mesure de départ de la track.
 
 ---
 
