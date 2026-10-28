@@ -34,7 +34,6 @@ backup_db.sh → sauvegarde de la base SQLite
 | Authentification | Firebase Auth (tokens vérifiés côté backend) |
 | IA | Google Vertex AI (Gemini 2.5 Pro, SDK `google-genai`), Ollama en option |
 | Notifications | Expo Push (FCM) côté serveur, notifications locales sinon |
-| Suivi des erreurs | Sentry (facultatif, actif seulement si un DSN est défini) |
 | Infra | Docker Compose, Caddy (HTTPS), GitHub Actions (tests, déploiement, APK) |
 
 ## Fonctionnalités
@@ -130,7 +129,7 @@ Optionnel : `AI_PROVIDER=ollama` (+ `OLLAMA_BASE_URL`, `OLLAMA_MODEL`), `ENABLE_
 
 Les quotas sont glissants sur 24 h ; l’app affiche ce qu’il reste (`GET /api/ai/usage`).
 
-Autres variables facultatives : `GCP_LOCATION` (`us-central1`), `SENTRY_DSN` (erreurs serveur vers Sentry), `ENABLE_API_DOCS=true` (Swagger sur `/api/docs`, coupé en production), `CORS_ORIGINS`, `LOG_LEVEL`.
+Autres variables facultatives : `GCP_LOCATION` (`us-central1`), `ENABLE_API_DOCS=true` (Swagger sur `/api/docs`, coupé en production), `CORS_ORIGINS`, `LOG_LEVEL`.
 
 Les modèles disponibles dépendent du projet Vertex AI : un modèle absent fait échouer toutes les générations (`404 Publisher model … was not found` dans les logs du backend).
 
@@ -149,7 +148,6 @@ EXPO_PUBLIC_FIREBASE_APP_ID=
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=      # connexion Google (facultatif)
 EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
 EXPO_PUBLIC_FEEDBACK_URL=              # formulaire des testeurs ; sans lien, « Donner mon avis » ouvre un email
-EXPO_PUBLIC_SENTRY_DSN=                # facultatif
 ```
 
 `EXPO_PUBLIC_BUILD_NUMBER` n’est pas à remplir : la CI l’ajoute au build de l’APK pour l’alerte de mise à jour.
