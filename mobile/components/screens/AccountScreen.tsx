@@ -27,7 +27,7 @@ import { appAlert } from '../../utils/appAlert';
 import { unregisterPushNotifications } from '../../utils/pushNotifications';
 import { logEvent } from '../../utils/analytics';
 
-// Formulaire de retour des testeurs (beta test) ; la carte n'apparaît que s'il est défini.
+// Formulaire de retour des testeurs (beta test) ; sans formulaire, l'avis part par email.
 const FEEDBACK_URL = process.env.EXPO_PUBLIC_FEEDBACK_URL ?? '';
 
 type Badge = {
@@ -153,9 +153,8 @@ export function AccountScreen() {
     }
   };
 
-  const sendEmail = async () => {
+  const sendEmail = async (subject = "Contact depuis l'application MedFlow") => {
     const email = "medflow.app.contact@gmail.com";
-    const subject = "Contact depuis l'application MedFlow";
 
     const url = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
 
@@ -493,7 +492,7 @@ export function AccountScreen() {
             </View>
             <Text style={styles.quickActionText}>Partager</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction} onPress={sendEmail} accessibilityRole="button">
+          <TouchableOpacity style={styles.quickAction} onPress={() => sendEmail()} accessibilityRole="button">
             <View style={[styles.quickActionIcon, { backgroundColor: colors.tintWarning }]}>
               <Ionicons name="help-buoy-outline" size={22} color={colors.warning} />
             </View>
@@ -508,30 +507,29 @@ export function AccountScreen() {
           des flashcards et des outils d’apprentissage assistés par IA.
         </Text>
 
-        {!!FEEDBACK_URL && (
-          <TouchableOpacity
-            style={[styles.contactCard, { marginBottom: 12 }]}
-            onPress={() => {
-              logEvent('feedback_opened');
-              openLink(FEEDBACK_URL);
-            }}
-            accessibilityRole="link"
-            accessibilityLabel="Donner mon avis sur MedFlow"
-          >
-            <View style={[styles.contactIcon, { backgroundColor: colors.tintPrimary }]}>
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primaryDark} />
-            </View>
-            <View style={styles.contactContent}>
-              <Text style={styles.contactTitle}>Donner mon avis</Text>
-              <Text style={styles.contactSubtitle}>5 minutes pour nous aider à améliorer MedFlow</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.contactCard}
+          onPress={() => {
+            logEvent('feedback_opened');
+            if (FEEDBACK_URL) openLink(FEEDBACK_URL);
+            else sendEmail('Mon avis sur MedFlow');
+          }}
+          accessibilityRole="link"
+          accessibilityLabel="Donner mon avis sur MedFlow"
+        >
+          <View style={[styles.contactIcon, { backgroundColor: colors.tintPrimary }]}>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primaryDark} />
+          </View>
+          <View style={styles.contactContent}>
+            <Text style={styles.contactTitle}>Donner mon avis</Text>
+            <Text style={styles.contactSubtitle}>Quelques minutes pour nous aider à améliorer MedFlow</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.contactCard}
-          onPress={sendEmail}
+          onPress={() => sendEmail()}
           accessibilityRole="button"
           accessibilityLabel="Nous contacter, medflow.app.contact@gmail.com"
         >
@@ -546,7 +544,7 @@ export function AccountScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.contactCard, { marginTop: 12 }]}
+          style={styles.contactCard}
           onPress={() => navigation.navigate('Legal')}
           accessibilityRole="button"
           accessibilityLabel="Confidentialité et avertissement médical"
