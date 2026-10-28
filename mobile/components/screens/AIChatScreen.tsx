@@ -35,15 +35,16 @@ import RenderHTML from 'react-native-render-html';
 import { useWindowDimensions } from "react-native";
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemeColors } from '../../theme/colors';
-import { logScreenView } from '../../utils/analytics';
+import { logEvent, logScreenView } from '../../utils/analytics';
 
 import { useScreenInsets } from '../navigation/constants';
 import { appAlert } from '../../utils/appAlert';
 import { errorMessage, fetchWithTimeout, httpErrorMessage } from '../../utils/network';
 import { FlashcardsFromChatSheet } from '../chat/FlashcardsFromChatSheet';
+import { ReportErrorSheet, type ReportTarget } from '../ReportErrorSheet';
 import { useVoiceDictation } from '../../utils/voiceDictation';
 import { splitDiagrams, stripDiagrams } from '../../utils/diagrams';
-import { worthFlashcards } from '../../utils/chatAnswers';
+import { tableColumnWidth, worthFlashcards } from '../../utils/chatAnswers';
 import { ChatDiagram } from '../chat/ChatDiagram';
 
 type Message = {
@@ -220,6 +221,7 @@ export function AIChatScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Texte d'une réponse à transformer en flashcards (feuille ouverte si non nul).
   const [flashcardSource, setFlashcardSource] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   // Question envoyée par un autre écran (« Explique-moi cette carte »).
   const route = useRoute<any>();
@@ -240,6 +242,8 @@ export function AIChatScreen() {
   );
 
   const { width } = useWindowDimensions();
+  // Largeur utile d'une bulle de réponse (schémas, tableaux).
+  const bubbleWidth = Math.min(width * 0.8, 520) - 48;
 
   const currentConv = conversations.find((c) => c.id === currentConvId);
 
@@ -442,6 +446,7 @@ export function AIChatScreen() {
     }
     setIsAttachMenuOpen(false);
     setPending(convId, true);
+    logEvent('chat_message_sent', outgoing.length > 0 ? 'avec_fichier' : undefined);
 
     try {
       const { response: aiResponse, conversationId, title, error } = await askMedicalAI(text, serverId, files);
@@ -747,6 +752,7 @@ export function AIChatScreen() {
             </View>
             <Text style={styles.emptyTitle}>Sur quoi veux-tu réviser ?</Text>
             <Text style={styles.emptyText}>Pose une question ou pars d’un de tes cours.</Text>
+            <Text style={styles.emptyNote}>L’assistant peut se tromper : vérifie avec ton cours.</Text>
 
             <View style={styles.suggestions}>
               {SUGGESTIONS.map((suggestion) => (
@@ -803,17 +809,27 @@ export function AIChatScreen() {
                   ) : (
                     splitDiagrams(message.text).map((part, partIndex) =>
                       part.type === 'svg' ? (
-                        <ChatDiagram key={partIndex} xml={part.content} width={Math.min(width * 0.8, 520) - 48} />
+                        <ChatDiagram key={partIndex} xml={part.content} width={bubbleWidth} />
                       ) : (
                     <Markdown
                       key={partIndex}
                       rules={{
+                        // Tableaux : colonnes de largeur fixe (le texte passe à la ligne dans la
+                        // cellule) qui remplissent la bulle ; au-delà, le tableau défile.
                         table: (node, children, _parent, mdStyles) => (
                           <ScrollView key={node.key} horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
-                            <View style={[mdStyles._VIEW_SAFE_table, { minWidth: Math.min(width * 0.8, 520) - 48 }]}>
-                              {children}
-                            </View>
+                            <View style={mdStyles._VIEW_SAFE_table}>{children}</View>
                           </ScrollView>
+                        ),
+                        th: (node, children, parents, mdStyles) => (
+                          <View key={node.key} style={[mdStyles._VIEW_SAFE_th, { width: tableColumnWidth(parents, bubbleWidth) }]}>
+                            {children}
+                          </View>
+                        ),
+                        td: (node, children, parents, mdStyles) => (
+                          <View key={node.key} style={[mdStyles._VIEW_SAFE_td, { width: tableColumnWidth(parents, bubbleWidth) }]}>
+                            {children}
+                          </View>
                         ),
                       }}
                       style={{
@@ -832,8 +848,8 @@ export function AIChatScreen() {
                         hr: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 14 },
                         table: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginVertical: 4 },
                         thead: { backgroundColor: colors.surfaceAlt },
-                        th: { padding: 10, fontWeight: "600", minWidth: 120 },
-                        td: { padding: 10, minWidth: 120 },
+                        th: { padding: 10, fontWeight: "600", flex: 0 },
+                        td: { padding: 10, flex: 0 },
                         tr: { borderBottomWidth: 0 },
                         code_inline: {
                           backgroundColor: colors.surfaceAlt,
@@ -876,6 +892,18 @@ export function AIChatScreen() {
                 >
                   <Ionicons name="albums-outline" size={16} color={colors.primaryText} />
                   <Text style={styles.messageActionText}>Créer des flashcards</Text>
+                </TouchableOpacity>
+              )}
+
+              {message.type === 'ai' && !message.error && message.text.length >= 40 && (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={() => setReportTarget({ kind: 'chat', excerpt: stripDiagrams(message.text) })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Signaler une erreur dans cette réponse"
+                >
+                  <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.messageActionText, { color: colors.textSecondary }]}>Signaler une erreur</Text>
                 </TouchableOpacity>
               )}
 
@@ -1061,11 +1089,14 @@ export function AIChatScreen() {
         </Animated.View>
       )}
 
+      <ReportErrorSheet target={reportTarget} onClose={() => setReportTarget(null)} />
+
       <FlashcardsFromChatSheet
         text={flashcardSource}
         onClose={() => setFlashcardSource(null)}
         onAdded={(count, courseName) => {
           setFlashcardSource(null);
+          logEvent('chat_flashcards_added', String(count));
           showToast(
             `${count} flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « ${courseName} »`,
             'checkmark-circle',
@@ -1284,6 +1315,12 @@ function makeStyles(colors: ThemeColors) {
     emptyText: {
       fontSize: 15,
       lineHeight: 22,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+
+    emptyNote: {
+      fontSize: 13,
       color: colors.textSecondary,
       textAlign: 'center',
     },

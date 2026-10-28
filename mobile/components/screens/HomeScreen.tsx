@@ -20,6 +20,7 @@ import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 import { QuestsCard } from '../QuestsCard';
 import { ClinicalCaseCard } from '../ClinicalCaseCard';
 import { StreakSheet } from '../StreakSheet';
+import { DemoCourseButton } from '../DemoCourseButton';
 
 interface HomeScreenProps {
   navigation: any;
@@ -169,6 +170,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.emptyStateText}>
               Importe un cours pour commencer : l’IA en tire un résumé, des flashcards et un quiz.
             </Text>
+            <DemoCourseButton />
           </View>
         ) : (
           paths.map((path, index) => (

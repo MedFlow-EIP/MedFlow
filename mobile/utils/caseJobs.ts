@@ -7,6 +7,7 @@ import { API_URL } from '@/services/api';
 import { getAuthHeaders } from './authHeaders';
 import { fetchWithTimeout, httpErrorMessage, UserFacingError } from './network';
 import { isPushActive } from './pushNotifications';
+import { logEvent } from './analytics';
 
 // Cas cliniques préparés en arrière-plan : le serveur génère le cas pendant
 // que l'utilisateur continue dans l'app ; on suit l'avancement et on prévient
@@ -116,6 +117,7 @@ export async function startBackgroundCase(
   // Pour prévenir quand le cas sera prêt.
   Notifications.requestPermissionsAsync().catch(() => {});
   upsert({ caseId: body.id, label, status: 'generating' });
+  logEvent('case_started', request.course_id ? 'cours' : 'sujet');
   await persist(user.uid);
   poll(user, body.id);
   return body.id;

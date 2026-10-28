@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 from middleware.ai_quota import consume_ai_quota
 from middleware.auth import build_user_response, require_auth
 from services.ai.base import QUIZ_DIFFICULTY
+from services.demo_course import DEMO_COURSE, DEMO_COURSE_ID
 from services.documents import (
     DOCUMENT_TYPES,
     IMAGE_EXTENSIONS,
@@ -154,6 +155,21 @@ def get_course(course_id):
     except Exception as e:
         logger.exception("Erreur lecture cours")
         return internal_error("Erreur lecture cours")
+
+
+@courses_bp.route("/api/courses/demo", methods=["POST"])
+@require_auth
+def add_demo_course():
+    """Ajoute le cours d'exemple (déjà généré, sans IA) : de quoi réviser
+    tout de suite sans importer de PDF. Le rappeler ne le duplique pas."""
+    try:
+        db = current_app.db
+        if not db.fetch_course(g.uid, DEMO_COURSE_ID):
+            db.save_course(g.uid, DEMO_COURSE_ID, DEMO_COURSE)
+        return jsonify({"course_id": DEMO_COURSE_ID, "nom": DEMO_COURSE["nom"]}), 201
+    except Exception:
+        logger.exception("Erreur cours d'exemple")
+        return internal_error("Erreur cours d'exemple")
 
 
 @courses_bp.route("/api/course/<course_id>", methods=["DELETE"])

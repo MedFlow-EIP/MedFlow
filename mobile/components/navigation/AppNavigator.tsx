@@ -12,7 +12,10 @@ import {
   PanResponder,
   Animated as RNAnimated,
   AppState,
+  Linking,
 } from 'react-native';
+import { checkForUpdate, dismissUpdate } from '../../utils/appUpdate';
+import { appAlert } from '../../utils/appAlert';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +55,7 @@ import { DocumentsScreen } from '../screens/DocumentsScreen';
 import { ClinicalCasesScreen } from '../screens/ClinicalCasesScreen';
 import { ClinicalCaseScreen } from '../screens/ClinicalCaseScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LegalScreen } from '../screens/LegalScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { TutorialScreen } from '../screens/TutorialScreen';
@@ -86,6 +90,7 @@ export type RootStackParamList = {
   Path: undefined;
   Lesson: { path: any; lesson: any };
   Settings: undefined;
+  Legal: undefined;
   Progress: undefined;
   Leaderboard: undefined;
   Friends: undefined;
@@ -374,6 +379,7 @@ function AuthStack() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="Legal" component={LegalScreen} />
     </Stack.Navigator>
   );
 }
@@ -407,6 +413,18 @@ export function AppNavigator() {
     resumeImportJobs(user);
     resumeCaseJobs(user);
     registerForPushNotifications(user);
+    // Testeurs : proposer l'APK le plus récent (une fois par version).
+    checkForUpdate().then((update) => {
+      if (!update) return;
+      appAlert(
+        'Nouvelle version disponible',
+        'Une version plus récente de MedFlow est prête. Télécharge-la puis installe-la par-dessus : ton compte et tes cours sont gardés.',
+        [
+          { text: 'Plus tard', style: 'cancel', onPress: () => dismissUpdate(update.build) },
+          { text: 'Télécharger', onPress: () => Linking.openURL(update.url) },
+        ]
+      );
+    });
     checkSocialNotifications(user);
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') checkSocialNotifications(user);
@@ -467,6 +485,7 @@ export function AppNavigator() {
             <Stack.Screen name="Lesson" component={LessonScreen} />
             <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Legal" component={LegalScreen} />
             <Stack.Screen name="Progress" component={ProgressScreen} />
             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
             <Stack.Screen name="Friends" component={FriendsScreen} />

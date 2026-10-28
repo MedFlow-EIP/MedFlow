@@ -358,6 +358,11 @@ class Database:
                 )
                 """
             )
+            # Précision libre sur un événement (ex. type de fichier importé).
+            try:
+                conn.execute("ALTER TABLE analytics_events ADD COLUMN detail TEXT")
+            except sqlite3.OperationalError:
+                pass
 
             conn.execute(
                 """
@@ -684,6 +689,22 @@ class Database:
                 except sqlite3.OperationalError:
                     pass
 
+            # Erreurs signalées par les étudiants dans le contenu généré
+            # (résumé, carte, question, réponse du chat) : mesure de confiance.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS content_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uid TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    course_id TEXT,
+                    excerpt TEXT NOT NULL,
+                    comment TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
             # Quêtes (F58) : une récompense par quête et par période (jour / semaine).
             conn.execute(
                 """
@@ -849,6 +870,22 @@ class Database:
                 for row in rows
             ]
 
+    def save_content_report(self, uid: str, kind: str, excerpt: str, comment: str = "",
+                            course_id: str | None = None) -> int:
+        with self.transaction() as conn:
+            cur = conn.execute(
+                "INSERT INTO content_reports (uid, kind, course_id, excerpt, comment, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, kind, course_id, excerpt, comment, datetime.now(timezone.utc).isoformat()),
+            )
+            return cur.lastrowid
+
+    def count_recent_reports(self, uid: str, since: str) -> int:
+        with self.connection() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM content_reports WHERE uid=? AND created_at>=?", (uid, since)
+            ).fetchone()[0]
+
     def log_analytics_event(
         self,
         uid: str,
@@ -856,6 +893,7 @@ class Database:
         path_id: str | None = None,
         lesson_id: str | None = None,
         screen: str | None = None,
+        detail: str | None = None,
     ) -> None:
         """Journal d'événements purement analytique, distinct de
         activity_log (qui alimente 'Actions récentes' côté utilisateur —
@@ -867,10 +905,10 @@ class Database:
         with self.transaction() as conn:
             conn.execute(
                 """
-                INSERT INTO analytics_events (uid, event_type, path_id, lesson_id, screen, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO analytics_events (uid, event_type, path_id, lesson_id, screen, detail, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (uid, event_type, path_id, lesson_id, screen, datetime.now(timezone.utc).isoformat()),
+                (uid, event_type, path_id, lesson_id, screen, detail, datetime.now(timezone.utc).isoformat()),
             )
 
     def log_activity(
