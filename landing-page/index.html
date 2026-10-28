@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medflow — La réussite à portée de main</title>
+    <meta name="description" content="Medflow, l'application pensée pour les étudiants en médecine : transforme tes cours PDF en résumés, flashcards et quiz grâce à notre IA, et planifie tes révisions pour toi." />
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/landing.css" />
+</head>
+<body class="is-loading">
+    <div id="preloader" class="preloader">
+        <div class="preloader-ring r1"></div>
+        <div class="preloader-ring r2"></div>
+        <div class="preloader-glow"></div>
+        <img src="/images/logo.png" alt="Medflow" class="preloader-logo" />
+        <div class="preloader-word">MEDFLOW</div>
+    </div>
+
+    <header class="navbar">
+    <div class="container">
+        <a href="#top" class="brand">
+            <span class="brand-logo">
+                <img src="/images/logo.png" alt="Logo Medflow" class="logo-default" />
+                <img src="/images/logo-green.png" alt="" class="logo-scrolled" aria-hidden="true" />
+            </span>
+            Medflow
+            <span class="brand-tag">App mobile</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Fonctionnalités</a></li>
+            <li><a href="#how">Comment ça marche</a></li>
+            <li><a href="#reviews">Avis</a></li>
+            <li><a href="/livre-blanc.html">Livre blanc</a></li>
+            <li><a href="#download">Télécharger l'app</a></li>
+        </ul>
+        <div class="nav-actions">
+            <a href="#cta" class="btn btn-primary">Créer mon compte</a>
+        </div>
+    </div>
+</header>
+
+<main id="top">
+    <!-- ============================= HERO ============================= -->
+    <section class="hero">
+        <div class="hero-blob b1"></div>
+        <div class="hero-blob b2"></div>
+        <div class="hero-blob b3"></div>
+
+        <div class="hero-ecg" aria-hidden="true">
+            <div class="hero-ecg-grid"></div>
+            <div class="hero-ecg-track">
+                <svg class="ecg-svg" viewBox="0 0 2200 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0,100 L20,100 L26,100 L32,88 L38,100 L55,100 L60,108 L68,8 L76,192 L84,100 L105,100 L118,72 L132,100 L200,100 L200,100 L220,100 L226,100 L232,88 L238,100 L255,100 L260,108 L268,8 L276,192 L284,100 L305,100 L318,72 L332,100 L400,100 L400,100 L420,100 L426,100 L432,88 L438,100 L455,100 L460,108 L468,8 L476,192 L484,100 L505,100 L518,72 L532,100 L600,100 L600,100 L620,100 L626,100 L632,88 L638,100 L655,100 L660,108 L668,8 L676,192 L684,100 L705,100 L718,72 L732,100 L800,100 L800,100 L820,100 L826,100 L832,88 L838,100 L855,100 L860,108 L868,8 L876,192 L884,100 L905,100 L918,72 L932,100 L1000,100 L1000,100 L1020,100 L1026,100 L1032,88 L1038,100 L1055,100 L1060,108 L1068,8 L1076,192 L1084,100 L1105,100 L1118,72 L1132,100 L1200,100 L1200,100 L1220,100 L1226,100 L1232,88 L1238,100 L1255,100 L1260,108 L1268,8 L1276,192 L1284,100 L1305,100 L1318,72 L1332,100 L1400,100 L1400,100 L1420,100 L1426,100 L1432,88 L1438,100 L1455,100 L1460,108 L1468,8 L1476,192 L1484,100 L1505,100 L1518,72 L1532,100 L1600,100 L1600,100 L1620,100 L1626,100 L1632,88 L1638,100 L1655,100 L1660,108 L1668,8 L1676,192 L1684,100 L1705,100 L1718,72 L1732,100 L1800,100 L1800,100 L1820,100 L1826,100 L1832,88 L1838,100 L1855,100 L1860,108 L1868,8 L1876,192 L1884,100 L1905,100 L1918,72 L1932,100 L2000,100 L2000,100 L2020,100 L2026,100 L2032,88 L2038,100 L2055,100 L2060,108 L2068,8 L2076,192 L2084,100 L2105,100 L2118,72 L2132,100 L2200,100" />
+                </svg>
+                <svg class="ecg-svg" viewBox="0 0 2200 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0,100 L20,100 L26,100 L32,88 L38,100 L55,100 L60,108 L68,8 L76,192 L84,100 L105,100 L118,72 L132,100 L200,100 L200,100 L220,100 L226,100 L232,88 L238,100 L255,100 L260,108 L268,8 L276,192 L284,100 L305,100 L318,72 L332,100 L400,100 L400,100 L420,100 L426,100 L432,88 L438,100 L455,100 L460,108 L468,8 L476,192 L484,100 L505,100 L518,72 L532,100 L600,100 L600,100 L620,100 L626,100 L632,88 L638,100 L655,100 L660,108 L668,8 L676,192 L684,100 L705,100 L718,72 L732,100 L800,100 L800,100 L820,100 L826,100 L832,88 L838,100 L855,100 L860,108 L868,8 L876,192 L884,100 L905,100 L918,72 L932,100 L1000,100 L1000,100 L1020,100 L1026,100 L1032,88 L1038,100 L1055,100 L1060,108 L1068,8 L1076,192 L1084,100 L1105,100 L1118,72 L1132,100 L1200,100 L1200,100 L1220,100 L1226,100 L1232,88 L1238,100 L1255,100 L1260,108 L1268,8 L1276,192 L1284,100 L1305,100 L1318,72 L1332,100 L1400,100 L1400,100 L1420,100 L1426,100 L1432,88 L1438,100 L1455,100 L1460,108 L1468,8 L1476,192 L1484,100 L1505,100 L1518,72 L1532,100 L1600,100 L1600,100 L1620,100 L1626,100 L1632,88 L1638,100 L1655,100 L1660,108 L1668,8 L1676,192 L1684,100 L1705,100 L1718,72 L1732,100 L1800,100 L1800,100 L1820,100 L1826,100 L1832,88 L1838,100 L1855,100 L1860,108 L1868,8 L1876,192 L1884,100 L1905,100 L1918,72 L1932,100 L2000,100 L2000,100 L2020,100 L2026,100 L2032,88 L2038,100 L2055,100 L2060,108 L2068,8 L2076,192 L2084,100 L2105,100 L2118,72 L2132,100 L2200,100" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="hero-copy">
+                <span class="badge-top"><span class="dot"></span> 📱 Application mobile — Disponible sur iOS &amp; Android</span>
+
+                <p class="hero-brand-tagline">Medflow, l'application pensée pour les étudiants en médecine.</p>
+
+                <h1>
+                    La réussite<br />
+                    <span class="line2">à portée de main</span>
+                </h1>
+
+                <svg class="hero-squiggle" viewBox="0 0 220 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 30 L45 8 L75 32 L110 6 L145 30 L180 10 L218 26" stroke="#2fd79f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+
+                <p class="lead">
+                    L'application mobile pensée <strong>spécialement pour les étudiants en médecine</strong> (PASS, LAS,
+                    externat, internat) : résumés, flashcards &amp; quiz générés par <strong>notre IA</strong> à partir
+                    de tes cours PDF.
+                </p>
+
+                <div class="hero-ctas">
+                    <a href="#cta" class="btn btn-primary btn-lg">Je m'inscris gratuitement</a>
+                    <a href="#how" class="btn btn-ghost btn-lg">Voir comment ça marche</a>
+                </div>
+
+                <div class="store-buttons">
+                    <a href="#" class="store-btn fake-download" data-store="Android">
+                        <span class="store-icon store-icon-android">
+                        <svg viewBox="0 0 576 512" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <path d="M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l47.94,83C64.53,202.22,8.24,285.55,0,384H576c-8.24-98.45-64.54-181.78-146.85-226.55"/>
+                        </svg>
+                    </span>
+                        <span class="store-text"><small>Télécharger l'</small><strong>APK Android</strong></span>
+                    </a>
+                    <a href="#" class="store-btn fake-download" data-store="iOS">
+                        <span class="store-icon store-icon-apple">
+                        <svg viewBox="0 0 384 512" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                        </svg>
+                    </span>
+                        <span class="store-text"><small>Disponible sur l'</small><strong>App Store</strong></span>
+                    </a>
+                </div>
+
+                <div class="hero-chips">
+                    <span class="chip">📄 Résumé</span>
+                    <span class="chip">🧠 Flashcards</span>
+                    <span class="chip">✅ Quiz</span>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="phone-wrap">
+                    <div class="phone-glow"></div>
+                    <div class="float-card c1"><span class="ico">⏱️</span> Fiche prête en 10s</div>
+                    <div class="float-card c2"><span class="ico">🧠</span> +40% de mémorisation</div>
+                    <div class="float-card c3"><span class="ico">📅</span> Planning optimisé</div>
+                    <div class="phone-frame">
+                        <img src="/images/app-preview.png" alt="Aperçu de l'application Medflow : flashcards générées par IA" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-wave">
+            <svg viewBox="0 0 1440 110" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#f5fbf9" d="M0,64 C240,110 480,0 720,32 C960,64 1200,112 1440,54 L1440,110 L0,110 Z"></path>
+            </svg>
+        </div>
+    </section>
+
+    <!-- ======================= SCHOOLS ======================= -->
+    <section class="schools">
+        <div class="container">
+            <p class="schools-label">🎓 Conçu pour les étudiants en médecine, dans toutes les facs de France</p>
+        </div>
+        <div class="schools-marquee">
+            <div class="schools-track">
+                <span>Paris</span><span>Lyon</span><span>Marseille</span><span>Lille</span><span>Toulouse</span>
+                <span>Bordeaux</span><span>Nantes</span><span>Strasbourg</span><span>Montpellier</span><span>Rennes</span>
+                <span>Paris</span><span>Lyon</span><span>Marseille</span><span>Lille</span><span>Toulouse</span>
+                <span>Bordeaux</span><span>Nantes</span><span>Strasbourg</span><span>Montpellier</span><span>Rennes</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= FEATURE 1 ======================= -->
+    <section class="feature medbg medbg--blob" id="features">
+        <div class="container">
+            <div class="feature-text reveal">
+                <span class="feature-kicker">⚡ Gagne un temps précieux</span>
+                <h2>Planifie ta réussite</h2>
+                <p>
+                    Marre de créer des centaines de fiches ? Marre de ne jamais savoir si votre planning est bon ?
+                    Medflow vous permet, par le biais de la fusion de la neuroscience et de <strong>notre IA</strong>, de ne
+                    plus perdre de temps grâce à la génération de fiches pertinentes pour vous et à la planification
+                    d'un emploi du temps sain et efficace !
+                </p>
+                <div class="feature-tags">
+                    <span>Basé sur la neuroscience</span>
+                    <span>Planning automatique</span>
+                    <span>Zéro effort</span>
+                </div>
+            </div>
+            <div class="feature-media reveal-pop">
+                <div class="media-card">
+                    <span class="deco d1"></span>
+                    <span class="deco d2"></span>
+                    <span class="icon-big">⏱️</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= FEATURE 2 ======================= -->
+    <section class="feature alt reverse medbg medbg--ecg">
+        <div class="container">
+            <div class="feature-text reveal">
+                <span class="feature-kicker">✨ De vos cours à la clarté</span>
+                <svg class="mini-squiggle" viewBox="0 0 220 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 30 L45 8 L75 32 L110 6 L145 30 L180 10 L218 26" />
+                </svg>
+                <h2>Quand un simple cours devient clair</h2>
+                <p>
+                    Avec l'application Medflow, plus besoin de galérer : ajoutez votre cours sur l'appli et
+                    <strong>notre IA</strong> s'occupe du reste ! Des fiches de résumé générées par notre IA, des quiz
+                    et des cas interactifs seront créés à partir de vos cours, rien que pour vous.
+                </p>
+                <div class="feature-tags">
+                    <span>Import PDF instantané</span>
+                    <span>Généré par notre IA</span>
+                    <span>Cas interactifs</span>
+                </div>
+            </div>
+            <div class="feature-media reveal-pop">
+                <div class="media-card">
+                    <span class="deco d1"></span>
+                    <span class="deco d2"></span>
+                    <span class="icon-big">📄✨</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= FEATURE 3 ======================= -->
+    <section class="feature alt2 medbg medbg--dots">
+        <div class="container">
+            <div class="feature-text reveal">
+                <span class="feature-kicker">🎯 Toujours prêt le jour J</span>
+                <h2>Jamais prêt pour une évaluation</h2>
+                <p>
+                    On a beau réviser, l'évaluation paraît toujours différente de ce qu'on a appris. Grâce à
+                    <strong>notre IA</strong>, vous aurez des évaluations qui viennent simuler celles que vous allez
+                    réellement avoir !
+                </p>
+                <div class="feature-tags">
+                    <span>Quiz type examen</span>
+                    <span>Simulation réaliste</span>
+                    <span>Progression suivie</span>
+                </div>
+            </div>
+            <div class="feature-media reveal-pop">
+                <div class="media-card">
+                    <span class="deco d1"></span>
+                    <span class="deco d2"></span>
+                    <span class="icon-big">🎯</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= HOW IT WORKS ======================= -->
+    <section class="how medbg medbg--cross" id="how">
+        <div class="container">
+            <div class="section-head reveal">
+                <span class="feature-kicker">🚀 En 3 étapes</span>
+                <h2>Comment ça marche</h2>
+                <p>De ton PDF de cours à une session de révision complète, en quelques secondes.</p>
+            </div>
+            <div class="steps">
+                <div class="step-card reveal reveal-delay-1">
+                    <div class="step-num">1</div>
+                    <h3>Importe ton cours</h3>
+                    <p>Dépose simplement ton PDF de cours dans l'application, Medflow s'occupe du reste.</p>
+                </div>
+                <div class="step-card reveal reveal-delay-2">
+                    <div class="step-num">2</div>
+                    <h3>Notre IA génère tes fiches</h3>
+                    <p>Résumés, flashcards et quiz sont créés automatiquement par notre IA à partir du contenu de ton cours.</p>
+                </div>
+                <div class="step-card reveal reveal-delay-3">
+                    <div class="step-num">3</div>
+                    <h3>Révise au bon moment</h3>
+                    <p>Medflow planifie tes révisions pour toi, au moment le plus efficace pour ta mémoire.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= STATS ======================= -->
+    <section class="stats">
+        <div class="container">
+            <div class="stat reveal">
+                <h3><span data-count="100" data-suffix="%">0%</span></h3>
+                <p>généré automatiquement par notre IA</p>
+            </div>
+            <div class="stat reveal reveal-delay-1">
+                <h3><span data-count="3" data-suffix="x">0x</span></h3>
+                <p>plus rapide qu'une fiche manuscrite</p>
+            </div>
+            <div class="stat reveal reveal-delay-2">
+                <h3><span data-count="0">0</span></h3>
+                <p>fiche à créer toi-même</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= REVIEWS ======================= -->
+    <section class="reviews medbg medbg--blob" id="reviews">
+        <div class="container">
+            <div class="section-head reveal">
+                <span class="feature-kicker">⭐ Exemples d'avis</span>
+                <h2>Ce que Medflow change pour toi</h2>
+                <p>
+                    Le genre de retours qu'on vise avec Medflow, l'appli qui simplifie tes révisions au quotidien.
+                </p>
+            </div>
+
+            <div class="store-ratings reveal reveal-delay-1">
+                <div class="store-rating">
+                    <span class="store-rating-icon">
+                        <svg viewBox="0 0 384 512" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="store-rating-stars" aria-hidden="true">★★★★★</div>
+                        <div class="store-rating-label"><strong>4.8</strong> sur l'App Store</div>
+                    </div>
+                </div>
+                <div class="store-rating">
+                    <span class="store-rating-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 2.7c0-.5.3-.9.7-1.1L14 7 11 10 4 3z" fill="#00d2ff"/>
+                            <path d="M4 21.3c0 .5.3.9.7 1.1L14 17l-3-3-7 7z" fill="#00f076"/>
+                            <path d="M17 9.3l-3 3 3 3 3.6-2.1c.5-.3.8-.8.8-1.4v-1c0-.6-.3-1.1-.8-1.4L17 9.3z" fill="#ffbc00"/>
+                            <path d="M4 3l10 7-3 3-7-7c-.3-.1-.4-.4-.4-.7 0-.1 0-.2.1-.3z" fill="#ff3d57"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="store-rating-stars" aria-hidden="true">★★★★★</div>
+                        <div class="store-rating-label"><strong>4.7</strong> sur Google Play</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="review-carousel reveal reveal-delay-2">
+                <div class="review-card active" data-store="App Store">
+                    <div class="review-stars">★★★★★</div>
+                    <p class="review-text">« Exactement ce qu'il me fallait avant mes exams : plus besoin de passer des heures à faire des fiches. »</p>
+                    <div class="review-author">
+                        <span class="review-avatar">C</span>
+                        <div>
+                            <strong>Camille</strong>
+                            <span>2e année médecine · App Store</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="review-card" data-store="Google Play">
+                    <div class="review-stars">★★★★★</div>
+                    <p class="review-text">« L'IA sort des quiz qui ressemblent vraiment à mes partiels, ça change tout pour réviser efficacement. »</p>
+                    <div class="review-author">
+                        <span class="review-avatar">Y</span>
+                        <div>
+                            <strong>Yanis</strong>
+                            <span>Étudiant PASS · Google Play</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="review-card" data-store="App Store">
+                    <div class="review-stars">★★★★★</div>
+                    <p class="review-text">« Le planning de révision généré automatiquement m'a évité de tout réviser la veille pour une fois. »</p>
+                    <div class="review-author">
+                        <span class="review-avatar">S</span>
+                        <div>
+                            <strong>Sarah</strong>
+                            <span>Externe en médecine · App Store</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="review-card" data-store="Google Play">
+                    <div class="review-stars">★★★★★</div>
+                    <p class="review-text">« Je dépose mon PDF de cours et j'ai direct des flashcards nickel. Un gain de temps monstre. »</p>
+                    <div class="review-author">
+                        <span class="review-avatar">L</span>
+                        <div>
+                            <strong>Léa</strong>
+                            <span>1re année médecine · Google Play</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="review-dots" role="tablist" aria-label="Avis"></div>
+        </div>
+    </section>
+
+    <!-- ======================= LIVRE BLANC (promo) ======================= -->
+    <section class="feature promo-book" id="livre-blanc">
+        <div class="container">
+            <div class="feature-text reveal">
+                <span class="feature-kicker">📘 Ressource gratuite</span>
+                <h2>Un livre blanc gratuit sur la mémorisation</h2>
+                <p>
+                    12 pages pour comprendre ce que les neurosciences disent vraiment sur la mémorisation, répétition
+                    espacée, rappel actif, courbe de l'oubli, et un plan d'action concret pour réviser deux fois plus
+                    vite. La même approche que celle derrière Medflow.
+                </p>
+                <div class="feature-tags">
+                    <span>12 pages</span>
+                    <span>Basé sur la recherche</span>
+                    <span>100% gratuit</span>
+                </div>
+                <div class="hero-ctas promo-book-cta">
+                    <a href="/livre-blanc.html" class="btn btn-white btn-lg">Télécharger le livre blanc</a>
+                </div>
+            </div>
+            <div class="feature-media reveal-pop">
+                <a href="/livre-blanc.html" class="ebook-wrap ebook-wrap-sm" aria-label="Télécharger le livre blanc">
+                    <div class="ebook-glow"></div>
+                    <div class="ebook-pages p3"></div>
+                    <div class="ebook-pages p2"></div>
+                    <div class="ebook-cover">
+                        <span class="ebook-kicker">Livre blanc</span>
+                        <span class="ebook-title">Mémorise 2x plus vite grâce aux neurosciences</span>
+                        <span class="ebook-brand">
+                            <img src="/images/logo-green.png" alt="" />
+                            Medflow
+                        </span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= DOWNLOAD ======================= -->
+    <section class="download medbg medbg--pulse" id="download">
+        <div class="container">
+            <div class="section-head reveal">
+                <span class="feature-kicker">📲 Télécharge l'application</span>
+                <h2>Medflow, dans ta poche</h2>
+                <p>L'application mobile Medflow est disponible sur Android et iOS.</p>
+            </div>
+            <div class="store-buttons store-buttons-lg reveal reveal-delay-1">
+                <a href="#" class="store-btn fake-download" data-store="Android">
+                    <span class="store-icon store-icon-android">
+                        <svg viewBox="0 0 576 512" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <path d="M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l47.94,83C64.53,202.22,8.24,285.55,0,384H576c-8.24-98.45-64.54-181.78-146.85-226.55"/>
+                        </svg>
+                    </span>
+                    <span class="store-text"><small>Télécharger l'</small><strong>APK Android</strong></span>
+                </a>
+                <a href="#" class="store-btn fake-download" data-store="iOS">
+                    <span class="store-icon store-icon-apple">
+                        <svg viewBox="0 0 384 512" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                        </svg>
+                    </span>
+                    <span class="store-text"><small>Disponible sur l'</small><strong>App Store</strong></span>
+                </a>
+                <a href="#" class="store-btn fake-download" data-store="Google Play">
+                    <span class="store-icon store-icon-play">
+                        <svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 2.7c0-.5.3-.9.7-1.1L14 7 11 10 4 3z" fill="#00d2ff"/>
+                            <path d="M4 21.3c0 .5.3.9.7 1.1L14 17l-3-3-7 7z" fill="#00f076"/>
+                            <path d="M17 9.3l-3 3 3 3 3.6-2.1c.5-.3.8-.8.8-1.4v-1c0-.6-.3-1.1-.8-1.4L17 9.3z" fill="#ffbc00"/>
+                            <path d="M4 3l10 7-3 3-7-7c-.3-.1-.4-.4-.4-.7 0-.1 0-.2.1-.3z" fill="#ff3d57"/>
+                        </svg>
+                    </span>
+                    <span class="store-text"><small>Disponible sur</small><strong>Google Play</strong></span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= CTA ======================= -->
+    <section class="cta" id="cta">
+        <div class="container">
+            <h2 class="reveal">Inscris-toi maintenant</h2>
+            <p class="reveal reveal-delay-1">
+                Crée ton compte gratuitement et commence à réviser plus intelligemment dès aujourd'hui, sur iOS et Android.
+            </p>
+            <form class="cta-form reveal reveal-delay-2">
+                <input type="email" required placeholder="ton.email@exemple.com" aria-label="Adresse e-mail" />
+                <button type="submit" class="btn btn-white btn-lg">Je m'inscris</button>
+            </form>
+            <p class="cta-note">Aucun spam, juste les infos essentielles pour bien démarrer sur Medflow.</p>
+        </div>
+    </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-top">
+            <a href="#top" class="footer-brand">
+                <img src="/images/logo.png" alt="Logo Medflow" />
+                Medflow
+            </a>
+            <nav class="footer-links">
+                <a href="#features">Fonctionnalités</a>
+                <a href="#how">Comment ça marche</a>
+                <a href="#download">Télécharger l'app</a>
+                <a href="/livre-blanc.html">Livre blanc</a>
+                <a href="#">Confidentialité</a>
+            </nav>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; <span data-current-year></span> Medflow. Tous droits réservés.</span>
+            <span>Fait avec 🧠 pour les étudiants en médecine.</span>
+        </div>
+    </div>
+</footer>
+
+    <script type="module" src="/src/landing.js"></script>
+</body>
+</html>
