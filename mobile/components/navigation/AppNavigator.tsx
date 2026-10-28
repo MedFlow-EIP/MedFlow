@@ -12,7 +12,10 @@ import {
   PanResponder,
   Animated as RNAnimated,
   AppState,
+  Linking,
 } from 'react-native';
+import { checkForUpdate, dismissUpdate } from '../../utils/appUpdate';
+import { appAlert } from '../../utils/appAlert';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -410,6 +413,18 @@ export function AppNavigator() {
     resumeImportJobs(user);
     resumeCaseJobs(user);
     registerForPushNotifications(user);
+    // Testeurs : proposer l'APK le plus récent (une fois par version).
+    checkForUpdate().then((update) => {
+      if (!update) return;
+      appAlert(
+        'Nouvelle version disponible',
+        'Une version plus récente de MedFlow est prête. Télécharge-la puis installe-la par-dessus : ton compte et tes cours sont gardés.',
+        [
+          { text: 'Plus tard', style: 'cancel', onPress: () => dismissUpdate(update.build) },
+          { text: 'Télécharger', onPress: () => Linking.openURL(update.url) },
+        ]
+      );
+    });
     checkSocialNotifications(user);
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') checkSocialNotifications(user);
