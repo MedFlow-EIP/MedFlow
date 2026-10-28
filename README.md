@@ -131,6 +131,8 @@ Les quotas sont glissants sur 24 h ; l’app affiche ce qu’il reste (`GET /api
 
 Autres variables facultatives : `GCP_LOCATION` (`us-central1`), `ENABLE_API_DOCS=true` (Swagger sur `/api/docs`, coupé en production), `CORS_ORIGINS`, `LOG_LEVEL`.
 
+**Documentation de l’API** : `backend/openapi.yaml` décrit toutes les routes. Après avoir ajouté ou supprimé une route, le régénérer avec `cd backend && python generate_openapi.py` (un test échoue tant que ce n’est pas fait).
+
 Les modèles disponibles dépendent du projet Vertex AI : un modèle absent fait échouer toutes les générations (`404 Publisher model … was not found` dans les logs du backend).
 
 Au-delà, l’API répond `429`. En production, l’IA est aussi réservée aux comptes dont l’email est vérifié (`403`). Pense à créer une **alerte budget** dans la console GCP (Facturation → Budgets et alertes).
