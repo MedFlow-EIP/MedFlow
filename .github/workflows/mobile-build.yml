@@ -134,9 +134,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Le compteur de téléchargements de GitHub repart à zéro avec la
+          # nouvelle release : on reporte le cumul dans ses notes.
+          last_build=$(gh release view apk-latest --json assets --jq '[.assets[].downloadCount] | add // 0' 2>/dev/null || echo 0)
+          before=$(gh release view apk-latest --json body --jq .body 2>/dev/null | grep -o 'Téléchargements cumulés : [0-9]*' | grep -o '[0-9]*$' || true)
+          total=$(( ${before:-0} + ${last_build:-0} ))
           gh release delete apk-latest --cleanup-tag --yes || true
           gh release create apk-latest medflow.apk \
             --prerelease \
             --title "MedFlow — dernier APK" \
-            --notes "Build #${{ github.run_number }}, commit ${{ github.sha }}. Installe medflow.apk sur Android (autoriser les sources inconnues si demandé)." \
+            --notes "Build #${{ github.run_number }}, commit ${{ github.sha }}. Installe medflow.apk sur Android (autoriser les sources inconnues si demandé). Téléchargements cumulés : ${total} (builds précédents ; ajouter le compteur de ce fichier)." \
             --target "${{ github.sha }}"

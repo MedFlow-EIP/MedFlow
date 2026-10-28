@@ -256,6 +256,24 @@ def list_conversations():
         return jsonify({"error": "Erreur interne"}), 500
 
 
+@chat_bp.route("/chat/conversations/<conversation_id>", methods=["PATCH"])
+@require_auth
+def rename_conversation(conversation_id):
+    """Renomme une conversation. Body: {"title": "Cycle cardiaque"}."""
+    try:
+        title = str((request.get_json(silent=True) or {}).get("title") or "").strip()
+        if not title:
+            return jsonify({"error": "Le titre ne peut pas être vide"}), 400
+        db = current_app.db
+        if db.get_chat_conversation_owner(conversation_id) != g.uid:
+            return jsonify({"error": "Conversation introuvable"}), 404
+        db.update_chat_conversation_title(g.uid, conversation_id, title[:80])
+        return jsonify({"conversation_id": conversation_id, "title": title[:80]})
+    except Exception:
+        logger.exception("Erreur renommage conversation")
+        return jsonify({"error": "Erreur interne"}), 500
+
+
 @chat_bp.route("/chat/conversations/<conversation_id>", methods=["DELETE"])
 @require_auth
 def delete_conversation(conversation_id):

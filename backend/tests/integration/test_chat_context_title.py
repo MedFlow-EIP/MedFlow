@@ -36,6 +36,18 @@ def test_course_cited_by_name_is_given_in_full(client, app, db):
     assert "Récent" not in context
 
 
+def test_conversation_can_be_renamed_by_its_owner_only(client):
+    cid = client.post("/chat", json={"message": "Bonjour"}, headers=_h()).get_json()["conversation_id"]
+
+    resp = client.patch(f"/chat/conversations/{cid}", json={"title": "  Révision cardio  "}, headers=_h())
+    assert resp.status_code == 200 and resp.get_json()["title"] == "Révision cardio"
+    convs = client.get("/chat/conversations", headers=_h()).get_json()["conversations"]
+    assert convs[0]["title"] == "Révision cardio"
+
+    assert client.patch(f"/chat/conversations/{cid}", json={"title": "   "}, headers=_h()).status_code == 400
+    assert client.patch(f"/chat/conversations/{cid}", json={"title": "Volé"}, headers=_h("u2")).status_code == 404
+
+
 def test_no_courses_no_context(client, app):
     client.post("/chat", json={"message": "Bonjour"}, headers=_h())
     assert app.ai.last_chat_call["context"] == ""

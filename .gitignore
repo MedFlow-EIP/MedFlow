@@ -65,3 +65,6 @@ mobile/ios/
 *.jks
 *.keystore
 mobile/google-services.json
+
+# Consignes locales de Claude Code (propres à chacun)
+CLAUDE.md

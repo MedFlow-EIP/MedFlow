@@ -21,6 +21,7 @@ import { CourseTabs, CourseTab, FlashcardList, QuizList, SummaryCard } from '../
 import { OfflineBanner } from '../course/OfflineBanner';
 import { EditCourseSheet } from '../course/EditCourseSheet';
 import { StateView } from '../ui/StateView';
+import { ReportErrorSheet, type ReportTarget } from '../ReportErrorSheet';
 import { shareRevisionSheet } from '../../utils/revisionSheet';
 import { formatBytes, openCourseDocument } from '../../utils/courseDocuments';
 import { appAlert } from '../../utils/appAlert';
@@ -58,6 +59,7 @@ export function CourseDetailScreen({ route }: Props) {
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<CourseTab>('resume');
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [offline, setOffline] = useState(false);
   const [editing, setEditing] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -295,7 +297,25 @@ export function CourseDetailScreen({ route }: Props) {
             <QuizList questions={quiz} mode="key" />
           </>
         )}
+
+        <TouchableOpacity
+          style={styles.reportLink}
+          onPress={() =>
+            setReportTarget({
+              kind: tab === 'resume' ? 'summary' : tab === 'flashcards' ? 'flashcard' : 'quiz',
+              courseId,
+              excerpt: `${course.nom} · ${tab === 'resume' ? 'Résumé' : tab === 'flashcards' ? 'Flashcards' : 'Quiz'}`,
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Signaler une erreur dans ce cours"
+        >
+          <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+          <Text style={styles.reportLinkText}>Signaler une erreur dans ce cours</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <ReportErrorSheet target={reportTarget} onClose={() => setReportTarget(null)} />
 
       <EditCourseSheet
         visible={editing}
@@ -462,6 +482,21 @@ function makeStyles(colors: ThemeColors) {
       lineHeight: 18,
       fontWeight: '500',
       color: colors.primaryText,
+    },
+
+    reportLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      minHeight: 44,
+      marginTop: 8,
+    },
+
+    reportLinkText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
     },
   });
 }

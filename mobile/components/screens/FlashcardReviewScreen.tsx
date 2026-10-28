@@ -11,6 +11,7 @@ import { errorMessage, fetchWithTimeout, readJsonOrThrow } from '../../utils/net
 import { useScreenInsets } from '../navigation/constants';
 import { ProgressBar } from '../ui/progress';
 import { StateView } from '../ui/StateView';
+import { ReportErrorSheet, type ReportTarget } from '../ReportErrorSheet';
 
 type DueCard = {
   course_id: string;
@@ -46,6 +47,7 @@ export function FlashcardReviewScreen() {
   const [cards, setCards] = useState<DueCard[] | null>(null);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewed, setReviewed] = useState(0);
@@ -171,8 +173,28 @@ export function FlashcardReviewScreen() {
           )}
         </View>
 
+        {revealed && (
+          <TouchableOpacity
+            style={styles.reportLink}
+            onPress={() =>
+              setReportTarget({
+                kind: 'flashcard',
+                courseId: card.course_id,
+                excerpt: `${card.question}\nRéponse : ${card.answer}`,
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Signaler une erreur dans cette carte"
+          >
+            <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.reportLinkText}>Signaler une erreur</Text>
+          </TouchableOpacity>
+        )}
+
         {!!error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
+
+      <ReportErrorSheet target={reportTarget} onClose={() => setReportTarget(null)} />
 
       <View style={[styles.footer, { paddingBottom: bottom + 12 }]}>
         {!revealed ? (
@@ -297,6 +319,18 @@ function makeStyles(colors: ThemeColors) {
     error: {
       fontSize: 14,
       color: colors.dangerText,
+    },
+    reportLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      minHeight: 44,
+    },
+    reportLinkText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
     },
     footer: {
       gap: 10,

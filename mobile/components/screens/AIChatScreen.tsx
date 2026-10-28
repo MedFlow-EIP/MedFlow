@@ -508,6 +508,42 @@ export function AIChatScreen() {
     sendMessage(question.text, (question.attachments ?? []).filter((a) => !!a.uri) as PendingAttachment[]);
   };
 
+  // Renommer une conversation depuis l'historique (titre modifié sur place).
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+
+  const startRename = (convId: string, title: string) => {
+    setRenamingId(convId);
+    setRenameText(title);
+  };
+
+  const saveRename = () => {
+    const convId = renamingId;
+    const title = renameText.trim().slice(0, 80);
+    setRenamingId(null);
+    if (!convId || !title) return;
+    setConversations((prev) => {
+      const next = prev.map((c) => (c.id === convId ? { ...c, title } : c));
+      const uid = auth.currentUser?.uid;
+      if (uid) AsyncStorage.setItem(storageKey(uid), JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+    // Renommée aussi côté serveur, sinon l'ancien titre reviendrait à la prochaine synchro.
+    const serverId = conversations.find((c) => c.id === convId)?.serverId;
+    const user = auth.currentUser;
+    if (serverId && user) {
+      getAuthHeaders(user)
+        .then((headers) =>
+          fetch(`${API_URL}/chat/conversations/${serverId}`, {
+            method: 'PATCH',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title }),
+          })
+        )
+        .catch(() => {});
+    }
+  };
+
   const deleteConversation = (convId: string) => {
     appAlert(
       "Supprimer la conversation",
@@ -694,6 +730,32 @@ export function AIChatScreen() {
                   <Text style={styles.drawerSectionTitle}>{section.title}</Text>
                   {section.items.map((item) => {
                     const active = item.id === currentConvId;
+                    if (renamingId === item.id) {
+                      return (
+                        <View key={item.id} style={[styles.historyItem, styles.historyItemActive]}>
+                          <TextInput
+                            style={styles.historyRenameInput}
+                            value={renameText}
+                            onChangeText={setRenameText}
+                            onSubmitEditing={saveRename}
+                            onBlur={saveRename}
+                            autoFocus
+                            selectTextOnFocus
+                            maxLength={80}
+                            returnKeyType="done"
+                            accessibilityLabel="Nouveau titre de la conversation"
+                          />
+                          <TouchableOpacity
+                            onPress={saveRename}
+                            style={styles.historyDelete}
+                            accessibilityRole="button"
+                            accessibilityLabel="Enregistrer le titre"
+                          >
+                            <Ionicons name="checkmark" size={20} color={colors.primaryText} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    }
                     return (
                       <View key={item.id} style={[styles.historyItem, active && styles.historyItemActive]}>
                         {active && <View style={styles.historyActiveBar} />}
@@ -710,6 +772,14 @@ export function AIChatScreen() {
                           >
                             {item.title}
                           </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => startRename(item.id, item.title)}
+                          style={styles.historyDelete}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Renommer la conversation ${item.title}`}
+                        >
+                          <Ionicons name="pencil-outline" size={18} color={colors.textSecondary} />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => deleteConversation(item.id)}
@@ -1252,6 +1322,14 @@ function makeStyles(colors: ThemeColors) {
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+
+    historyRenameInput: {
+      flex: 1,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      fontSize: 15,
+      color: colors.textPrimary,
     },
 
     messagesContainer: {
