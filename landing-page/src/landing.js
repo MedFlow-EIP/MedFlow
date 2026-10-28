@@ -220,6 +220,10 @@
         "_blank",
         "noopener"
       );
+      // Conversion : une inscription commencée (le compteur charge en différé).
+      if (window.goatcounter && window.goatcounter.count) {
+        window.goatcounter.count({ path: "inscription", title: "Inscription commencée", event: true });
+      }
       var original = button.textContent;
       button.textContent = "Inscrit(e) ✓";
       button.style.background = "#ffffff";
