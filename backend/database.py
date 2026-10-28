@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Optional, Tuple
 
 from spaced_repetition import CardSchedule, next_review_date, next_schedule
-from user_clock import user_today
+from user_clock import user_offset_minutes, user_today
 
 
 logger = logging.getLogger(__name__)
@@ -2092,6 +2092,9 @@ class Database:
         réponses (quiz, flashcards, examens blancs) + leçons terminées."""
         today = user_today()
         start = today - timedelta(days=days - 1)
+        # Les dates sont enregistrées en UTC : on les ramène à l'heure de
+        # l'étudiant, sinon une révision à 0 h 30 compte pour la veille.
+        shift = f"{user_offset_minutes():+d} minutes"
         counts: Dict[str, int] = {}
         with self.connection() as conn:
             for table, column, extra in (
@@ -2099,9 +2102,9 @@ class Database:
                 ("activity_log", "created_at", " AND type IN ('lesson_completed', 'mock_exam', 'challenge')"),
             ):
                 rows = conn.execute(
-                    f"SELECT substr({column}, 1, 10) AS day, COUNT(*) AS n FROM {table} "
-                    f"WHERE uid=? AND {column}>=?{extra} GROUP BY day",
-                    (uid, start.isoformat()),
+                    f"SELECT substr(datetime({column}, ?), 1, 10) AS day, COUNT(*) AS n FROM {table} "
+                    f"WHERE uid=? AND datetime({column}, ?)>=?{extra} GROUP BY day",
+                    (shift, uid, shift, start.isoformat()),
                 ).fetchall()
                 for r in rows:
                     counts[r["day"]] = counts.get(r["day"], 0) + r["n"]

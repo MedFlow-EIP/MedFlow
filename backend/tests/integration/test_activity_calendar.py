@@ -1,5 +1,5 @@
 """Calendrier d'activité (une case par jour)."""
-from datetime import date
+from datetime import datetime, timezone
 
 
 def _h(uid="u1"):
@@ -9,7 +9,7 @@ def _h(uid="u1"):
 def test_empty(client):
     data = client.get("/api/activity/calendar", headers=_h()).get_json()
     assert len(data["days"]) == 126
-    assert data["days"][-1]["date"] == date.today().isoformat()
+    assert data["days"][-1]["date"] == datetime.now(timezone.utc).date().isoformat()
     assert (data["active_days"], data["total"], data["best_run"]) == (0, 0, 0)
 
 
