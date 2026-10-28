@@ -59,10 +59,6 @@ def create_app(config=None):
     from routes.flashcards import flashcards_bp
     from routes.cases import cases_bp
     from services.ai import get_ai_provider
-    from services.monitoring import init_sentry
-
-    # Erreurs serveur vers Sentry, seulement si SENTRY_DSN est défini.
-    init_sentry()
 
     app = Flask(__name__)
     # Derrière Caddy (HTTPS) : reprend le schéma et l'hôte d'origine pour que
