@@ -1707,6 +1707,23 @@ paths:
           description: Succès
         '401':
           description: Token manquant ou invalide
+    patch:
+      tags:
+      - Assistant IA
+      summary: 'Renomme une conversation. Body: {"title": "Cycle cardiaque"}.'
+      parameters:
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Succès
+        '401':
+          description: Token manquant ou invalide
   /chat/transcribe:
     post:
       tags:
