@@ -205,9 +205,9 @@
     });
   });
 
-  // ---- Inscription : ouvre le formulaire Google, e-mail déjà rempli ----
-  var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfDOL8j-RhOUYkmo_f4lLXKcfXFRLfALpnmdLh-jft2xyzfiw/viewform";
-  var FORM_EMAIL_FIELD = "entry.75417279";
+  // ---- Inscription à la beta : ouvre le formulaire Google, e-mail déjà rempli ----
+  var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdEpZ-ccOVJsfjLocchMHk0lfbyHFD4CEUu-m-9OWHbR3IE6A/viewform";
+  var FORM_EMAIL_FIELD = "entry.1480854054";
   var form = document.querySelector(".cta-form");
   if (form) {
     form.addEventListener("submit", function (e) {
