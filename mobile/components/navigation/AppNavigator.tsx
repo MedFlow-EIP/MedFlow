@@ -52,6 +52,7 @@ import { DocumentsScreen } from '../screens/DocumentsScreen';
 import { ClinicalCasesScreen } from '../screens/ClinicalCasesScreen';
 import { ClinicalCaseScreen } from '../screens/ClinicalCaseScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LegalScreen } from '../screens/LegalScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { TutorialScreen } from '../screens/TutorialScreen';
@@ -86,6 +87,7 @@ export type RootStackParamList = {
   Path: undefined;
   Lesson: { path: any; lesson: any };
   Settings: undefined;
+  Legal: undefined;
   Progress: undefined;
   Leaderboard: undefined;
   Friends: undefined;
@@ -374,6 +376,7 @@ function AuthStack() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="Legal" component={LegalScreen} />
     </Stack.Navigator>
   );
 }
@@ -467,6 +470,7 @@ export function AppNavigator() {
             <Stack.Screen name="Lesson" component={LessonScreen} />
             <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Legal" component={LegalScreen} />
             <Stack.Screen name="Progress" component={ProgressScreen} />
             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
             <Stack.Screen name="Friends" component={FriendsScreen} />

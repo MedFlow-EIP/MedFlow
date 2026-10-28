@@ -752,6 +752,7 @@ export function AIChatScreen() {
             </View>
             <Text style={styles.emptyTitle}>Sur quoi veux-tu réviser ?</Text>
             <Text style={styles.emptyText}>Pose une question ou pars d’un de tes cours.</Text>
+            <Text style={styles.emptyNote}>L’assistant peut se tromper : vérifie avec ton cours.</Text>
 
             <View style={styles.suggestions}>
               {SUGGESTIONS.map((suggestion) => (
@@ -1314,6 +1315,12 @@ function makeStyles(colors: ThemeColors) {
     emptyText: {
       fontSize: 15,
       lineHeight: 22,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+
+    emptyNote: {
+      fontSize: 13,
       color: colors.textSecondary,
       textAlign: 'center',
     },

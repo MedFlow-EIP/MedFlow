@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { auth } from '../../firebaseConfig';
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { useTheme } from '../../theme/ThemeContext';
@@ -113,14 +113,35 @@ export function RegisterScreen({ navigation }: any) {
       />
 
       <AuthError message={error} />
+      <Text style={styles.legal}>
+        En créant un compte, tu acceptes que tes cours soient traités par une IA pour générer tes révisions.
+        MedFlow ne remplace pas un avis médical.{' '}
+        <Text
+          style={styles.legalLink}
+          onPress={() => navigation.navigate('Legal')}
+          accessibilityRole="link"
+        >
+          En savoir plus
+        </Text>
+      </Text>
       <AuthButton label="Créer mon compte" loading={loading} onPress={handleRegister} />
       <GoogleSignInButton />
     </AuthLayout>
   );
 }
 
-function makeStyles(_colors: ThemeColors) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    legal: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: colors.textSecondary,
+    },
+    legalLink: {
+      color: colors.primaryText,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
     row: {
       flexDirection: 'row',
       gap: 12,

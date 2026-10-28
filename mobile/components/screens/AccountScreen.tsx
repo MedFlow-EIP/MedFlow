@@ -545,6 +545,22 @@ export function AccountScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.contactCard, { marginTop: 12 }]}
+          onPress={() => navigation.navigate('Legal')}
+          accessibilityRole="button"
+          accessibilityLabel="Confidentialité et avertissement médical"
+        >
+          <View style={[styles.contactIcon, { backgroundColor: colors.tintPrimary }]}>
+            <Ionicons name="shield-checkmark-outline" size={22} color={colors.primaryDark} />
+          </View>
+          <View style={styles.contactContent}>
+            <Text style={styles.contactTitle}>Confidentialité et avertissement</Text>
+            <Text style={styles.contactSubtitle}>Tes données, l’IA et ses limites</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+
         <Text style={styles.sectionTitle} accessibilityRole="header">Suivez-nous</Text>
         <View style={styles.listCard}>
           {socials.map((social, index) => (
