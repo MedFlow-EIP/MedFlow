@@ -38,12 +38,19 @@ export function stripDiagrams(text: string): string {
 export function sanitizeSvg(raw: string): string | null {
   let svg = (raw || '').trim();
   if (!/^<svg[\s>]/i.test(svg) || !/<\/svg>\s*$/i.test(svg) || svg.length > MAX_SVG_CHARS) return null;
+  let previous: string;
+  // Répété jusqu'à stabilité : un seul passage laisserait « <scr<script>ipt> » redevenir « <script> ».
+  do {
+    previous = svg;
+    svg = svg
+      // Blocs entiers puis balises isolées : scripts, HTML embarqué, images, liens.
+      .replace(/<(script|foreignObject|style|iframe)\b[\s\S]*?<\/\1\s*>/gi, '')
+      .replace(/<\/?(script|foreignObject|style|iframe|image|a|use)\b[^>]*>/gi, '')
+      // Gestionnaires d'événements.
+      .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  } while (svg !== previous);
   svg = svg
-    // Blocs entiers puis balises isolées : scripts, HTML embarqué, images, liens.
-    .replace(/<(script|foreignObject|style|iframe)\b[\s\S]*?<\/\1\s*>/gi, '')
-    .replace(/<\/?(script|foreignObject|style|iframe|image|a|use)\b[^>]*>/gi, '')
-    // Gestionnaires d'événements et liens vers l'extérieur.
-    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // Liens vers l'extérieur.
     .replace(/\s(xlink:)?href\s*=\s*("[^"]*"|'[^']*')/gi, (attr, _x, value) =>
       /^["']#/.test(value) ? attr : ''
     )

@@ -77,8 +77,9 @@ def send_friend_request():
             notify_user(app, target_uid, "🤝 Vous êtes amis", f"{g.display_name} a accepté ta demande.",
                         {"screen": "Friends"})
         return jsonify({"status": status})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+    except ValueError:
+        # Seul cas : s'ajouter soi-même.
+        return jsonify({"error": "Impossible de s'ajouter soi-même"}), 400
     except Exception as e:
         logger.exception("Erreur envoi demande ami")
         return internal_error("Erreur interne")

@@ -22,6 +22,11 @@ describe('fiche de révision', () => {
     expect(clean).toContain('<h2>Le cœur</h2>');
   });
 
+  it('ne laisse pas une balise imbriquée se reformer après nettoyage', () => {
+    const clean = sanitizeSummary('<p>ok</p><scr<script>x</script>ipt>alert(1)</script>');
+    expect(clean).toBe('<p>ok</p>alert(1)');
+  });
+
   it('contient le titre, les flashcards et le corrigé', () => {
     const html = buildRevisionSheetHtml(course, new Date(2026, 9, 27));
     expect(html).toContain('<h1>Cardio &lt;1&gt;</h1>');

@@ -225,7 +225,7 @@ def _read_course_text(data: bytes, extension: str, mime_type: str):
         else:
             text = extract_text_from_pptx(data)
     except DocumentError as e:
-        return None, False, str(e), 400
+        return None, False, e.message, 400
     if not text or len(text.strip()) < MIN_TEXT_CHARS:
         return None, False, "Document vide : aucun texte à analyser", 400
     return text, False, None, None
@@ -316,6 +316,7 @@ class GenerationError(Exception):
 
     def __init__(self, message: str, status: int):
         super().__init__(message)
+        self.message = message
         self.status = status
 
 
@@ -521,7 +522,7 @@ def process_document():
         try:
             return jsonify(_generate_course(app, g.uid, job))
         except GenerationError as e:
-            return jsonify({"error": str(e)}), e.status
+            return jsonify({"error": e.message}), e.status
 
     except Exception as e:
         logger.exception("Erreur traitement document")

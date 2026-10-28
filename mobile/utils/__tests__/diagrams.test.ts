@@ -46,6 +46,11 @@ describe('schémas du chat', () => {
     );
   });
 
+  it('ne laisse pas une balise imbriquée se reformer après nettoyage', () => {
+    const clean = sanitizeSvg('<svg><scr<script>x</script>ipt>alert(1)</script><rect width="5"/></svg>');
+    expect(clean).toBe('<svg>alert(1)<rect width="5"/></svg>');
+  });
+
   it('refuse un SVG démesuré', () => {
     expect(sanitizeSvg(`<svg>${'x'.repeat(50_000)}</svg>`)).toBeNull();
   });

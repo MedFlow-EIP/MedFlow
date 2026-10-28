@@ -183,9 +183,13 @@
   // ---- Fake download buttons (app not released yet) ----
   var toast = document.getElementById("toast");
   var toastTimer = null;
-  function showToast(message) {
+  // Texte inséré tel quel (textContent), le nom du store en gras.
+  function showToast(before, bold, after) {
     if (!toast) return;
-    toast.innerHTML = message;
+    var strong = document.createElement("strong");
+    strong.textContent = bold;
+    toast.textContent = "";
+    toast.append(before, strong, after);
     toast.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () {
@@ -196,7 +200,7 @@
     btn.addEventListener("click", function (e) {
       e.preventDefault();
       var store = btn.getAttribute("data-store") || "l'app";
-      showToast("📲 Reçois le lien de téléchargement Medflow pour <strong>" + store + "</strong> par e-mail ci-dessous.");
+      showToast("📲 Reçois le lien de téléchargement Medflow pour ", store, " par e-mail ci-dessous.");
       var target = document.querySelector("#cta");
       if (target) {
         var top = target.getBoundingClientRect().top + window.pageYOffset - 84;

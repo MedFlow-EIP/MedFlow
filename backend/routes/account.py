@@ -113,6 +113,14 @@ def _avatars_folder() -> str:
     return folder
 
 
+def _avatar_path(filename: str) -> str | None:
+    """Chemin d'un avatar, ou None s'il sortirait du dossier des avatars.
+    L'uid est déjà validé à l'authentification : garde de défense en profondeur."""
+    folder = os.path.abspath(_avatars_folder())
+    path = os.path.normpath(os.path.join(folder, filename))
+    return path if path.startswith(folder + os.sep) else None
+
+
 @account_bp.route("/api/account/avatar", methods=["POST"])
 @require_auth
 def upload_avatar():
@@ -146,14 +154,16 @@ def upload_avatar():
         # Un seul avatar par utilisateur : nom de fichier basé sur l'uid,
         # écrase automatiquement l'ancien à chaque nouvel upload.
         filename = f"{g.uid}.{ext}"
-        filepath = os.path.join(_avatars_folder(), filename)
+        filepath = _avatar_path(filename)
+        if not filepath:
+            return jsonify({"error": "Nom de fichier invalide"}), 400
         file.save(filepath)
 
         # Supprime les anciens fichiers avec une autre extension pour cet
         # utilisateur (ex: il avait un .png, il upload un .jpg cette fois).
         for other_ext in ALLOWED_AVATAR_EXTENSIONS - {ext}:
-            stale_path = os.path.join(_avatars_folder(), f"{g.uid}.{other_ext}")
-            if os.path.exists(stale_path):
+            stale_path = _avatar_path(f"{g.uid}.{other_ext}")
+            if stale_path and os.path.exists(stale_path):
                 os.remove(stale_path)
 
         avatar_url = f"{request.host_url.rstrip('/')}/avatars/{filename}"

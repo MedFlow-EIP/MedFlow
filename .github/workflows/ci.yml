@@ -16,6 +16,10 @@ on:
       - ".github/workflows/mirror.yml"
       - ".github/workflows/mobile-build.yml"
 
+# Jeton GitHub en lecture seule : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

@@ -30,6 +30,10 @@ concurrency:
   group: deploy-backend
   cancel-in-progress: false
 
+# Jeton GitHub en lecture seule : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

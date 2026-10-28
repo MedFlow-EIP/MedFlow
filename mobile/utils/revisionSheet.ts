@@ -25,12 +25,19 @@ export function escapeHtml(text: unknown): string {
  * s'exécuter ou charger une ressource avant de l'insérer dans la fiche.
  */
 export function sanitizeSummary(html: string): string {
-  return (html || '')
-    // Blocs entiers (balise + contenu), puis balises isolées restantes.
-    .replace(/<(script|style|iframe|object)\b[\s\S]*?<\/\1\s*>/gi, '')
-    .replace(/<\/?(script|style|iframe|object|embed|link|meta)\b[^>]*>/gi, '')
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '');
+  let clean = html || '';
+  let previous: string;
+  // Répété jusqu'à stabilité : un seul passage laisserait « <scr<script>ipt> » redevenir « <script> ».
+  do {
+    previous = clean;
+    clean = clean
+      // Blocs entiers (balise + contenu), puis balises isolées restantes.
+      .replace(/<(script|style|iframe|object)\b[\s\S]*?<\/\1\s*>/gi, '')
+      .replace(/<\/?(script|style|iframe|object|embed|link|meta)\b[^>]*>/gi, '')
+      .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '');
+  } while (clean !== previous);
+  return clean;
 }
 
 export function buildRevisionSheetHtml(course: SheetCourse, date = new Date()): string {

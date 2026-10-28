@@ -34,7 +34,11 @@ _A_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 
 class DocumentError(ValueError):
-    """Document illisible : le message est montré tel quel à l'utilisateur."""
+    """Document illisible : ``message`` est montré tel quel à l'utilisateur."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 def _open_archive(data: bytes) -> zipfile.ZipFile:

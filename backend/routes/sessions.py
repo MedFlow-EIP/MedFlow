@@ -56,8 +56,8 @@ def check_revision_answer():
         result = db.check_quiz_answer(uid, course_id, item_index, selected_option)
         return jsonify(result)
 
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+    except ValueError:
+        return jsonify({"error": "Question de quiz introuvable"}), 404
     except Exception as e:
         logger.exception("Erreur revision/check")
         return internal_error("Erreur revision/check")
@@ -167,8 +167,8 @@ def answer_revision_card():
         result = db.record_quiz_answer(uid, course_id, item_index, selected_option)
         return jsonify(result)
 
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+    except ValueError:
+        return jsonify({"error": "Question de quiz introuvable"}), 404
     except Exception as e:
         logger.exception("Erreur revision/answer")
         return internal_error("Erreur revision/answer")
