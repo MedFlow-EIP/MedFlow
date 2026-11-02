@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 
 const String apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8080');
 
+/// Formulaire « Donner mon avis » des testeurs (sans lui, l'avis part par email).
+const String feedbackUrl = String.fromEnvironment('FEEDBACK_URL');
+
 /// Connexion Google (Android seulement, comme l'app Expo).
 const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
