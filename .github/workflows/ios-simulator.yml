@@ -1,0 +1,87 @@
+name: iOS Simulator (Appetize)
+
+# Build iOS pour simulateur envoyé sur Appetize.io : l'app tourne dans un vrai
+# simulateur iPhone, dans le navigateur, sans Mac ni compte Apple (un build
+# simulateur n'est pas signé).
+#
+# Secrets (Settings > Secrets and variables > Actions > Secrets) :
+#   FLUTTER_ENV_JSON     contenu complet de mobile_flutter/env.json (clés Firebase de l'app iOS)
+#   APPETIZE_API_TOKEN   jeton API Appetize (appetize.io > Account > API token)
+# Variable (Settings > Secrets and variables > Actions > Variables), facultative :
+#   APPETIZE_PUBLIC_KEY  clé publique de l'app Appetize à mettre à jour ; sans elle,
+#                        chaque build crée une nouvelle app (et un nouveau lien)
+#
+# Lancement : pousser un tag « ios-preview-<n> »
+#   git tag ios-preview-1 && git push origin ios-preview-1
+
+on:
+  push:
+    tags: ["ios-preview-*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-simulator
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Write env.json
+        env:
+          FLUTTER_ENV_JSON: ${{ secrets.FLUTTER_ENV_JSON }}
+        run: |
+          if [ -z "$FLUTTER_ENV_JSON" ]; then echo "::error::Secret FLUTTER_ENV_JSON manquant"; exit 1; fi
+          printf '%s\n' "$FLUTTER_ENV_JSON" > env.json
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (simulateur)
+        run: flutter build ios --simulator --debug --dart-define-from-file=env.json
+
+      # -y garde les liens symboliques des frameworks.
+      - name: Zip Runner.app
+        run: cd build/ios/iphonesimulator && zip -qry "$GITHUB_WORKSPACE/MedFlow-simulator.zip" Runner.app
+
+      - name: Keep the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: MedFlow-simulator
+          path: MedFlow-simulator.zip
+          retention-days: 14
+
+      - name: Upload to Appetize
+        working-directory: ${{ github.workspace }}
+        env:
+          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+          APPETIZE_PUBLIC_KEY: ${{ vars.APPETIZE_PUBLIC_KEY }}
+        run: |
+          if [ -z "$APPETIZE_API_TOKEN" ]; then echo "::error::Secret APPETIZE_API_TOKEN manquant"; exit 1; fi
+          url="https://api.appetize.io/v1/apps${APPETIZE_PUBLIC_KEY:+/$APPETIZE_PUBLIC_KEY}"
+          response=$(curl -sS --fail-with-body -X POST "$url" \
+            -H "X-API-KEY: $APPETIZE_API_TOKEN" \
+            -F "file=@MedFlow-simulator.zip" \
+            -F "platform=ios" \
+            -F "note=MedFlow ${GITHUB_REF_NAME} (${GITHUB_SHA::7})")
+          key=$(echo "$response" | jq -r '.publicKey')
+          if [ -z "$key" ] || [ "$key" = "null" ]; then echo "::error::Réponse Appetize inattendue : $response"; exit 1; fi
+          echo "### 📱 MedFlow sur simulateur iOS" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://appetize.io/app/$key" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$APPETIZE_PUBLIC_KEY" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Pour garder ce lien aux prochains builds : variable APPETIZE_PUBLIC_KEY = \`$key\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
