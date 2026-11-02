@@ -6,6 +6,11 @@
 #   mobile_flutter/scripts/android.sh --local-api    # backend local (python app.py) au lieu de la prod
 #   mobile_flutter/scripts/android.sh --avd NOM      # autre émulateur (liste : emulator -list-avds)
 #   mobile_flutter/scripts/android.sh --build-only   # compile l'APK de debug, sans émulateur
+#   mobile_flutter/scripts/android.sh --keep-emulator # laisse l'émulateur ouvert en quittant
+#
+# En quittant l'app (q puis Entrée, ou Ctrl+C) ou si le build échoue,
+# l'émulateur est fermé proprement (adb emu kill : il enregistre son état
+# pour redémarrer vite la fois suivante).
 #
 # Le build se fait côté Windows (SDK Android et Flutter Windows, de préférence
 # %LOCALAPPDATA%\MedFlow\flutter, version récente exigée par les plugins) : Gradle gère
@@ -24,13 +29,15 @@ ios_look=true
 api_url=""
 avd=""
 build_only=false
+keep_emulator=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --android-look) ios_look=false ;;
     --local-api) api_url="http://10.0.2.2:8080" ;;
     --avd) avd="$2"; shift ;;
     --build-only) build_only=true ;;
-    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
+    --keep-emulator) keep_emulator=true ;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) echo "Option inconnue : $1" >&2; exit 1 ;;
   esac
   shift
@@ -79,10 +86,30 @@ if ! $build_only && [ -z "$(device)" ]; then
     sleep 2
   done
 fi
+# Fermeture propre de l'émulateur à la sortie du script (fin normale, Ctrl+C, erreur).
+close_emulator() {
+  local id
+  id="$(device)"
+  [ -n "$id" ] || return 0
+  echo
+  echo "▶ Fermeture de l'émulateur $id…"
+  "$adb" -s "$id" emu kill >/dev/null 2>&1 || true
+  # Attend qu'il ait vraiment quitté (il enregistre son état avant).
+  for _ in $(seq 1 30); do
+    "$adb" devices | tr -d '\r' | grep -q "^$id[[:space:]]" || { echo "✓ Émulateur fermé"; return 0; }
+    sleep 1
+  done
+  echo "⚠ L'émulateur ne répond pas : ferme sa fenêtre à la main." >&2
+}
+
 if ! $build_only; then
   dev="$(device)"
   [ -n "$dev" ] || { echo "L'émulateur n'a pas démarré (lance-le depuis Android Studio pour voir l'erreur)." >&2; exit 1; }
   echo "✓ Émulateur prêt : $dev"
+  if ! $keep_emulator; then
+    trap close_emulator EXIT
+    trap 'exit 130' INT TERM
+  fi
 fi
 
 # ---------------------------------------------------------------- Projet côté Windows
@@ -146,12 +173,13 @@ PY
 # ---------------------------------------------------------------- Lancement
 # PowerShell plutôt que cmd.exe : cmd ne comprend pas les guillemets échappés par WSL.
 flutter_ps() {
-  cd /mnt/c
-  exec powershell.exe -NoProfile -Command "Set-Location '$work_win'; & '$flutter_win' $*; exit \$LASTEXITCODE"
+  (cd /mnt/c && powershell.exe -NoProfile -Command "Set-Location '$work_win'; & '$flutter_win' $*; exit \$LASTEXITCODE")
 }
 if $build_only; then
   echo "▶ flutter build apk --debug (premier build : plusieurs minutes)…"
   flutter_ps build apk --debug --dart-define-from-file=env.android.json
+  exit
 fi
 echo "▶ flutter run sur $dev (premier build : plusieurs minutes)…"
+echo "  Quitter : q puis Entrée (ou Ctrl+C) — l'émulateur se ferme ensuite."
 flutter_ps run -d "$dev" --dart-define-from-file=env.android.json

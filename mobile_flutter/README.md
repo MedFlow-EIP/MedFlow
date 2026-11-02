@@ -53,7 +53,10 @@ mobile_flutter/scripts/android.sh                # émulateur + app, au comporte
 mobile_flutter/scripts/android.sh --android-look # comportement Android natif
 mobile_flutter/scripts/android.sh --local-api    # backend local au lieu de la prod
 mobile_flutter/scripts/android.sh --build-only   # compile seulement l'APK de debug
+mobile_flutter/scripts/android.sh --keep-emulator # laisse l'émulateur ouvert en quittant
 ```
+
+Quitter : Ctrl+C (ou `q` puis Entrée). Le script ferme alors l'émulateur proprement, comme après un échec du build.
 
 Le script démarre l'émulateur Windows (Android Studio), recopie le projet dans `%LOCALAPPDATA%\MedFlow\mobile_flutter` (Gradle gère mal les chemins `\\wsl`) et lance `flutter run` avec le Flutter Windows.
 
