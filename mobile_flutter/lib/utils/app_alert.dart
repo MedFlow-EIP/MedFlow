@@ -18,13 +18,26 @@ class AlertButton {
   const AlertButton(this.text, {this.style = AlertStyle.normal, this.onPress});
 }
 
-Future<void> _queue = Future.value();
+final List<({String title, String? message, List<AlertButton> buttons})> _pending = [];
+bool _showing = false;
 
 /// Affiche un dialogue. Les dialogues demandés pendant qu'un autre est ouvert
 /// s'affichent ensuite, dans l'ordre.
 void appAlert(String title, [String? message, List<AlertButton>? buttons]) {
   final list = (buttons == null || buttons.isEmpty) ? const [AlertButton('OK')] : buttons;
-  _queue = _queue.then((_) => _show(title, message, list)).catchError((_) {});
+  _pending.add((title: title, message: message, buttons: list));
+  if (!_showing) _showNext();
+}
+
+Future<void> _showNext() async {
+  _showing = true;
+  while (_pending.isNotEmpty) {
+    final next = _pending.removeAt(0);
+    try {
+      await _show(next.title, next.message, next.buttons);
+    } catch (_) {}
+  }
+  _showing = false;
 }
 
 Future<void> _show(String title, String? message, List<AlertButton> buttons) async {
@@ -106,6 +119,7 @@ class _AppDialog extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Semantics(
                 scopesRoute: true,
+                explicitChildNodes: true,
                 namesRoute: true,
                 label: title,
                 child: Column(

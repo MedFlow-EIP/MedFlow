@@ -7,8 +7,9 @@ import 'package:flutter/material.dart';
 /// `navigation.navigate('CourseDetail', { courseId })`.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// Observateur des routes : permet aux écrans de se recharger quand on y revient.
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+/// Observateur des pages : permet aux écrans de se recharger quand on y revient.
+/// Limité aux pages : fermer une feuille ou un dialogue ne recharge pas l'écran.
+final RouteObserver<PageRoute<dynamic>> routeObserver = RouteObserver<PageRoute<dynamic>>();
 
 /// Onglets de la barre du bas.
 const tabRoutes = ['Home', 'AIChat', 'Dashboard', 'Account'];
@@ -83,7 +84,7 @@ mixin FocusRefresh<T extends StatefulWidget> on State<T> implements RouteAware {
   /// Appelé à l'affichage initial puis à chaque retour sur l'écran.
   void onFocus();
 
-  ModalRoute<void>? _route;
+  PageRoute<dynamic>? _route;
 
   @override
   void initState() {
@@ -99,7 +100,7 @@ mixin FocusRefresh<T extends StatefulWidget> on State<T> implements RouteAware {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
-    if (route != null && route != _route) {
+    if (route is PageRoute && route != _route) {
       if (_route != null) routeObserver.unsubscribe(this);
       _route = route;
       routeObserver.subscribe(this, route);
