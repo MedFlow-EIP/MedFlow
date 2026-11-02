@@ -63,7 +63,17 @@ dynamic readJsonOrThrow(http.Response res, String fallback) {
 class Api {
   Api._();
 
-  static User? get currentUser => FirebaseAuth.instance.currentUser;
+  /// Utilisateur connecté (null aussi quand Firebase n'est pas initialisé, en test).
+  static User? get currentUser {
+    try {
+      return FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Client HTTP utilisé pour chaque requête (remplaçable dans les tests).
+  static http.Client Function() clientFactory = http.Client.new;
 
   static Uri uri(String path, [Map<String, dynamic>? query]) {
     final u = Uri.parse('$apiUrl$path');
@@ -115,7 +125,7 @@ class Api {
     final request = http.Request(method, uri(path, query))..headers.addAll(h);
     if (body != null) request.body = body is String ? body : jsonEncode(body);
     try {
-      final streamed = await http.Client().send(request).timeout(timeout);
+      final streamed = await clientFactory().send(request).timeout(timeout);
       return await http.Response.fromStream(streamed).timeout(timeout);
     } on TimeoutException {
       throw UserFacingError(timeoutErrorMessage);
@@ -175,7 +185,7 @@ class Api {
       ..fields.addAll(fields)
       ..files.addAll(files);
     try {
-      final streamed = await request.send().timeout(timeout);
+      final streamed = await clientFactory().send(request).timeout(timeout);
       return await http.Response.fromStream(streamed).timeout(timeout);
     } on TimeoutException {
       throw UserFacingError(timeoutErrorMessage);

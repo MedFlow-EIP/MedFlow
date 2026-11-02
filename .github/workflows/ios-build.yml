@@ -1,0 +1,46 @@
+name: iOS Build (Flutter)
+
+# Vérifie que l'app Flutter (mobile_flutter/) compile pour iOS, sur un Mac
+# GitHub. Build non signé : pas besoin de compte Apple ni de secret.
+# Lancement manuel (Actions > iOS Build > Run workflow) et sur les PR vers
+# main : les minutes macOS coûtent 10 fois plus que Linux.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile_flutter/**"
+      - ".github/workflows/ios-build.yml"
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Tests
+        run: flutter test
+
+      - name: Build iOS (sans signature)
+        run: flutter build ios --release --no-codesign

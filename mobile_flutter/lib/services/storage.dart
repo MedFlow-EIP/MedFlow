@@ -7,9 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Storage {
   Storage._();
 
-  static SharedPreferences? _prefs;
-
-  static Future<SharedPreferences> get _p async => _prefs ??= await SharedPreferences.getInstance();
+  // getInstance garde déjà l'instance en cache.
+  static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
   static Future<String?> getString(String key) async {
     try {
