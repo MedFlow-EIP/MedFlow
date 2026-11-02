@@ -7,7 +7,8 @@
 #   mobile_flutter/scripts/android.sh --avd NOM      # autre émulateur (liste : emulator -list-avds)
 #   mobile_flutter/scripts/android.sh --build-only   # compile l'APK de debug, sans émulateur
 #
-# Le build se fait côté Windows (SDK Android et Flutter Windows) : Gradle gère
+# Le build se fait côté Windows (SDK Android et Flutter Windows, de préférence
+# %LOCALAPPDATA%\MedFlow\flutter, version récente exigée par les plugins) : Gradle gère
 # mal les chemins \\wsl. Le projet est donc recopié dans
 # %LOCALAPPDATA%\MedFlow\mobile_flutter à chaque lancement (seuls les
 # fichiers modifiés), puis `flutter run` démarre l'app.
@@ -43,7 +44,12 @@ sdk_win="${ANDROID_SDK_WIN:-$win_localappdata\\Android\\Sdk}"
 sdk="$(wslpath "$sdk_win")"
 adb="$sdk/platform-tools/adb.exe"
 emulator="$sdk/emulator/emulator.exe"
-flutter_win="${FLUTTER_WIN:-$(win "where flutter.bat" | head -n 1)}"
+# Flutter dédié à MedFlow (récent, exigé par les plugins) s'il est installé, sinon celui du PATH.
+flutter_win="${FLUTTER_WIN:-}"
+if [ -z "$flutter_win" ] && [ -f "$(wslpath "$win_localappdata")/MedFlow/flutter/bin/flutter.bat" ]; then
+  flutter_win="$win_localappdata\\MedFlow\\flutter\\bin\\flutter.bat"
+fi
+[ -n "$flutter_win" ] || flutter_win="$(win "where flutter.bat" | head -n 1)"
 work_win="$win_localappdata\\MedFlow\\mobile_flutter"
 work="$(wslpath "$work_win")"
 
