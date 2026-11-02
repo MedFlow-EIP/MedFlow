@@ -5,7 +5,7 @@ allprojects {
     }
 }
 
-// Gradle 9 n'a plus « buildDir » : layout.buildDirectory, comme le modèle Flutter 3.47.
+// « buildDir » est retiré de Gradle 9 : layout.buildDirectory, comme le modèle Flutter 3.47.
 def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
