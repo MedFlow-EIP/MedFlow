@@ -28,6 +28,12 @@ void main() {
       expect(notificationTarget({'screen': 'ClinicalCase', 'caseId': 3})?.params, {'caseId': 3});
     });
 
+    test('relit les identifiants envoyés en chaîne par FCM', () {
+      expect(notificationTarget({'screen': 'Challenge', 'challengeId': '4'})?.params, {'challengeId': 4});
+      expect(notificationTarget({'screen': 'ClinicalCase', 'caseId': '3'})?.params, {'caseId': 3});
+      expect(notificationTarget({'screen': 'Challenge', 'challengeId': 'abc'}), isNull);
+    });
+
     test('rien pour une notification inconnue', () {
       expect(notificationTarget({'screen': 'Inconnu'}), isNull);
       expect(notificationTarget(null), isNull);

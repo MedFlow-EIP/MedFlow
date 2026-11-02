@@ -45,6 +45,10 @@
 	<string>MedFlow accède à tes photos pour importer un cours ou changer ton avatar.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MedFlow utilise le micro pour dicter tes questions à l’assistant.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

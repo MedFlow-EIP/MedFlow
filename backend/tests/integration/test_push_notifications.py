@@ -1,4 +1,4 @@
-"""Notifications push (Expo) : jetons et envois déclenchés par les actions."""
+"""Notifications push (Expo et FCM) : jetons et envois déclenchés par les actions."""
 import io
 import zipfile
 
@@ -122,3 +122,90 @@ def test_no_push_when_disabled(client, db, monkeypatch):
     _register(client, "bob", TOKEN_A)
     client.post("/api/friends/request", json={"uid": "bob"}, headers=_h("alice"))
     assert called == []
+
+
+# ---------------------------------------------------------------- FCM (app Flutter iOS)
+
+FCM_TOKEN = "fGx0aBcD-e_F:APA91bH" + "x" * 140
+
+
+class FakeBatch:
+    def __init__(self, responses):
+        self.responses = responses
+
+
+class FakeSendResponse:
+    def __init__(self, exception=None):
+        self.success = exception is None
+        self.exception = exception
+
+
+@pytest.fixture
+def fcm_sent(app, monkeypatch):
+    """Active les push (synchrones) et capture ce qui part chez FCM."""
+    app.config["PUSH_ENABLED"] = True
+    calls = []
+
+    def fake_send_each(messages):
+        calls.append(messages)
+        return FakeBatch([FakeSendResponse() for _ in messages])
+
+    monkeypatch.setattr("services.push._fcm_ready", lambda: True)
+    monkeypatch.setattr("services.push._fcm_send_each", fake_send_each)
+    return calls
+
+
+def test_register_fcm_token(client, db):
+    assert _register(client, "bob", FCM_TOKEN).status_code == 200
+    assert db.get_push_tokens("bob") == [FCM_TOKEN]
+
+
+def test_fcm_message_content(client, db, fcm_sent):
+    db.send_friend_request("alice", "bob")
+    db.respond_to_friend_request("bob", "alice", True)
+    quiz = [{"question": f"Q{i}", "options": {"A": "a", "B": "b"}, "correct": "A"} for i in range(5)]
+    db.save_course("alice", "c", {"nom": "Cardio", "flashcards": [], "quiz": quiz})
+    _register(client, "bob", FCM_TOKEN)
+    resp = client.post("/api/challenges", json={"friend_uid": "bob", "course_id": "c", "count": 5}, headers=_h("alice"))
+    message = fcm_sent[-1][0]
+    assert message.token == FCM_TOKEN
+    assert message.notification.title == "⚡ Nouveau défi"
+    # FCM n'accepte que des chaînes : l'identifiant du défi est converti.
+    assert message.data == {"screen": "Challenge", "challengeId": str(resp.get_json()["id"])}
+    assert message.apns.payload.aps.sound == "default"
+
+
+def test_expo_and_fcm_devices_both_notified(client, db, sent, fcm_sent):
+    db.upsert_user_profile("bob", "Bob")
+    _register(client, "bob", TOKEN_A)
+    _register(client, "bob", FCM_TOKEN)
+    client.post("/api/friends/request", json={"uid": "bob"}, headers=_h("alice"))
+    assert [m["to"] for m in sent[0]] == [TOKEN_A]
+    assert [m.token for m in fcm_sent[0]] == [FCM_TOKEN]
+    assert fcm_sent[0][0].notification.body == "Alice veut t’ajouter en ami."
+
+
+def test_uninstalled_fcm_token_is_removed(client, db, app, monkeypatch):
+    from firebase_admin import messaging
+
+    app.config["PUSH_ENABLED"] = True
+    monkeypatch.setattr("services.push._fcm_ready", lambda: True)
+    monkeypatch.setattr(
+        "services.push._fcm_send_each",
+        lambda messages: FakeBatch([FakeSendResponse(messaging.UnregisteredError("désinstallée"))]),
+    )
+    _register(client, "bob", FCM_TOKEN)
+    client.post("/api/friends/request", json={"uid": "bob"}, headers=_h("alice"))
+    assert db.get_push_tokens("bob") == []
+
+
+def test_fcm_skipped_without_firebase_admin(client, db, app, monkeypatch):
+    app.config["PUSH_ENABLED"] = True
+    called = []
+    monkeypatch.setattr("services.push._fcm_ready", lambda: False)
+    monkeypatch.setattr("services.push._fcm_send_each", lambda messages: called.append(1))
+    _register(client, "bob", FCM_TOKEN)
+    resp = client.post("/api/friends/request", json={"uid": "bob"}, headers=_h("alice"))
+    assert resp.status_code in (200, 201)
+    assert called == []
+    assert db.get_push_tokens("bob") == [FCM_TOKEN]

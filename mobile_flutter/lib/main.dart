@@ -29,12 +29,15 @@ Future<void> main() async {
     return;
   }
 
-  // Toucher une notification ouvre l'écran concerné (cours prêt, défi, amis).
-  Notifs.onTap = (data) {
+  // Toucher une notification (locale ou push) ouvre l'écran concerné (cours prêt, défi, amis).
+  void openTarget(Map<String, dynamic> data) {
     final target = notificationTarget(data);
     if (target != null) Nav.navigate(target.screen, target.params);
-  };
+  }
+
+  Notifs.onTap = openTarget;
   unawaited(Notifs.init());
+  unawaited(initPushHandlers(openTarget));
 
   runApp(ChangeNotifierProvider.value(value: theme, child: const MedFlowApp()));
 }
