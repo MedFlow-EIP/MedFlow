@@ -43,3 +43,18 @@ Le workflow « iOS Simulator (Appetize) » compile l'app pour le simulateur iOS 
 5. Le lien s'affiche dans le résumé du job. Pour le garder aux builds suivants, créer la variable `APPETIZE_PUBLIC_KEY` avec la clé indiquée.
 
 Limites du simulateur : pas de notifications push, pas d'appareil photo ni de micro ; pour essayer sans importer de fichier, utiliser « Essayer avec un cours d'exemple ».
+
+## Tester sur l'émulateur Android (depuis WSL)
+
+Le code Flutter est le même sur iOS et Android : ce qui marche sur l'émulateur Android marche sur iPhone, sauf les parties natives (notifications, partage, sélecteurs de fichiers, permissions) à revérifier sur iOS.
+
+```bash
+mobile_flutter/scripts/android.sh                # émulateur + app, au comportement iOS (défilement, retour par glissement)
+mobile_flutter/scripts/android.sh --android-look # comportement Android natif
+mobile_flutter/scripts/android.sh --local-api    # backend local au lieu de la prod
+mobile_flutter/scripts/android.sh --build-only   # compile seulement l'APK de debug
+```
+
+Le script démarre l'émulateur Windows (Android Studio), recopie le projet dans `%LOCALAPPDATA%\MedFlow\mobile_flutter` (Gradle gère mal les chemins `\\wsl`) et lance `flutter run` avec le Flutter Windows.
+
+Firebase : déposer le `google-services.json` de l'app Android (`com.wavitooo.medflowlearning`, console Firebase → Paramètres du projet) dans `mobile_flutter/android/app/` ; le script en tire la configuration. Il n'est pas versionné.

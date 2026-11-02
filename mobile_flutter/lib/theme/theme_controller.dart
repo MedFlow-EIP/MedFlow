@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config.dart';
 import 'colors.dart';
 
 enum ThemePreference { system, light, dark }
@@ -64,6 +65,7 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     final c = colors;
     final base = isDark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
     return base.copyWith(
+      platform: iosLook ? TargetPlatform.iOS : null,
       scaffoldBackgroundColor: c.background,
       colorScheme: base.colorScheme.copyWith(
         primary: c.primary,

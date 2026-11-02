@@ -44,3 +44,6 @@ app.*.map.json
 
 # Configuration locale (clés Firebase, URL de l’API)
 env.json
+google-services.json
+android/app/google-services.json
+env.android.json
