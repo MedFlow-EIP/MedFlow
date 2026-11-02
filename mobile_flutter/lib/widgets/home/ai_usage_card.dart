@@ -13,9 +13,9 @@ import '../ui.dart';
 // si une limite est atteinte.
 
 const _labels = <String, ({String label, IconData icon})>{
-  'chat': (label: 'Messages à l’assistant', icon: Ionicons.chatbubbles_outline),
-  'process': (label: 'Imports de cours', icon: Ionicons.cloud_upload_outline),
-  'case': (label: 'Cas cliniques', icon: Ionicons.medkit_outline),
+  'chat': (label: 'Messages à l’assistant', icon: Ionicons.chatbubblesOutline),
+  'process': (label: 'Imports de cours', icon: Ionicons.cloudUploadOutline),
+  'case': (label: 'Cas cliniques', icon: Ionicons.medkitOutline),
 };
 
 /// « 14 h 32 », ou « demain 9 h 05 » quand ce n'est pas aujourd'hui.
@@ -80,7 +80,7 @@ class _AIUsageCardState extends State<AIUsageCard> with FocusRefresh<AIUsageCard
           children: [
             Row(
               children: [
-                Icon(Ionicons.sparkles_outline, size: 20, color: c.primaryDark),
+                Icon(Ionicons.sparklesOutline, size: 20, color: c.primaryDark),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Semantics(
@@ -104,7 +104,7 @@ class _AIUsageCardState extends State<AIUsageCard> with FocusRefresh<AIUsageCard
   Widget _row(BuildContext context, Map<String, dynamic> u) {
     final c = context.colors;
     final kind = '${u['kind']}';
-    final meta = _labels[kind] ?? (label: kind, icon: Ionicons.sparkles_outline);
+    final meta = _labels[kind] ?? (label: kind, icon: Ionicons.sparklesOutline);
     final used = u['used'] is num ? (u['used'] as num).toInt() : 0;
     final limit = u['limit'] is num ? (u['limit'] as num).toInt() : 0;
     final blockedUntil =

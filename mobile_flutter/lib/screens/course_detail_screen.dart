@@ -195,7 +195,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
         backgroundColor: c.background,
         body: _notFound
             ? StateView(
-                icon: Ionicons.document_outline,
+                icon: Ionicons.documentOutline,
                 tone: Tone.neutral,
                 title: 'Cours introuvable',
                 subtitle: 'Il a peut-être été supprimé.',
@@ -203,7 +203,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                 onClose: () => Nav.goBack(),
               )
             : StateView(
-                icon: Ionicons.cloud_offline_outline,
+                icon: Ionicons.cloudOfflineOutline,
                 tone: Tone.neutral,
                 title: 'Impossible de charger le cours',
                 subtitle: 'Vérifie ta connexion puis réessaie.',
@@ -236,7 +236,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                 _HeaderButton(
                   label: 'Retour',
                   onTap: () => Nav.goBack(),
-                  child: Icon(Ionicons.arrow_back, size: 22, color: c.textPrimary),
+                  child: Icon(Ionicons.arrowBack, size: 22, color: c.textPrimary),
                 ),
                 Expanded(
                   child: Column(
@@ -256,7 +256,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                       ),
                       Row(
                         children: [
-                          Icon(Ionicons.document_text, size: 14, color: c.textSecondary),
+                          Icon(Ionicons.documentText, size: 14, color: c.textSecondary),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(meta,
@@ -296,14 +296,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                   onTap: _exporting ? null : _exportSheet,
                   child: _exporting
                       ? _SmallSpinner(color: c.primaryDark)
-                      : Icon(Ionicons.document_attach_outline, size: 21, color: c.textPrimary),
+                      : Icon(Ionicons.documentAttachOutline, size: 21, color: c.textPrimary),
                 ),
                 // Hors ligne : modification impossible, le bouton est masqué.
                 if (!_offline)
                   _HeaderButton(
                     label: 'Modifier le cours',
                     onTap: () => _edit(flashcards),
-                    child: Icon(Ionicons.create_outline, size: 21, color: c.textPrimary),
+                    child: Icon(Ionicons.createOutline, size: 21, color: c.textPrimary),
                   ),
               ], 12, axis: Axis.horizontal),
             ),
@@ -328,7 +328,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                       children: gapped([
                         _openingSource
                             ? _SmallSpinner(color: c.primaryDark)
-                            : Icon(Ionicons.document_text_outline, size: 20, color: c.primaryDark),
+                            : Icon(Ionicons.documentTextOutline, size: 20, color: c.primaryDark),
                         Expanded(
                           child: Text('${course['source_name']}',
                               maxLines: 1,
@@ -337,7 +337,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                         ),
                         Text(formatBytes(course['source_size'] as num?),
                             style: TextStyle(fontSize: 13, color: c.textSecondary)),
-                        Icon(Ionicons.open_outline, size: 18, color: c.textSecondary),
+                        Icon(Ionicons.openOutline, size: 18, color: c.textSecondary),
                       ], 10, axis: Axis.horizontal),
                     ),
                   ),
@@ -357,7 +357,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Ionicons.flash_outline, size: 20, color: c.onAction),
+                      Icon(Ionicons.flashOutline, size: 20, color: c.onAction),
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text('Réviser ce cours',
@@ -370,7 +370,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
             ),
 
             _OutlineButton(
-              icon: Ionicons.medkit_outline,
+              icon: Ionicons.medkitOutline,
               label: 'Cas clinique sur ce cours',
               onTap: () => Nav.navigate('ClinicalCases', {'courseId': _courseId}),
             ),
@@ -379,7 +379,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
 
             if (_tab == CourseTab.flashcards && flashcards.isNotEmpty)
               _OutlineButton(
-                icon: Ionicons.albums_outline,
+                icon: Ionicons.albumsOutline,
                 label: 'Réviser ces flashcards',
                 onTap: () => Nav.navigate('FlashcardReview', {'courseId': _courseId}),
               ),
@@ -391,7 +391,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                 decoration: BoxDecoration(color: c.tintPrimary, borderRadius: BorderRadius.circular(14)),
                 child: Row(
                   children: [
-                    Icon(Ionicons.flash_outline, size: 18, color: c.primaryText),
+                    Icon(Ionicons.flashOutline, size: 18, color: c.primaryText),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -416,7 +416,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with FocusRefre
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Ionicons.flag_outline, size: 16, color: c.textSecondary),
+                        Icon(Ionicons.flagOutline, size: 16, color: c.textSecondary),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(

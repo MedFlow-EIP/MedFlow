@@ -106,19 +106,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with FocusRefresh
       ]);
     } else if (_error) {
       body = _centered([
-        Icon(Ionicons.alert_circle_outline, size: 48, color: c.warning),
+        Icon(Ionicons.alertCircleOutline, size: 48, color: c.warning),
         _stateTitle(c, 'Impossible de charger le classement'),
         _actionButton(c, 'Réessayer', () => _load(_mode)),
       ]);
     } else if (_entries.isEmpty && _mode == _Mode.global) {
       body = _centered([
-        Icon(Ionicons.trophy_outline, size: 48, color: c.muted),
+        Icon(Ionicons.trophyOutline, size: 48, color: c.muted),
         _stateTitle(c, 'Personne au classement pour l\'instant'),
         _stateText(c, 'Termine une leçon pour apparaître ici.'),
       ]);
     } else if (friendsEmpty) {
       body = _centered([
-        Icon(Ionicons.people_outline, size: 48, color: c.muted),
+        Icon(Ionicons.peopleOutline, size: 48, color: c.muted),
         _stateTitle(c, 'Pas encore d\'amis ajoutés'),
         _stateText(c, 'Ajoute des amis pour te comparer à eux plutôt qu\'à des inconnus.'),
         _actionButton(c, 'Ajouter des amis', () => Nav.navigate('Friends')),
@@ -182,7 +182,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with FocusRefresh
                   ),
                   const SizedBox(width: 12),
                   CircleIconButton(
-                    icon: Ionicons.people_outline,
+                    icon: Ionicons.peopleOutline,
                     label: 'Gérer mes amis',
                     onPressed: () => Nav.navigate('Friends'),
                   ),

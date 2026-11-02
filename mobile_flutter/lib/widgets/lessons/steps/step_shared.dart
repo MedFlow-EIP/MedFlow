@@ -89,9 +89,9 @@ class StepOption extends StatelessWidget {
                 Expanded(child: Text(text, style: textStyle)),
                 const SizedBox(width: 12),
                 if (state == OptionState.correct)
-                  Icon(Ionicons.checkmark_circle, size: 26, color: c.success)
+                  Icon(Ionicons.checkmarkCircle, size: 26, color: c.success)
                 else if (state == OptionState.incorrect)
-                  Icon(Ionicons.close_circle, size: 26, color: c.danger)
+                  Icon(Ionicons.closeCircle, size: 26, color: c.danger)
                 else
                   Container(
                     width: 24,

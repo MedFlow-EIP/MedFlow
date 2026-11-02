@@ -130,7 +130,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.cloud_upload_outline, size: 20, color: c.onAction),
+                Icon(Ionicons.cloudUploadOutline, size: 20, color: c.onAction),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text('Importer mon premier cours',
@@ -171,7 +171,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(hasQuestions ? Ionicons.flash : Ionicons.checkmark_circle,
+                  Icon(hasQuestions ? Ionicons.flash : Ionicons.checkmarkCircle,
                       size: 20, color: hasQuestions ? c.onAction : c.successText),
                   const SizedBox(width: 8),
                   Flexible(
@@ -200,7 +200,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
               Expanded(
                 child: _chip(
                   context,
-                  icon: Ionicons.albums_outline,
+                  icon: Ionicons.albumsOutline,
                   text: 'Flashcards · ${today.flashcards}',
                   label: 'Flashcards, ${_plural(today.flashcards, 'carte')} à revoir',
                   onTap: () => Nav.navigate('FlashcardReview'),
@@ -210,7 +210,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
               Expanded(
                 child: _chip(
                   context,
-                  icon: Ionicons.calendar_outline,
+                  icon: Ionicons.calendarOutline,
                   text: exam != null ? '${exam['title'] ?? ''} · $examLabel' : 'Mes examens',
                   label: exam != null ? 'Prochain examen : ${exam['title'] ?? ''}, $examLabel' : 'Ajouter mes examens',
                   onTap: () => Nav.navigate('Exams'),
@@ -255,7 +255,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
                 decoration: BoxDecoration(color: c.background, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
-                    Icon(Ionicons.document_text_outline, size: 18, color: c.primaryDark),
+                    Icon(Ionicons.documentTextOutline, size: 18, color: c.primaryDark),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text('${course['nom'] ?? ''}',
@@ -264,7 +264,7 @@ class _TodayCardState extends State<TodayCard> with FocusRefresh<TodayCard> {
                           style: TextStyle(fontSize: 15, color: c.textPrimary)),
                     ),
                     const SizedBox(width: 10),
-                    Icon(Ionicons.chevron_forward, size: 16, color: c.textSecondary),
+                    Icon(Ionicons.chevronForward, size: 16, color: c.textSecondary),
                   ],
                 ),
               ),

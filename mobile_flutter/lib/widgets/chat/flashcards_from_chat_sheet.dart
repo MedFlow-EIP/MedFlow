@@ -148,7 +148,7 @@ class _FlashcardsFromChatBodyState extends State<_FlashcardsFromChatBody> {
                     strokeWidth: 2.5, color: c.primaryDark, semanticsLabel: 'Création en cours'),
               )
             else
-              Icon(Ionicons.add_circle_outline, size: 22, color: c.textSecondary),
+              Icon(Ionicons.addCircleOutline, size: 22, color: c.textSecondary),
           ],
         ),
       ),
@@ -180,7 +180,7 @@ class _FlashcardsFromChatBodyState extends State<_FlashcardsFromChatBody> {
                   decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     children: [
-                      Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                      Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_error!,
@@ -198,7 +198,7 @@ class _FlashcardsFromChatBodyState extends State<_FlashcardsFromChatBody> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _choice(null, 'Notes de l’assistant', 'Un cours rassemblant tes cartes du chat',
-                        Ionicons.sparkles_outline),
+                        Ionicons.sparklesOutline),
                     if (_courses == null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8 + 16, bottom: 16),
@@ -215,7 +215,7 @@ class _FlashcardsFromChatBodyState extends State<_FlashcardsFromChatBody> {
                       for (final course in _courses!) ...[
                         const SizedBox(height: 8),
                         _choice(course['id'], '${course['nom'] ?? ''}', 'Ajouter à ce cours',
-                            Ionicons.book_outline),
+                            Ionicons.bookOutline),
                       ],
                   ],
                 ),

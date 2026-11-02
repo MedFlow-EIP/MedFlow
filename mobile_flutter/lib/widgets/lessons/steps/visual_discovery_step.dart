@@ -132,7 +132,7 @@ class _VisualDiscoveryState extends State<VisualDiscovery> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const StepOverline(icon: Ionicons.scan_outline, label: 'REPÈRE ANATOMIQUE'),
+                  const StepOverline(icon: Ionicons.scanOutline, label: 'REPÈRE ANATOMIQUE'),
                   const SizedBox(height: stepGapTight),
                   ...withGap(stepGap, [
                     Semantics(header: true, child: Text(widget.question, style: stepQuestionStyle(c))),

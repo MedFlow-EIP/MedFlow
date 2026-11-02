@@ -96,7 +96,7 @@ class ExamChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Ionicons.calendar_outline, size: 13, color: c.warningText),
+            Icon(Ionicons.calendarOutline, size: 13, color: c.warningText),
             const SizedBox(width: 5),
             Flexible(child: label),
           ],
@@ -124,7 +124,7 @@ class ReportLink extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Ionicons.flag_outline, size: 16, color: c.textSecondary),
+              Icon(Ionicons.flagOutline, size: 16, color: c.textSecondary),
               const SizedBox(width: 6),
               Flexible(
                 child: Text('Signaler une erreur',
@@ -158,7 +158,7 @@ class InlineErrorBox extends StatelessWidget {
         decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
-            Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+            Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
             const SizedBox(width: 8),
             Expanded(
               child: Text(message,
@@ -224,7 +224,7 @@ class CourseCheckRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(checked ? Ionicons.checkbox : Ionicons.square_outline,
+              Icon(checked ? Ionicons.checkbox : Ionicons.squareOutline,
                   size: 22, color: checked ? c.primaryDark : c.textSecondary),
               const SizedBox(width: 12),
               Expanded(

@@ -315,11 +315,11 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
             .toList();
 
     final kpis = [
-      (icon: Ionicons.document_text_outline, color: c.primaryDark, value: '${_stats.totalCourses}', label: 'Cours'),
-      (icon: Ionicons.layers_outline, color: c.secondary, value: '${_stats.totalFlashcards}', label: 'Flashcards'),
-      (icon: Ionicons.school_outline, color: c.success, value: '${_stats.totalSessions}', label: 'Sessions'),
+      (icon: Ionicons.documentTextOutline, color: c.primaryDark, value: '${_stats.totalCourses}', label: 'Cours'),
+      (icon: Ionicons.layersOutline, color: c.secondary, value: '${_stats.totalFlashcards}', label: 'Flashcards'),
+      (icon: Ionicons.schoolOutline, color: c.success, value: '${_stats.totalSessions}', label: 'Sessions'),
       (
-        icon: Ionicons.trending_up_outline,
+        icon: Ionicons.trendingUpOutline,
         color: c.warning,
         value: _stats.avgScore != null ? '${_stats.avgScore!.round()} %' : 'Aucun',
         label: 'Score',
@@ -355,13 +355,13 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
           ),
           const SizedBox(width: 10),
           CircleIconButton(
-            icon: Ionicons.search_outline,
+            icon: Ionicons.searchOutline,
             label: 'Rechercher dans mes cours',
             onPressed: () => Nav.navigate('Search'),
           ),
           const SizedBox(width: 10),
           CircleIconButton(
-            icon: Ionicons.trending_up_outline,
+            icon: Ionicons.trendingUpOutline,
             label: 'Progression détaillée',
             onPressed: () => Nav.navigate('Progress'),
           ),
@@ -383,7 +383,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Ionicons.folder_open_outline, size: 16, color: c.primaryText),
+                      Icon(Ionicons.folderOpenOutline, size: 16, color: c.primaryText),
                       const SizedBox(width: 6),
                       Text('Mes documents',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.primaryText)),
@@ -469,7 +469,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.flash_outline, size: 20, color: c.onAction),
+                Icon(Ionicons.flashOutline, size: 20, color: c.onAction),
                 const SizedBox(width: 10),
                 Text('Réviser maintenant',
                     style: TextStyle(color: c.onAction, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -479,7 +479,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
         ),
       )),
       _Spaced(_OutlineRowButton(
-        icon: Ionicons.albums_outline,
+        icon: Ionicons.albumsOutline,
         title: 'Flashcards',
         hint: (_flashcardsDue ?? 0) != 0 ? '$_flashcardsDue à revoir' : 'répétition espacée',
         semanticLabel: 'Réviser les flashcards${(_flashcardsDue ?? 0) != 0 ? ', $_flashcardsDue à revoir' : ''}',
@@ -490,7 +490,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
           children: [
             Expanded(
               child: _SecondaryChip(
-                icon: Ionicons.warning_outline,
+                icon: Ionicons.warningOutline,
                 label: 'Cartes difficiles',
                 semanticLabel: 'Revoir les cartes difficiles',
                 background: c.tintWarning,
@@ -501,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
             const SizedBox(width: 8),
             Expanded(
               child: _SecondaryChip(
-                icon: Ionicons.trophy_outline,
+                icon: Ionicons.trophyOutline,
                 label: 'Cartes maîtrisées',
                 semanticLabel: 'Voir les cartes maîtrisées',
                 background: c.tintSuccess,
@@ -514,7 +514,7 @@ class _DashboardScreenState extends State<DashboardScreen> with FocusRefresh<Das
         top: -8,
       ),
       _Spaced(_OutlineRowButton(
-        icon: Ionicons.timer_outline,
+        icon: Ionicons.timerOutline,
         title: 'Examen blanc',
         hint: 'chronométré, noté sur 20',
         semanticLabel: 'Lancer un examen blanc',
@@ -716,7 +716,7 @@ class _CourseCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(color: c.tintPrimary, borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Ionicons.document_text, size: 22, color: c.primaryDark),
+                      child: Icon(Ionicons.documentText, size: 22, color: c.primaryDark),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -744,7 +744,7 @@ class _CourseCard extends StatelessWidget {
             child: SizedBox(
               width: 44,
               height: 44,
-              child: Icon(Ionicons.trash_outline, size: 20, color: c.danger),
+              child: Icon(Ionicons.trashOutline, size: 20, color: c.danger),
             ),
           ),
         ],
@@ -910,7 +910,7 @@ class _ExamCard extends StatelessWidget {
                       )),
                 )
               else
-                Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary),
+                Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary),
             ],
           ),
         ),
@@ -1011,7 +1011,7 @@ class _DueRow extends StatelessWidget {
               const SizedBox(width: 12),
               Text(_plural(count, 'carte'), style: TextStyle(fontSize: 13, color: c.textSecondary)),
               const SizedBox(width: 12),
-              Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary),
+              Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary),
             ],
           ),
         ),

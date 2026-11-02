@@ -237,7 +237,7 @@ class _FriendsScreenState extends State<FriendsScreen> with FocusRefresh<Friends
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Ionicons.flash_outline, size: 16, color: c.primaryText),
+                              Icon(Ionicons.flashOutline, size: 16, color: c.primaryText),
                               const SizedBox(width: 4),
                               Text('Défier',
                                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.primaryText)),
@@ -252,7 +252,7 @@ class _FriendsScreenState extends State<FriendsScreen> with FocusRefresh<Friends
                       child: SizedBox(
                         width: 40,
                         height: 40,
-                        child: Icon(Ionicons.person_remove_outline, size: 20, color: c.danger),
+                        child: Icon(Ionicons.personRemoveOutline, size: 20, color: c.danger),
                       ),
                     ),
                   ],
@@ -454,7 +454,7 @@ class _FriendsScreenState extends State<FriendsScreen> with FocusRefresh<Friends
             width: 40,
             height: 40,
             decoration: BoxDecoration(color: c.tintPrimary, shape: BoxShape.circle),
-            child: Icon(Ionicons.person_add, size: 16, color: c.primary),
+            child: Icon(Ionicons.personAdd, size: 16, color: c.primary),
           ),
         );
     }

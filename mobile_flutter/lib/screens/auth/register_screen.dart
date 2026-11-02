@@ -86,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Expanded(
                 child: AuthField(
                   label: 'Prénom',
-                  icon: Ionicons.person_outline,
+                  icon: Ionicons.personOutline,
                   controller: _firstName,
                   autofillHints: const [AutofillHints.givenName],
                   textCapitalization: TextCapitalization.words,
@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Expanded(
                 child: AuthField(
                   label: 'Nom',
-                  icon: Ionicons.person_outline,
+                  icon: Ionicons.personOutline,
                   controller: _lastName,
                   autofillHints: const [AutofillHints.familyName],
                   textCapitalization: TextCapitalization.words,
@@ -106,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           AuthField(
             label: 'Email',
-            icon: Ionicons.mail_outline,
+            icon: Ionicons.mailOutline,
             controller: _email,
             hint: 'prenom.nom@email.com',
             keyboardType: TextInputType.emailAddress,
@@ -115,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           AuthField(
             label: 'Mot de passe',
-            icon: Ionicons.lock_closed_outline,
+            icon: Ionicons.lockClosedOutline,
             controller: _password,
             secure: true,
             hint: '6 caractères minimum',
@@ -123,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           AuthField(
             label: 'Confirmer le mot de passe',
-            icon: Ionicons.lock_closed_outline,
+            icon: Ionicons.lockClosedOutline,
             controller: _confirm,
             secure: true,
             autofillHints: const [AutofillHints.newPassword],

@@ -134,7 +134,7 @@ class _QuizRunnerState extends State<QuizRunner> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: c.border, width: 1.5),
                     ),
-                    child: Icon(Ionicons.arrow_back, size: 22, color: c.textPrimary),
+                    child: Icon(Ionicons.arrowBack, size: 22, color: c.textPrimary),
                   ),
                 ),
               ),
@@ -153,7 +153,7 @@ class _QuizRunnerState extends State<QuizRunner> {
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.onAction)),
                         if (!isLast) ...[
                           const SizedBox(width: 8),
-                          Icon(Ionicons.arrow_forward, size: 20, color: c.onAction),
+                          Icon(Ionicons.arrowForward, size: 20, color: c.onAction),
                         ],
                       ],
                     ),
@@ -261,7 +261,7 @@ class QuizCorrection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(isCorrect ? Ionicons.checkmark_circle : Ionicons.close_circle,
+              Icon(isCorrect ? Ionicons.checkmarkCircle : Ionicons.closeCircle,
                   size: 22, color: isCorrect ? c.success : c.danger),
               const SizedBox(width: 8),
               Expanded(

@@ -50,7 +50,7 @@ class _SwipeCardsStepState extends State<SwipeCardsStep> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  StepOverline(icon: Ionicons.albums_outline, label: 'CARTE ${_currentIndex + 1}/${cards.length}'),
+                  StepOverline(icon: Ionicons.albumsOutline, label: 'CARTE ${_currentIndex + 1}/${cards.length}'),
                   const SizedBox(height: stepGapTight),
                   ...withGap(stepGap, [
                     Semantics(
@@ -98,7 +98,7 @@ class _SwipeCardsStepState extends State<SwipeCardsStep> {
                               border: Border.all(color: c.action, width: 2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: c.primaryDark.withOpacity(0.12),
+                                  color: c.primaryDark.withValues(alpha: 0.12),
                                   blurRadius: 24,
                                   offset: const Offset(0, 8),
                                 ),
@@ -111,7 +111,7 @@ class _SwipeCardsStepState extends State<SwipeCardsStep> {
                                   width: 64,
                                   height: 64,
                                   decoration: BoxDecoration(color: c.tintPrimary, shape: BoxShape.circle),
-                                  child: Icon(card.icon ?? Ionicons.bookmark_outline, size: 30, color: c.primaryDark),
+                                  child: Icon(card.icon ?? Ionicons.bookmarkOutline, size: 30, color: c.primaryDark),
                                 ),
                                 Text(card.concept,
                                     textAlign: TextAlign.center,
@@ -130,7 +130,7 @@ class _SwipeCardsStepState extends State<SwipeCardsStep> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _NavButton(
-                          icon: Ionicons.chevron_back,
+                          icon: Ionicons.chevronBack,
                           label: 'Carte précédente',
                           disabled: _currentIndex == 0,
                           onPress: () => _goTo(_currentIndex - 1),
@@ -155,7 +155,7 @@ class _SwipeCardsStepState extends State<SwipeCardsStep> {
                           ),
                         ),
                         _NavButton(
-                          icon: Ionicons.chevron_forward,
+                          icon: Ionicons.chevronForward,
                           label: 'Carte suivante',
                           disabled: isLastCard,
                           onPress: () => _goTo(_currentIndex + 1),

@@ -281,14 +281,14 @@ class _LessonScreenState extends State<LessonScreen> {
                                             semanticsLabel: 'Chargement de la série',
                                           ),
                                         )
-                                      : Icon(streak == -1 ? Ionicons.flame_outline : Ionicons.flame,
+                                      : Icon(streak == -1 ? Ionicons.flameOutline : Ionicons.flame,
                                           size: 22, color: c.warning),
                                   value: streak == null ? null : (streak == -1 ? 'Série' : 'Série : ${streak}j'),
                                 ),
                                 const SizedBox(width: 10),
                                 statCard(
                                   tint: c.tintSuccess,
-                                  icon: Icon(Ionicons.checkmark_circle, size: 22, color: c.success),
+                                  icon: Icon(Ionicons.checkmarkCircle, size: 22, color: c.success),
                                   value: '$score %',
                                 ),
                               ],

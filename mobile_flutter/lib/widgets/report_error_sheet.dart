@@ -97,7 +97,7 @@ class _ReportErrorBodyState extends State<_ReportErrorBody> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Ionicons.checkmark_circle, size: 40, color: c.successText),
+            Icon(Ionicons.checkmarkCircle, size: 40, color: c.successText),
             const SizedBox(height: 10),
             Text('Merci, c’est noté',
                 textAlign: TextAlign.center,
@@ -156,7 +156,7 @@ class _ReportErrorBodyState extends State<_ReportErrorBody> {
               decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
               child: Row(
                 children: [
-                  Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                  Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_error!,

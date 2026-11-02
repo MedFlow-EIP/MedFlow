@@ -47,7 +47,7 @@ const tutorialSlides = <TutorialSlide>[
   ),
   TutorialSlide(
     id: 'import',
-    icon: Ionicons.cloud_upload,
+    icon: Ionicons.cloudUpload,
     tone: Tone.primary,
     title: 'Importe tes cours',
     text:
@@ -67,12 +67,12 @@ const tutorialSlides = <TutorialSlide>[
   ),
   TutorialSlide(
     id: 'assistant',
-    icon: Ionicons.chatbubble_ellipses,
+    icon: Ionicons.chatbubbleEllipses,
     tone: Tone.primary,
     title: 'Un assistant pour tes questions',
     text:
         'Demande une explication, envoie une photo ou un PDF, puis transforme ses réponses en flashcards en un geste.',
-    where: (icon: Ionicons.chatbubble_ellipses, label: 'Onglet IA Chat'),
+    where: (icon: Ionicons.chatbubbleEllipses, label: 'Onglet IA Chat'),
   ),
   TutorialSlide(
     id: 'progress',
@@ -291,7 +291,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                 _PrimaryAction(
                   onTap: () => _finish(_openUpload),
                   children: [
-                    Icon(Ionicons.cloud_upload_outline, size: 20, color: c.onAction),
+                    Icon(Ionicons.cloudUploadOutline, size: 20, color: c.onAction),
                     const SizedBox(width: 10),
                     Flexible(child: Text('Importer mon premier cours', style: _primaryTextStyle(c))),
                   ],
@@ -324,7 +324,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: c.border, width: 1.5),
                         ),
-                        child: Icon(Ionicons.arrow_back, size: 22, color: c.textPrimary),
+                        child: Icon(Ionicons.arrowBack, size: 22, color: c.textPrimary),
                       ),
                     ),
                   ),
@@ -336,7 +336,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                     children: [
                       Flexible(child: Text(_index == 0 ? 'C’est parti' : 'Suivant', style: _primaryTextStyle(c))),
                       const SizedBox(width: 10),
-                      Icon(Ionicons.arrow_forward, size: 20, color: c.onAction),
+                      Icon(Ionicons.arrowForward, size: 20, color: c.onAction),
                     ],
                   ),
                 ),
@@ -409,7 +409,7 @@ class _SlideView extends StatelessWidget {
                             border: Border.all(color: tone.bg, width: 6),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.black.withOpacity(0.12), blurRadius: 14, offset: const Offset(0, 6)),
+                                  color: Colors.black.withValues(alpha: 0.12), blurRadius: 14, offset: const Offset(0, 6)),
                             ],
                           ),
                           child: Icon(slide.icon, size: 56, color: tone.fg),
@@ -428,7 +428,7 @@ class _SlideView extends StatelessWidget {
                                 border: Border.all(color: c.border),
                                 boxShadow: [
                                   BoxShadow(
-                                      color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2)),
+                                      color: Colors.black.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2)),
                                 ],
                               ),
                               child: Text(slide.chips![i],

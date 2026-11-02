@@ -217,7 +217,7 @@ class _MockExamScreenState extends State<MockExamScreen> {
       child: Row(
         children: [
           CircleIconButton(
-            icon: running ? Ionicons.close : Ionicons.arrow_back,
+            icon: running ? Ionicons.close : Ionicons.arrowBack,
             label: running ? 'Abandonner l’examen' : 'Retour',
             onPressed: () => Navigator.of(context).maybePop(),
           ),
@@ -261,7 +261,7 @@ class _MockExamScreenState extends State<MockExamScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Ionicons.time_outline, size: 16, color: urgent ? c.dangerText : c.primaryText),
+                        Icon(Ionicons.timeOutline, size: 16, color: urgent ? c.dangerText : c.primaryText),
                         const SizedBox(width: 6),
                         Text(clock,
                             style: TextStyle(
@@ -371,7 +371,7 @@ class _MockExamScreenState extends State<MockExamScreen> {
 
     final blocks = <Widget>[
       const InfoBox(
-        icon: Ionicons.timer_outline,
+        icon: Ionicons.timerOutline,
         text:
             'Questions tirées au hasard dans tes cours, 1 minute par question. La correction arrive à la fin, avec ta note sur 20.',
       ),

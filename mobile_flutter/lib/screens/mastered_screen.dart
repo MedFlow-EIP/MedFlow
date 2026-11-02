@@ -90,7 +90,7 @@ class _MasteredScreenState extends State<MasteredScreen> with FocusRefresh<Maste
 
     if (_error) {
       return StateView(
-        icon: Ionicons.cloud_offline_outline,
+        icon: Ionicons.cloudOfflineOutline,
         tone: Tone.neutral,
         title: 'Impossible de charger les cartes maîtrisées',
         subtitle: 'Vérifie ta connexion puis réessaie.',
@@ -101,7 +101,7 @@ class _MasteredScreenState extends State<MasteredScreen> with FocusRefresh<Maste
 
     if (_items.isEmpty) {
       return StateView(
-        icon: Ionicons.trophy_outline,
+        icon: Ionicons.trophyOutline,
         tone: Tone.warning,
         title: 'Pas encore de carte maîtrisée',
         subtitle:
@@ -256,8 +256,8 @@ class _MasteredScreenState extends State<MasteredScreen> with FocusRefresh<Maste
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        chip(Ionicons.calendar_outline, 'Dans $interval j', c.tintPrimary, c.primaryText),
-                        chip(Ionicons.checkmark_done, '${jsNum(m['repetitions'])}× de suite', c.tintSuccess,
+                        chip(Ionicons.calendarOutline, 'Dans $interval j', c.tintPrimary, c.primaryText),
+                        chip(Ionicons.checkmarkDone, '${jsNum(m['repetitions'])}× de suite', c.tintSuccess,
                             c.successText),
                       ],
                     ),
@@ -265,7 +265,7 @@ class _MasteredScreenState extends State<MasteredScreen> with FocusRefresh<Maste
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary),
+              Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary),
             ],
           ),
         ),

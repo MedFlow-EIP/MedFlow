@@ -145,7 +145,7 @@ class _PathScreenState extends State<PathScreen> with FocusRefresh<PathScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-                        child: Icon(Ionicons.arrow_back, size: 22, color: c.textPrimary),
+                        child: Icon(Ionicons.arrowBack, size: 22, color: c.textPrimary),
                       ),
                     ),
                     if (stats != null)
@@ -154,14 +154,14 @@ class _PathScreenState extends State<PathScreen> with FocusRefresh<PathScreen> {
                         children: [
                           _StatChip(
                             label: "${stats.xp} points d'expérience",
-                            icon: Ionicons.star_outline,
+                            icon: Ionicons.starOutline,
                             text: '${stats.xp} XP',
                             color: c.primaryText,
                           ),
                           const SizedBox(width: 8),
                           _StatChip(
                             label: 'Série de ${stats.streak} jours',
-                            icon: Ionicons.flame_outline,
+                            icon: Ionicons.flameOutline,
                             text: '${stats.streak} j',
                             color: c.warningText,
                           ),

@@ -42,7 +42,7 @@ class CircleIconButton extends StatelessWidget {
 
   /// Bouton retour standard.
   factory CircleIconButton.back(VoidCallback onPressed, {Key? key}) =>
-      CircleIconButton(key: key, icon: Ionicons.arrow_back, onPressed: onPressed, label: 'Retour');
+      CircleIconButton(key: key, icon: Ionicons.arrowBack, onPressed: onPressed, label: 'Retour');
 
   /// Bouton fermer standard.
   factory CircleIconButton.close(VoidCallback onPressed, {Key? key}) =>
@@ -155,7 +155,7 @@ class PrimaryButton extends StatelessWidget {
           style: TextButton.styleFrom(
             backgroundColor: color ?? c.action,
             foregroundColor: c.onAction,
-            disabledBackgroundColor: (color ?? c.action).withOpacity(0.5),
+            disabledBackgroundColor: (color ?? c.action).withValues(alpha: 0.5),
             disabledForegroundColor: c.onAction,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -305,7 +305,7 @@ class AppCard extends StatelessWidget {
         color: color ?? c.surface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: c.border, width: 0.5),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 6))],
       ),
       child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
     );

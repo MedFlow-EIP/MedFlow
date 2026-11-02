@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> with FocusRefresh<HomeScreen> {
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.warningText)),
                     if (count > 0) ...[
                       const SizedBox(width: 6),
-                      Icon(Ionicons.shield_checkmark, size: 14, color: c.primaryText),
+                      Icon(Ionicons.shieldCheckmark, size: 14, color: c.primaryText),
                       const SizedBox(width: 6),
                       Text('$count', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.primaryText)),
                     ],
@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> with FocusRefresh<HomeScreen> {
       ),
       child: Column(
         children: [
-          Icon(Ionicons.school_outline, size: 48, color: c.muted),
+          Icon(Ionicons.schoolOutline, size: 48, color: c.muted),
           const SizedBox(height: 12),
           Text('Aucun parcours', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.textPrimary)),
           const SizedBox(height: 12),

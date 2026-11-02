@@ -28,8 +28,8 @@ const _badgeIcons = <String, IconData>{
   'flame': Ionicons.flame,
   'star': Ionicons.star,
   'trophy': Ionicons.trophy,
-  'checkmark-done': Ionicons.checkmark_done,
-  'checkmark-done-circle': Ionicons.checkmark_done_circle,
+  'checkmark-done': Ionicons.checkmarkDone,
+  'checkmark-done-circle': Ionicons.checkmarkDoneCircle,
 };
 
 /// « #cd7f32 » → couleur (null si le format n'est pas reconnu).
@@ -44,8 +44,9 @@ Color _withHexAlpha(Color color, int alpha) => color.withAlpha(alpha);
 
 /// Assombrit une couleur #rrggbb (factor < 1).
 Color _darken(Color color, double factor) {
-  int ch(int v) => (v * factor).round().clamp(0, 255);
-  return Color.fromARGB(255, ch(color.red), ch(color.green), ch(color.blue));
+  // Composantes entre 0 et 1 (Flutter 3.47).
+  int ch(double v) => (v * 255 * factor).round().clamp(0, 255);
+  return Color.fromARGB(255, ch(color.r), ch(color.g), ch(color.b));
 }
 
 String _formatRelativeTime(String iso) {
@@ -313,19 +314,19 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
     final socials = [
       (
         label: 'Instagram',
-        icon: Ionicons.logo_instagram,
+        icon: Ionicons.logoInstagram,
         color: const Color(0xFFE1306C),
         url: 'https://www.instagram.com/med_flowapp/',
       ),
       (
         label: 'LinkedIn',
-        icon: Ionicons.logo_linkedin,
+        icon: Ionicons.logoLinkedin,
         color: const Color(0xFF0A66C2),
         url: 'https://www.linkedin.com/company/medflow-app/',
       ),
       (
         label: 'Product Hunt',
-        icon: Ionicons.rocket_outline,
+        icon: Ionicons.rocketOutline,
         color: const Color(0xFFDA552F),
         url: 'https://www.producthunt.com/products/medflow-3?launch=medflow-2',
       ),
@@ -342,7 +343,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
           child: Text(text, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c.textPrimary)),
         );
 
-    Widget chevron() => Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary);
+    Widget chevron() => Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary);
 
     Widget contactCard({
       required IconData icon,
@@ -400,14 +401,14 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
         children: [
           Builder(
             builder: (btn) => CircleIconButton(
-              icon: Ionicons.share_outline,
+              icon: Ionicons.shareOutline,
               label: 'Partager MedFlow',
               onPressed: () => _shareApp(btn),
             ),
           ),
           const SizedBox(width: 10),
           CircleIconButton(
-            icon: Ionicons.settings_outline,
+            icon: Ionicons.settingsOutline,
             label: 'Réglages',
             onPressed: () => Nav.navigate('Settings'),
           ),
@@ -555,7 +556,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
             Expanded(
               child: Builder(
                 builder: (btn) => _quickAction(
-                  icon: Ionicons.share_social_outline,
+                  icon: Ionicons.shareSocialOutline,
                   tint: c.tintSuccess,
                   iconColor: c.success,
                   label: 'Partager',
@@ -566,7 +567,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
             const SizedBox(width: 12),
             Expanded(
               child: _quickAction(
-                icon: Ionicons.help_buoy_outline,
+                icon: Ionicons.helpBuoyOutline,
                 tint: c.tintWarning,
                 iconColor: c.warning,
                 label: 'Aide',
@@ -589,7 +590,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
       const SizedBox(height: 22),
 
       contactCard(
-        icon: Ionicons.chatbubble_ellipses_outline,
+        icon: Ionicons.chatbubbleEllipsesOutline,
         title: 'Donner mon avis',
         subtitle: 'Quelques minutes pour nous aider à améliorer MedFlow',
         a11y: 'Donner mon avis sur MedFlow',
@@ -605,7 +606,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
       ),
       const SizedBox(height: 22),
       contactCard(
-        icon: Ionicons.mail_outline,
+        icon: Ionicons.mailOutline,
         title: 'Nous contacter',
         subtitle: _contactEmail,
         a11y: 'Nous contacter, $_contactEmail',
@@ -613,7 +614,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
       ),
       const SizedBox(height: 22),
       contactCard(
-        icon: Ionicons.shield_checkmark_outline,
+        icon: Ionicons.shieldCheckmarkOutline,
         title: 'Confidentialité et avertissement',
         subtitle: 'Tes données, l’IA et ses limites',
         a11y: 'Confidentialité et avertissement médical',
@@ -671,7 +672,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.log_out_outline, size: 20, color: c.dangerText),
+                Icon(Ionicons.logOutOutline, size: 20, color: c.dangerText),
                 const SizedBox(width: 10),
                 Text('Se déconnecter',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.dangerText)),
@@ -822,7 +823,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
               shape: BoxShape.circle,
             ),
             child: Icon(
-              unlocked ? (_badgeIcons[badge['icon']] ?? Ionicons.help) : Ionicons.lock_closed,
+              unlocked ? (_badgeIcons[badge['icon']] ?? Ionicons.help) : Ionicons.lockClosed,
               size: unlocked ? 26 : 22,
               color: unlocked ? color : c.muted,
             ),
@@ -885,7 +886,7 @@ class _AccountScreenState extends State<AccountScreen> with FocusRefresh<Account
     final icon = isBadge
         ? Ionicons.trophy
         : type.startsWith('streak_freeze')
-            ? Ionicons.shield_checkmark
+            ? Ionicons.shieldCheckmark
             : type == 'mock_exam'
                 ? Ionicons.timer
                 : type == 'challenge'

@@ -72,7 +72,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         width: 64,
                         height: 64,
                         decoration: BoxDecoration(color: c.tintSuccess, shape: BoxShape.circle),
-                        child: Icon(Ionicons.mail_open_outline, size: 28, color: c.success),
+                        child: Icon(Ionicons.mailOpenOutline, size: 28, color: c.success),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -95,7 +95,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           : [
               AuthField(
                 label: 'Email',
-                icon: Ionicons.mail_outline,
+                icon: Ionicons.mailOutline,
                 controller: _email,
                 hint: 'prenom.nom@email.com',
                 keyboardType: TextInputType.emailAddress,

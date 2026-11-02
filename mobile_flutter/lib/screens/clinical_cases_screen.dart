@@ -161,7 +161,7 @@ class _ClinicalCasesScreenState extends State<ClinicalCasesScreen> with FocusRef
       return Scaffold(
         backgroundColor: c.background,
         body: StateView(
-          icon: Ionicons.cloud_offline_outline,
+          icon: Ionicons.cloudOfflineOutline,
           tone: Tone.neutral,
           title: 'Impossible de charger tes cas',
           subtitle: _loadError,
@@ -213,7 +213,7 @@ class _ClinicalCasesScreenState extends State<ClinicalCasesScreen> with FocusRef
                           decoration: BoxDecoration(color: c.tintPrimary, borderRadius: BorderRadius.circular(14)),
                           child: Row(
                             children: [
-                              Icon(Ionicons.medkit_outline, size: 20, color: c.primaryText),
+                              Icon(Ionicons.medkitOutline, size: 20, color: c.primaryText),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -344,7 +344,7 @@ class _CaseRow extends StatelessWidget {
               ),
               if (!generating) ...[
                 const SizedBox(width: 12),
-                Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary),
+                Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary),
               ],
             ],
           ),
@@ -447,7 +447,7 @@ class _NewCaseSheetState extends State<_NewCaseSheet> {
             decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
             child: Row(
               children: [
-                Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                 const SizedBox(width: 8),
                 Expanded(
                   child:
@@ -561,7 +561,7 @@ class _NewCaseSheetState extends State<_NewCaseSheet> {
             ],
           ),
         ),
-        FooterActionButton(label: 'Créer le cas', leadingIcon: Ionicons.medkit_outline, onPressed: _create),
+        FooterActionButton(label: 'Créer le cas', leadingIcon: Ionicons.medkitOutline, onPressed: _create),
       ],
     ];
 
@@ -607,7 +607,7 @@ class _CourseChoice extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                active ? Ionicons.radio_button_on : Ionicons.radio_button_off,
+                active ? Ionicons.radioButtonOn : Ionicons.radioButtonOff,
                 size: 20,
                 color: active ? c.primaryDark : c.textSecondary,
               ),

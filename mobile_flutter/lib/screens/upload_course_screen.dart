@@ -48,7 +48,7 @@ String _formatSize(int? bytes) =>
     (bytes == null || bytes == 0) ? '' : '${(bytes / 1024 / 1024).toStringAsFixed(2).replaceAll('.', ',')} Mo';
 
 IconData _fileIcon(String mimeType) =>
-    mimeType.startsWith('image/') ? Ionicons.image : (mimeType == _pptx ? Ionicons.easel : Ionicons.document_text);
+    mimeType.startsWith('image/') ? Ionicons.image : (mimeType == _pptx ? Ionicons.easel : Ionicons.documentText);
 
 /// Type MIME à envoyer : celui du sélecteur, sinon déduit de l'extension.
 String _guessMimeType(String name, [String? mimeType]) {
@@ -400,7 +400,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
                         decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(14)),
                         child: Row(
                           children: [
-                            Icon(Ionicons.alert_circle, size: 20, color: c.dangerText),
+                            Icon(Ionicons.alertCircle, size: 20, color: c.dangerText),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(_error,
@@ -440,7 +440,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
                             onTap: () => _handleGenerate(),
                             leading: _loading
                                 ? _Spinner(color: c.primaryText)
-                                : Icon(Ionicons.sync_outline, size: 18, color: c.primaryText),
+                                : Icon(Ionicons.syncOutline, size: 18, color: c.primaryText),
                             label: _loading ? 'Analyse…' : 'Régénérer',
                           ),
                         ),
@@ -462,7 +462,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
                             onTap: () => _files.isNotEmpty ? _handleGenerateMany() : _handleGenerate(),
                             leading: _loading
                                 ? _Spinner(color: c.onAction)
-                                : Icon(Ionicons.flash_outline, size: 20, color: c.onAction),
+                                : Icon(Ionicons.flashOutline, size: 20, color: c.onAction),
                             label: _files.isNotEmpty && !_loading ? 'Importer ${_files.length} cours' : generateLabel,
                           ),
                         ),
@@ -496,7 +496,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-                  child: Icon(Ionicons.cloud_upload_outline, size: 30, color: c.primaryDark),
+                  child: Icon(Ionicons.cloudUploadOutline, size: 30, color: c.primaryDark),
                 ),
                 const SizedBox(height: 10),
                 Text(file != null ? 'Changer de fichier' : 'Choisir un fichier',
@@ -525,7 +525,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.camera_outline, size: 20, color: c.primaryText),
+                Icon(Ionicons.cameraOutline, size: 20, color: c.primaryText),
                 const SizedBox(width: 10),
                 Text('Prendre une page en photo',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.primaryText)),
@@ -597,7 +597,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
                             boxShadow: d.value == _difficulty
                                 ? [
                                     BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
+                                        color: Colors.black.withValues(alpha: 0.08),
                                         blurRadius: 3,
                                         offset: const Offset(0, 1)),
                                   ]
@@ -631,7 +631,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Ionicons.checkmark_circle, size: 20, color: c.success),
+                Icon(Ionicons.checkmarkCircle, size: 20, color: c.success),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -766,7 +766,7 @@ class _UploadCourseScreenState extends State<UploadCourseScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Ionicons.document_outline, size: 16, color: c.textSecondary),
+              Icon(Ionicons.documentOutline, size: 16, color: c.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(

@@ -46,7 +46,7 @@ class _QuickQuizCardsStepState extends State<QuickQuizCardsStep> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const StepOverline(icon: Ionicons.help_circle_outline, label: 'QUIZ'),
+                  const StepOverline(icon: Ionicons.helpCircleOutline, label: 'QUIZ'),
                   const SizedBox(height: stepGapTight),
                   ...withGap(stepGap, [
                     Semantics(header: true, child: Text(widget.question, style: stepQuestionStyle(c))),

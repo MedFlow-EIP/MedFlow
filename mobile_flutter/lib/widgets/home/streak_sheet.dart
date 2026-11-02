@@ -69,7 +69,7 @@ class _StreakSheetBody extends StatelessWidget {
                       color: i < freezes ? c.primaryDark : c.surfaceAlt,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Icon(Ionicons.shield_checkmark, size: 26, color: i < freezes ? c.onAction : c.muted),
+                    child: Icon(Ionicons.shieldCheckmark, size: 26, color: i < freezes ? c.onAction : c.muted),
                   ),
                 ],
               ],

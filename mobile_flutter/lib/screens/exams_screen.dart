@@ -111,7 +111,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
 
     if (_loadError != null && exams == null) {
       return StateView(
-        icon: Ionicons.cloud_offline_outline,
+        icon: Ionicons.cloudOfflineOutline,
         tone: Tone.neutral,
         title: 'Impossible de charger tes examens',
         subtitle: _loadError,
@@ -138,7 +138,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
         ],
       ),
       const InfoBox(
-        icon: Ionicons.flash_outline,
+        icon: Ionicons.flashOutline,
         text:
             'Dans les 30 jours avant un examen, ses cours passent en premier dans tes révisions. Rappels à J-7 et la veille.',
       ),
@@ -152,7 +152,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
           child: Column(
             children: [
-              Icon(Ionicons.calendar_outline, size: 36, color: c.textSecondary),
+              Icon(Ionicons.calendarOutline, size: 36, color: c.textSecondary),
               const SizedBox(height: 8),
               Text('Aucun examen prévu',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.textPrimary)),
@@ -243,7 +243,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                   child: SizedBox(
                     width: 44,
                     height: 44,
-                    child: Icon(Ionicons.trash_outline, size: 19, color: c.textSecondary),
+                    child: Icon(Ionicons.trashOutline, size: 19, color: c.textSecondary),
                   ),
                 ),
               ],
@@ -418,7 +418,7 @@ class _AddExamSheetState extends State<_AddExamSheet> {
           ),
           child: Row(
             children: [
-              Icon(Ionicons.calendar_outline, size: 20, color: c.primaryDark),
+              Icon(Ionicons.calendarOutline, size: 20, color: c.primaryDark),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

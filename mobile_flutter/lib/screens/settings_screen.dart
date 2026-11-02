@@ -382,7 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     final c = context.colors;
     final trailing =
-        right ?? (onPress != null ? Icon(Ionicons.chevron_forward, size: 18, color: c.textSecondary) : null);
+        right ?? (onPress != null ? Icon(Ionicons.chevronForward, size: 18, color: c.textSecondary) : null);
     final content = Container(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -468,8 +468,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: CupertinoSwitch(
         value: value,
         onChanged: onChanged,
-        activeColor: c.action,
-        trackColor: c.border,
+        activeTrackColor: c.action,
+        inactiveTrackColor: c.border,
         thumbColor: Colors.white,
       ),
     );
@@ -582,9 +582,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final canUpdatePassword = _isPasswordValid && _passwordsMatch;
 
     final appearanceOptions = [
-      (key: ThemePreference.system, label: 'Système', icon: Ionicons.phone_portrait_outline),
-      (key: ThemePreference.light, label: 'Clair', icon: Ionicons.sunny_outline),
-      (key: ThemePreference.dark, label: 'Sombre', icon: Ionicons.moon_outline),
+      (key: ThemePreference.system, label: 'Système', icon: Ionicons.phonePortraitOutline),
+      (key: ThemePreference.light, label: 'Clair', icon: Ionicons.sunnyOutline),
+      (key: ThemePreference.dark, label: 'Sombre', icon: Ionicons.moonOutline),
     ];
 
     final children = <Widget>[
@@ -705,7 +705,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(Ionicons.lock_closed_outline, size: 16, color: c.textSecondary),
+                  Icon(Ionicons.lockClosedOutline, size: 16, color: c.textSecondary),
                 ],
               ),
             ),
@@ -743,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           boxShadow: active
                               ? [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     offset: const Offset(0, 2),
                                     blurRadius: 6,
                                   ),
@@ -784,7 +784,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: _listCard([
           _row(
             first: true,
-            icon: Ionicons.contrast_outline,
+            icon: Ionicons.contrastOutline,
             tint: c.surfaceAlt,
             iconColor: c.textPrimary,
             title: 'Contraste élevé',
@@ -803,7 +803,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _listCard([
         _row(
           first: true,
-          icon: Ionicons.flame_outline,
+          icon: Ionicons.flameOutline,
           tint: c.tintWarning,
           iconColor: c.warning,
           title: 'Rappels de streak',
@@ -815,7 +815,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         _row(
-          icon: Ionicons.school_outline,
+          icon: Ionicons.schoolOutline,
           tint: c.tintPrimary,
           iconColor: c.primaryDark,
           title: 'Rappels de révision',
@@ -829,7 +829,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         if (_revisionRemindersOn)
           _row(
-            icon: Ionicons.time_outline,
+            icon: Ionicons.timeOutline,
             tint: c.surfaceAlt,
             iconColor: c.textSecondary,
             title: 'Heure du rappel',
@@ -853,7 +853,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(Ionicons.chevron_forward, size: 16, color: c.primaryText),
+                      Icon(Ionicons.chevronForward, size: 16, color: c.primaryText),
                     ],
                   ),
                 ),
@@ -895,7 +895,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        r.ok ? Ionicons.checkmark_circle : Ionicons.ellipse_outline,
+                        r.ok ? Ionicons.checkmarkCircle : Ionicons.ellipseOutline,
                         size: 14,
                         color: r.ok ? c.successText : c.textSecondary,
                       ),
@@ -922,7 +922,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _listCard([
         _row(
           first: true,
-          icon: Ionicons.play_circle_outline,
+          icon: Ionicons.playCircleOutline,
           tint: c.tintPrimary,
           iconColor: c.primaryDark,
           title: 'Revoir le tutoriel',
@@ -936,7 +936,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Builder(
           builder: (rowContext) => _row(
             first: true,
-            icon: Ionicons.download_outline,
+            icon: Ionicons.downloadOutline,
             tint: c.tintPrimary,
             iconColor: c.primaryDark,
             title: 'Exporter mes données',
@@ -962,21 +962,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _listCard([
         _row(
           first: true,
-          icon: Ionicons.notifications_outline,
+          icon: Ionicons.notificationsOutline,
           tint: c.tintPrimary,
           iconColor: c.primaryDark,
           title: 'Tester une notification (5s)',
           onPress: _handleTestNotification,
         ),
         _row(
-          icon: Ionicons.school_outline,
+          icon: Ionicons.schoolOutline,
           tint: c.tintWarning,
           iconColor: c.warning,
           title: 'Tester une notification de révision (5s)',
           onPress: _handleTestRevisionNotification,
         ),
         _row(
-          icon: Ionicons.refresh_circle_outline,
+          icon: Ionicons.refreshCircleOutline,
           tint: c.tintDanger,
           iconColor: c.danger,
           title: 'Réinitialiser XP / progression',
@@ -997,7 +997,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.log_out_outline, size: 20, color: c.dangerText),
+                Icon(Ionicons.logOutOutline, size: 20, color: c.dangerText),
                 const SizedBox(width: 10),
                 Text('Se déconnecter',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.dangerText)),

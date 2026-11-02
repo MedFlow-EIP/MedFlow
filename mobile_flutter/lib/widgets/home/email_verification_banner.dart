@@ -79,7 +79,7 @@ class _EmailVerificationBannerState extends State<EmailVerificationBanner> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Ionicons.mail_unread_outline, size: 22, color: c.warningText),
+                  Icon(Ionicons.mailUnreadOutline, size: 22, color: c.warningText),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

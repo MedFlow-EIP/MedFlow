@@ -135,7 +135,7 @@ class _PathCardState extends State<PathCard> with SingleTickerProviderStateMixin
                   ),
                 ),
                 const SizedBox(width: 14),
-                Icon(Ionicons.lock_closed, size: 20, color: c.muted),
+                Icon(Ionicons.lockClosed, size: 20, color: c.muted),
               ],
             ),
             const SizedBox(height: 10),
@@ -148,7 +148,7 @@ class _PathCardState extends State<PathCard> with SingleTickerProviderStateMixin
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Ionicons.time_outline, size: 14, color: c.primaryText),
+                      Icon(Ionicons.timeOutline, size: 14, color: c.primaryText),
                       const SizedBox(width: 6),
                       Text('Bientôt disponible',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.primaryText)),
@@ -189,7 +189,7 @@ class _PathCardState extends State<PathCard> with SingleTickerProviderStateMixin
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: isHero ? c.action : c.border, width: isHero ? 2 : 1),
             boxShadow: isHero
-                ? [BoxShadow(color: c.primaryDark.withOpacity(0.12), blurRadius: 24, offset: const Offset(0, 8))]
+                ? [BoxShadow(color: c.primaryDark.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 8))]
                 : null,
           ),
           child: Column(
@@ -229,7 +229,7 @@ class _PathCardState extends State<PathCard> with SingleTickerProviderStateMixin
                 children: [
                   Row(
                     children: [
-                      Icon(Ionicons.document_text, size: 14, color: c.textSecondary),
+                      Icon(Ionicons.documentText, size: 14, color: c.textSecondary),
                       const SizedBox(width: 6),
                       Text('${_n(p['completedLessons'])}/${_n(p['totalLessons'])} leçons',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c.textSecondary)),
@@ -259,7 +259,7 @@ class _PathCardState extends State<PathCard> with SingleTickerProviderStateMixin
                 SizedBox(height: gap),
                 Row(
                   children: [
-                    Icon(Ionicons.checkmark_circle, size: 16, color: c.successText),
+                    Icon(Ionicons.checkmarkCircle, size: 16, color: c.successText),
                     const SizedBox(width: 4),
                     Text('Terminé', style: TextStyle(fontSize: 13, color: c.successText, fontWeight: FontWeight.w600)),
                   ],

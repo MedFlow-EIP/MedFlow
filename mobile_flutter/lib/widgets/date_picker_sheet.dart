@@ -90,7 +90,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            navButton(Ionicons.chevron_back, 'Mois précédent',
+            navButton(Ionicons.chevronBack, 'Mois précédent',
                 canGoBack ? () => setState(() => _month = DateTime(_month.year, _month.month - 1, 1)) : null),
             Semantics(
               liveRegion: true,
@@ -98,7 +98,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                       RegExp(r'^.'), (m) => m[0]!.toUpperCase()),
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.textPrimary)),
             ),
-            navButton(Ionicons.chevron_forward, 'Mois suivant',
+            navButton(Ionicons.chevronForward, 'Mois suivant',
                 () => setState(() => _month = DateTime(_month.year, _month.month + 1, 1))),
           ],
         ),

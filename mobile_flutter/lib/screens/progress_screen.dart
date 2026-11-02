@@ -108,14 +108,14 @@ class _ProgressScreenState extends State<ProgressScreen> with FocusRefresh<Progr
       );
     } else if (_error) {
       body = _stateCard(c, [
-        Icon(Ionicons.alert_circle_outline, size: 48, color: c.warning),
+        Icon(Ionicons.alertCircleOutline, size: 48, color: c.warning),
         _stateTitle(c, 'Impossible de charger ta progression'),
         _stateText(c, 'Vérifie ta connexion et réessaie dans un instant.'),
         _retryButton(c),
       ]);
     } else if (data != null && data.totalLessons == 0) {
       body = _stateCard(c, [
-        Icon(Ionicons.stats_chart_outline, size: 48, color: c.muted),
+        Icon(Ionicons.statsChartOutline, size: 48, color: c.muted),
         _stateTitle(c, 'Pas encore de progression'),
         _stateText(c, 'Importe un cours pour commencer à suivre tes leçons et ton XP ici.'),
       ]);
@@ -213,7 +213,7 @@ class _ProgressScreenState extends State<ProgressScreen> with FocusRefresh<Progr
               color: c.action,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: c.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4)),
+                BoxShadow(color: c.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
               ],
             ),
             child: Row(

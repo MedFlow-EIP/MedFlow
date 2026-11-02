@@ -96,7 +96,7 @@ class _JobDoneBannerState extends State<JobDoneBanner> {
                             semanticLabel: shown.target != null ? '${shown.title}. Ouvrir' : shown.title,
                             child: Row(
                               children: [
-                                Icon(shown.ok ? Ionicons.checkmark_circle : Ionicons.alert_circle,
+                                Icon(shown.ok ? Ionicons.checkmarkCircle : Ionicons.alertCircle,
                                     size: 22, color: shown.ok ? c.successText : c.dangerText),
                                 const SizedBox(width: 10),
                                 Expanded(

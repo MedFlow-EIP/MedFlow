@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           AuthField(
             label: 'Email',
-            icon: Ionicons.mail_outline,
+            icon: Ionicons.mailOutline,
             controller: _email,
             hint: 'prenom.nom@email.com',
             keyboardType: TextInputType.emailAddress,
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           AuthField(
             label: 'Mot de passe',
-            icon: Ionicons.lock_closed_outline,
+            icon: Ionicons.lockClosedOutline,
             controller: _password,
             secure: true,
             hint: 'Ton mot de passe',

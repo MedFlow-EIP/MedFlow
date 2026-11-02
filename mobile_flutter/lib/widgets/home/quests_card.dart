@@ -10,12 +10,12 @@ import '../ui.dart';
 /// Icônes Ionicons des quêtes, par nom (backend/routes/quests.py). Le package
 /// Dart n'a pas de recherche par nom en constante : on liste celles envoyées.
 const _questIcons = <String, IconData>{
-  'help-circle': Ionicons.help_circle,
-  'checkmark-circle': Ionicons.checkmark_circle,
+  'help-circle': Ionicons.helpCircle,
+  'checkmark-circle': Ionicons.checkmarkCircle,
   'school': Ionicons.school,
   'calendar': Ionicons.calendar,
   'trophy': Ionicons.trophy,
-  'cloud-upload': Ionicons.cloud_upload,
+  'cloud-upload': Ionicons.cloudUpload,
   'flame': Ionicons.flame,
   'star': Ionicons.star,
   'flash': Ionicons.flash,

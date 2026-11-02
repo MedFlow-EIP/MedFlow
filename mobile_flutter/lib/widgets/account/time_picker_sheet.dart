@@ -28,10 +28,10 @@ class _Preset {
 }
 
 const _presets = [
-  _Preset('Matin', Ionicons.sunny_outline, 8, 0),
-  _Preset('Midi', Ionicons.restaurant_outline, 12, 30),
-  _Preset('Soir', Ionicons.partly_sunny_outline, 19, 0),
-  _Preset('Nuit', Ionicons.moon_outline, 21, 30),
+  _Preset('Matin', Ionicons.sunnyOutline, 8, 0),
+  _Preset('Midi', Ionicons.restaurantOutline, 12, 30),
+  _Preset('Soir', Ionicons.partlySunnyOutline, 19, 0),
+  _Preset('Nuit', Ionicons.moonOutline, 21, 30),
 ];
 
 /// Feuille du bas pour choisir une heure : raccourcis + deux colonnes

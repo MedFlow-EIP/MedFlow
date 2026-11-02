@@ -89,7 +89,7 @@ class _ClinicalCaseCardState extends State<ClinicalCaseCard> with FocusRefresh<C
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Ionicons.chevron_forward, size: 20, color: c.textSecondary),
+              Icon(Ionicons.chevronForward, size: 20, color: c.textSecondary),
             ],
           ),
         ),

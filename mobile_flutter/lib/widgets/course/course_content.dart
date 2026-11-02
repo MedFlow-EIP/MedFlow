@@ -48,7 +48,7 @@ class CourseTabs extends StatelessWidget {
                     color: tab == value ? c.surface : null,
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: tab == value
-                        ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))]
+                        ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]
                         : null,
                   ),
                   child: Text(
@@ -301,8 +301,8 @@ class _QuizListState extends State<QuizList> {
                 ),
               ),
             ),
-            if (isCorrect) ...[const SizedBox(width: 10), Icon(Ionicons.checkmark_circle, size: 22, color: c.success)],
-            if (isWrongPick) ...[const SizedBox(width: 10), Icon(Ionicons.close_circle, size: 22, color: c.danger)],
+            if (isCorrect) ...[const SizedBox(width: 10), Icon(Ionicons.checkmarkCircle, size: 22, color: c.success)],
+            if (isWrongPick) ...[const SizedBox(width: 10), Icon(Ionicons.closeCircle, size: 22, color: c.danger)],
           ],
         ),
       ),

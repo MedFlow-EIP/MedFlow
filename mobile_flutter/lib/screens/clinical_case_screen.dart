@@ -150,7 +150,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
         backgroundColor: c.background,
         body: _error != null
             ? StateView(
-                icon: Ionicons.medkit_outline,
+                icon: Ionicons.medkitOutline,
                 tone: Tone.neutral,
                 title: 'Cas indisponible',
                 subtitle: _error,
@@ -167,7 +167,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
       return Scaffold(
         backgroundColor: c.background,
         body: StateView(
-          icon: Ionicons.medkit_outline,
+          icon: Ionicons.medkitOutline,
           tone: Tone.primary,
           title: 'Cas en préparation',
           subtitle:
@@ -183,7 +183,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
       return Scaffold(
         backgroundColor: c.background,
         body: StateView(
-          icon: Ionicons.alert_circle_outline,
+          icon: Ionicons.alertCircleOutline,
           tone: Tone.danger,
           title: 'Cas non créé',
           subtitle: error is String && error.isNotEmpty ? error : 'Réessaie dans un instant.',
@@ -213,7 +213,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
           children: [
             Row(
               children: [
-                Icon(Ionicons.person_outline, size: 18, color: c.primaryText),
+                Icon(Ionicons.personOutline, size: 18, color: c.primaryText),
                 const SizedBox(width: 8),
                 Text('Dossier du patient',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.primaryText)),
@@ -247,7 +247,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
               Row(
                 children: [
                   Icon(
-                    step['is_correct'] == true ? Ionicons.checkmark_circle : Ionicons.close_circle,
+                    step['is_correct'] == true ? Ionicons.checkmarkCircle : Ionicons.closeCircle,
                     size: 18,
                     color: step['is_correct'] == true ? c.success : c.danger,
                   ),
@@ -323,7 +323,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Ionicons.checkmark_circle, size: 18, color: c.success),
+                      Icon(Ionicons.checkmarkCircle, size: 18, color: c.success),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_str(point), style: TextStyle(fontSize: 15, height: 22 / 15, color: c.textPrimary)),
@@ -341,7 +341,7 @@ class _ClinicalCaseScreenState extends State<ClinicalCaseScreen> with FocusRefre
     if (lastResult != null) {
       footerButton = FooterActionButton(
         label: finished ? 'Voir le débriefing' : 'Étape suivante',
-        trailingIcon: Ionicons.arrow_forward,
+        trailingIcon: Ionicons.arrowForward,
         onPressed: _next,
       );
     } else if (current != null) {

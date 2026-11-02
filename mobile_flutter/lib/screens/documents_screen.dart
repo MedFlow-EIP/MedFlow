@@ -18,7 +18,7 @@ IconData _iconFor(String mime) => mime.startsWith('image/')
         ? Ionicons.easel
         : mime.contains('word')
             ? Ionicons.document
-            : Ionicons.document_text;
+            : Ionicons.documentText;
 
 String _formatDate(Object? iso) {
   if (iso is! String || iso.isEmpty) return '';
@@ -88,7 +88,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with FocusRefresh<Doc
       return Scaffold(
         backgroundColor: c.background,
         body: StateView(
-          icon: Ionicons.cloud_offline_outline,
+          icon: Ionicons.cloudOfflineOutline,
           tone: Tone.neutral,
           title: 'Impossible de charger tes documents',
           subtitle: _error,
@@ -172,7 +172,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with FocusRefresh<Doc
       padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          Icon(Ionicons.folder_open_outline, size: 36, color: c.textSecondary),
+          Icon(Ionicons.folderOpenOutline, size: 36, color: c.textSecondary),
           const SizedBox(height: 8),
           Text('Les documents que tu importes apparaîtront ici.',
               textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: c.textSecondary)),
@@ -248,7 +248,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with FocusRefresh<Doc
             child: SizedBox(
               width: 48,
               height: 48,
-              child: Icon(Ionicons.school_outline, size: 20, color: c.textSecondary),
+              child: Icon(Ionicons.schoolOutline, size: 20, color: c.textSecondary),
             ),
           ),
         ],

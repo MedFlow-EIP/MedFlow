@@ -311,7 +311,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
 
     if (_error) {
       return StateView(
-        icon: Ionicons.cloud_offline_outline,
+        icon: Ionicons.cloudOfflineOutline,
         tone: Tone.neutral,
         title: 'Impossible de charger la révision',
         subtitle: 'Vérifie ta connexion puis réessaie.',
@@ -322,7 +322,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
 
     if (_items.isEmpty) {
       return StateView(
-        icon: _mode == 'leeches' ? Ionicons.shield_checkmark_outline : Ionicons.checkmark_done_outline,
+        icon: _mode == 'leeches' ? Ionicons.shieldCheckmarkOutline : Ionicons.checkmarkDoneOutline,
         tone: Tone.success,
         title: _mode == 'practice'
             ? 'Aucune question dans ce cours'
@@ -342,7 +342,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
     if (_finished) {
       final scorePercent = (_correctCount / _items.length * 100).round();
       return StateView(
-        icon: Ionicons.ribbon_outline,
+        icon: Ionicons.ribbonOutline,
         tone: Tone.warning,
         title: 'Session terminée !',
         subtitle: '$_correctCount / ${_items.length} bonnes réponses ($scorePercent%)',
@@ -439,7 +439,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
               decoration: BoxDecoration(color: c.tintWarning, borderRadius: BorderRadius.circular(12)),
               child: Row(
                 children: [
-                  Icon(Ionicons.flame_outline, size: 16, color: c.warningText),
+                  Icon(Ionicons.flameOutline, size: 16, color: c.warningText),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('Carte difficile : retravaille-la plus souvent',
@@ -486,7 +486,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
           decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(14)),
           child: Row(
             children: [
-              Icon(Ionicons.cloud_offline_outline, size: 18, color: c.dangerText),
+              Icon(Ionicons.cloudOfflineOutline, size: 18, color: c.dangerText),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(_answerError!,
@@ -515,7 +515,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Ionicons.sparkles_outline, size: 18, color: c.primaryText),
+                Icon(Ionicons.sparklesOutline, size: 18, color: c.primaryText),
                 const SizedBox(width: 8),
                 Text('Explique-moi cette carte',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.primaryText)),
@@ -595,7 +595,7 @@ class _RevisionScreenState extends State<RevisionScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(leeches ? Ionicons.flame_outline : Ionicons.infinite_outline, size: 13, color: fg),
+          Icon(leeches ? Ionicons.flameOutline : Ionicons.infiniteOutline, size: 13, color: fg),
           const SizedBox(width: 4),
           Text(leeches ? 'Cartes difficiles' : 'Mode libre',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
@@ -620,8 +620,8 @@ class _RevisionScreenState extends State<RevisionScreen> {
     };
     final Widget trailing = switch (state) {
       _OptionState.pending => Spinner(color: c.primaryDark, label: 'Vérification en cours'),
-      _OptionState.correct => Icon(Ionicons.checkmark_circle, size: 26, color: c.success),
-      _OptionState.incorrect => Icon(Ionicons.close_circle, size: 26, color: c.danger),
+      _OptionState.correct => Icon(Ionicons.checkmarkCircle, size: 26, color: c.success),
+      _OptionState.incorrect => Icon(Ionicons.closeCircle, size: 26, color: c.danger),
       _ => Container(
           width: 24,
           height: 24,

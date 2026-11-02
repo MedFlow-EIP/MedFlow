@@ -424,7 +424,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
   }
 
   void _showToast(String message,
-      {IconData icon = Ionicons.create_outline, Duration duration = const Duration(milliseconds: 2000)}) {
+      {IconData icon = Ionicons.createOutline, Duration duration = const Duration(milliseconds: 2000)}) {
     setState(() => _toast = (text: message, icon: icon));
     _toastTimer?.cancel();
     _toastTimer = Timer(duration, () {
@@ -837,7 +837,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Ionicons.create_outline, size: 16, color: c.primaryText),
+                                  Icon(Ionicons.createOutline, size: 16, color: c.primaryText),
                                   const SizedBox(width: 6),
                                   Text('Nouveau',
                                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.primaryText)),
@@ -966,14 +966,14 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
             onTap: () => _startRename(item.id, item.title),
             semanticLabel: 'Renommer la conversation ${item.title}',
             child: SizedBox(
-                width: 44, height: 44, child: Icon(Ionicons.pencil_outline, size: 18, color: c.textSecondary)),
+                width: 44, height: 44, child: Icon(Ionicons.pencilOutline, size: 18, color: c.textSecondary)),
           ),
           SizedBox(width: gap),
           Tappable(
             onTap: () => _deleteConversation(item.id),
             semanticLabel: 'Supprimer la conversation ${item.title}',
             child: SizedBox(
-                width: 44, height: 44, child: Icon(Ionicons.trash_outline, size: 18, color: c.textSecondary)),
+                width: 44, height: 44, child: Icon(Ionicons.trashOutline, size: 18, color: c.textSecondary)),
           ),
         ],
       ),
@@ -1068,7 +1068,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(att.type == 'image' ? Ionicons.image_outline : Ionicons.document_text, size: 24, color: c.primaryDark),
+          Icon(att.type == 'image' ? Ionicons.imageOutline : Ionicons.documentText, size: 24, color: c.primaryDark),
           const SizedBox(width: 8),
           Flexible(child: Text(att.name ?? '', style: TextStyle(fontSize: 14, color: c.textPrimary))),
         ],
@@ -1099,7 +1099,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(message.text,
@@ -1218,7 +1218,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
             const SizedBox(height: 4),
             _messageAction(
               c,
-              icon: Ionicons.albums_outline,
+              icon: Ionicons.albumsOutline,
               text: 'Créer des flashcards',
               label: 'Créer des flashcards à partir de cette réponse',
               onTap: () => _openFlashcards(stripDiagrams(message.text)),
@@ -1228,7 +1228,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
             const SizedBox(height: 4),
             _messageAction(
               c,
-              icon: Ionicons.flag_outline,
+              icon: Ionicons.flagOutline,
               text: 'Signaler une erreur',
               label: 'Signaler une erreur dans cette réponse',
               color: c.textSecondary,
@@ -1251,7 +1251,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
         if (!mounted) return;
         _showToast(
           '$count flashcard${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''} à « $courseName »',
-          icon: Ionicons.checkmark_circle,
+          icon: Ionicons.checkmarkCircle,
           duration: const Duration(milliseconds: 4000),
         );
       },
@@ -1262,7 +1262,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
     Widget dot(double opacity) => Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: c.primaryDark.withOpacity(opacity), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: c.primaryDark.withValues(alpha: opacity), shape: BoxShape.circle),
         );
     return _FadeIn(
       key: const ValueKey('typing'),
@@ -1323,14 +1323,14 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
           color: c.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: c.border),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            item(Ionicons.image_outline, 'Image', 'Ajouter une image', _pickImage),
-            item(Ionicons.document_outline, 'Document', 'Ajouter un document', _pickDocument),
+            item(Ionicons.imageOutline, 'Image', 'Ajouter une image', _pickImage),
+            item(Ionicons.documentOutline, 'Document', 'Ajouter un document', _pickDocument),
           ],
         ),
       ),
@@ -1365,7 +1365,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                           ),
                         )
-                      : Center(child: Icon(Ionicons.document_text, size: 30, color: c.primaryDark)),
+                      : Center(child: Icon(Ionicons.documentText, size: 30, color: c.primaryDark)),
                 ),
                 Positioned(
                   top: -6,
@@ -1381,7 +1381,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                     semanticLabel: 'Retirer la pièce jointe',
                     child: Container(
                       decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(11)),
-                      child: Icon(Ionicons.close_circle, size: 22, color: c.danger),
+                      child: Icon(Ionicons.closeCircle, size: 22, color: c.danger),
                     ),
                   ),
                 ),
@@ -1472,7 +1472,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
         color: c.surface,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: c.border),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -1526,7 +1526,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                       width: 32,
                       height: 44,
                       child: Icon(
-                        recording ? Ionicons.mic : Ionicons.mic_outline,
+                        recording ? Ionicons.mic : Ionicons.micOutline,
                         size: 20,
                         color: recording ? c.danger : c.textSecondary,
                       ),
@@ -1546,7 +1546,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(color: c.action, shape: BoxShape.circle),
-                child: Icon(Ionicons.arrow_forward, size: 22, color: c.onAction),
+                child: Icon(Ionicons.arrowForward, size: 22, color: c.onAction),
               ),
             ),
           ),
@@ -1629,7 +1629,7 @@ class _AIChatScreenState extends State<AIChatScreen> with FocusRefresh<AIChatScr
                       ),
                       const SizedBox(width: 12),
                       CircleIconButton(
-                        icon: Ionicons.create_outline,
+                        icon: Ionicons.createOutline,
                         label: 'Nouvelle conversation',
                         onPressed: () => _createNewConversation(announce: true),
                       ),

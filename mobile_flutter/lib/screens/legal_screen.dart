@@ -18,12 +18,12 @@ class _Section {
 // Ce que l'IA fait (et ne fait pas), et ce que MedFlow garde de l'étudiant.
 // Accessible avant l'inscription et depuis le compte.
 const _sections = [
-  _Section('Avertissement médical', Ionicons.medkit_outline, [
+  _Section('Avertissement médical', Ionicons.medkitOutline, [
     'MedFlow est un outil de révision. Les résumés, cartes, questions, cas cliniques et réponses du chat sont générés par une intelligence artificielle à partir de tes cours : ils peuvent contenir des erreurs.',
     'Vérifie toujours avec ton cours et tes enseignants. MedFlow ne donne pas d’avis médical et ne doit pas servir à soigner ou conseiller un patient.',
     'Tu repères une erreur ? Utilise « Signaler une erreur » : on s’en sert pour améliorer le contenu.',
   ]),
-  _Section('Ce que MedFlow garde', Ionicons.folder_open_outline, [
+  _Section('Ce que MedFlow garde', Ionicons.folderOpenOutline, [
     'Ton compte : email, nom affiché et photo de profil (connexion gérée par Firebase, de Google).',
     'Tes cours : les documents importés et les révisions générées.',
     'Ta progression : réponses, série, XP, examens, amis et défis.',
@@ -31,10 +31,10 @@ const _sections = [
     'Des données d’usage (écrans ouverts, étapes comme un import ou une révision), analysées sans ton nom pour améliorer l’app.',
     'Ton jeton de notification, si tu acceptes les notifications.',
   ]),
-  _Section('Traitement par l’IA', Ionicons.sparkles_outline, [
+  _Section('Traitement par l’IA', Ionicons.sparklesOutline, [
     'Le texte de tes cours, tes questions et tes pièces jointes sont envoyés à Google Vertex AI (Gemini) pour générer tes révisions et les réponses du chat.',
   ]),
-  _Section('Tes droits', Ionicons.shield_checkmark_outline, [
+  _Section('Tes droits', Ionicons.shieldCheckmarkOutline, [
     'Paramètres > Exporter mes données : tu récupères toutes tes données.',
     'Paramètres > Supprimer mon compte : ton compte et toutes tes données sont effacés.',
     'Une question ? Écris-nous à medflow.app.contact@gmail.com.',

@@ -224,7 +224,7 @@ class _AuthFieldState extends State<AuthField> {
                     child: SizedBox(
                       width: 44,
                       height: 44,
-                      child: Icon(_visible ? Ionicons.eye_off_outline : Ionicons.eye_outline,
+                      child: Icon(_visible ? Ionicons.eyeOffOutline : Ionicons.eyeOutline,
                           size: 20, color: c.textSecondary),
                     ),
                   ),
@@ -252,7 +252,7 @@ class AuthError extends StatelessWidget {
         decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
-            Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+            Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
             const SizedBox(width: 8),
             Expanded(
               child: Text(message!,

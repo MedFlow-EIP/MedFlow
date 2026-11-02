@@ -123,7 +123,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with FocusRefresh<Cha
       return Scaffold(
         backgroundColor: c.background,
         body: StateView(
-          icon: Ionicons.flash_outline,
+          icon: Ionicons.flashOutline,
           tone: Tone.neutral,
           title: 'Défi indisponible',
           subtitle: _loadError,
@@ -149,7 +149,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with FocusRefresh<Cha
       child: Row(
         children: [
           CircleIconButton(
-            icon: result != null ? Ionicons.arrow_back : Ionicons.close,
+            icon: result != null ? Ionicons.arrowBack : Ionicons.close,
             label: 'Retour',
             // maybePop passe par PopScope (confirmation si des réponses sont en cours).
             onPressed: () => Navigator.of(context).maybePop(),

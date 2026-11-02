@@ -18,9 +18,9 @@ const _matchTypeLabel = {
 };
 
 const _matchTypeIcon = {
-  'course_name': Ionicons.document_text_outline,
-  'flashcard': Ionicons.layers_outline,
-  'quiz': Ionicons.help_circle_outline,
+  'course_name': Ionicons.documentTextOutline,
+  'flashcard': Ionicons.layersOutline,
+  'quiz': Ionicons.helpCircleOutline,
 };
 
 const _debounce = Duration(milliseconds: 350);
@@ -178,7 +178,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 padding: const EdgeInsets.only(top: 60),
                 child: Column(
                   children: [
-                    Icon(Ionicons.search_outline, size: 48, color: c.muted),
+                    Icon(Ionicons.searchOutline, size: 48, color: c.muted),
                     const SizedBox(height: 12),
                     Text('Aucun résultat pour "${_query.text}"',
                         textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: c.textSecondary)),
@@ -243,7 +243,7 @@ class _ResultRow extends StatelessWidget {
           decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
-              Icon(_matchTypeIcon[type] ?? Ionicons.document_text_outline, size: 18, color: c.primary),
+              Icon(_matchTypeIcon[type] ?? Ionicons.documentTextOutline, size: 18, color: c.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -259,7 +259,7 @@ class _ResultRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Ionicons.chevron_forward, size: 18, color: c.muted),
+              Icon(Ionicons.chevronForward, size: 18, color: c.muted),
             ],
           ),
         ),

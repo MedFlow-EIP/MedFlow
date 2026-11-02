@@ -169,7 +169,7 @@ class _DeleteAccountState extends State<_DeleteAccount> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(color: c.tintDanger, shape: BoxShape.circle),
-              child: Icon(Ionicons.warning_outline, size: 28, color: c.dangerText),
+              child: Icon(Ionicons.warningOutline, size: 28, color: c.dangerText),
             ),
           ),
           gap,
@@ -193,7 +193,7 @@ class _DeleteAccountState extends State<_DeleteAccount> {
                   if (i > 0) const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Ionicons.close_circle, size: 18, color: c.dangerText),
+                      Icon(Ionicons.closeCircle, size: 18, color: c.dangerText),
                       const SizedBox(width: 10),
                       Expanded(child: Text(_lost[i], style: TextStyle(fontSize: 14, color: c.textPrimary))),
                     ],
@@ -260,7 +260,7 @@ class _DeleteAccountState extends State<_DeleteAccount> {
                 decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
-                    Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                    Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(_error!,

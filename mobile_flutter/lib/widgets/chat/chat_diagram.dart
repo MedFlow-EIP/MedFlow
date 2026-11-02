@@ -63,7 +63,7 @@ class ChatDiagram extends StatelessWidget {
                   width: 26,
                   height: 26,
                   decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
-                  child: const Icon(Ionicons.expand_outline, size: 14, color: Color(0xFF374151)),
+                  child: const Icon(Ionicons.expandOutline, size: 14, color: Color(0xFF374151)),
                 ),
               ),
             ],
@@ -106,7 +106,7 @@ class _DiagramSvg extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Ionicons.image_outline, size: 18, color: c.textSecondary),
+            Icon(Ionicons.imageOutline, size: 18, color: c.textSecondary),
             const SizedBox(width: 6),
             Text('Schéma illisible', style: TextStyle(fontSize: 13, color: c.textSecondary)),
           ],

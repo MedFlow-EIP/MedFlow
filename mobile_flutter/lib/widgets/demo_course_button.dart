@@ -57,7 +57,7 @@ class _DemoCourseButtonState extends State<DemoCourseButton> {
                 if (_busy)
                   SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.primaryText))
                 else
-                  Icon(Ionicons.sparkles_outline, size: 18, color: c.primaryText),
+                  Icon(Ionicons.sparklesOutline, size: 18, color: c.primaryText),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text('Essayer avec un cours d’exemple',

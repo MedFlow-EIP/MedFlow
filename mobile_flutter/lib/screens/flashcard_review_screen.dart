@@ -122,7 +122,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
     if (cards == null) {
       if (_error != null) {
         return StateView(
-          icon: Ionicons.cloud_offline_outline,
+          icon: Ionicons.cloudOfflineOutline,
           tone: Tone.neutral,
           title: 'Impossible de charger tes flashcards',
           subtitle: _error,
@@ -138,7 +138,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
     if (_index >= cards.length) {
       final plural = _reviewed > 1 ? 's' : '';
       return StateView(
-        icon: Ionicons.checkmark_done_outline,
+        icon: Ionicons.checkmarkDoneOutline,
         tone: Tone.success,
         title: _reviewed > 0 ? 'Session terminée' : 'Aucune flashcard à revoir',
         subtitle: _reviewed > 0

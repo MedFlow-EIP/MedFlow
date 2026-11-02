@@ -169,7 +169,7 @@ class _LessonNodeState extends State<LessonNode> with SingleTickerProviderStateM
                     color: c.surface,
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 14, offset: const Offset(0, 6)),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 14, offset: const Offset(0, 6)),
                     ],
                   ),
                   child: Stack(
@@ -220,7 +220,7 @@ class _LessonNodeState extends State<LessonNode> with SingleTickerProviderStateM
                           diameter: 30,
                           bg: c.muted,
                           border: Colors.white,
-                          icon: Ionicons.lock_closed,
+                          icon: Ionicons.lockClosed,
                           iconSize: 15,
                           iconColor: Colors.white,
                         ),
@@ -257,7 +257,7 @@ class _LessonNodeState extends State<LessonNode> with SingleTickerProviderStateM
                         fg: c.primaryText,
                       ),
                     if (isLocked)
-                      chip(icon: Ionicons.lock_closed, text: 'Verrouillé', bg: c.surfaceAlt, fg: c.textSecondary),
+                      chip(icon: Ionicons.lockClosed, text: 'Verrouillé', bg: c.surfaceAlt, fg: c.textSecondary),
                   ],
                 ),
               ),

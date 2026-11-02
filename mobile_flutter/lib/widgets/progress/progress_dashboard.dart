@@ -36,14 +36,14 @@ class ProgressDashboard extends StatelessWidget {
     final xpCard = _statCard(c,
         label: '$totalXP points XP',
         tint: c.tintPrimary,
-        icon: Ionicons.star_outline,
+        icon: Ionicons.starOutline,
         iconColor: c.primary,
         number: totalXP,
         text: 'Points XP');
     final lessonsCard = _statCard(c,
         label: '$completedLessons leçons complétées',
         tint: c.tintSuccess,
-        icon: Ionicons.checkmark_circle_outline,
+        icon: Ionicons.checkmarkCircleOutline,
         iconColor: c.success,
         number: completedLessons,
         text: 'Leçons complétées');
@@ -51,7 +51,7 @@ class ProgressDashboard extends StatelessWidget {
         ? _statCard(c,
             label: '$currentStreak jours de série',
             tint: c.tintWarning,
-            icon: Ionicons.flame_outline,
+            icon: Ionicons.flameOutline,
             iconColor: c.warning,
             number: currentStreak!,
             text: 'Jours de série')

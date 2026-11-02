@@ -92,7 +92,7 @@ class _SpeedChallengeStepState extends State<SpeedChallengeStep> with SingleTick
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: withGap(stepGap, [
-                  const StepOverline(icon: Ionicons.flash_outline, label: 'DÉFI CHRONO'),
+                  const StepOverline(icon: Ionicons.flashOutline, label: 'DÉFI CHRONO'),
                   Semantics(
                     label: '$_time secondes restantes',
                     excludeSemantics: true,
@@ -105,7 +105,7 @@ class _SpeedChallengeStepState extends State<SpeedChallengeStep> with SingleTick
                       ),
                       child: Row(
                         children: [
-                          Icon(Ionicons.timer_outline, size: 22, color: urgent ? c.dangerText : c.textPrimary),
+                          Icon(Ionicons.timerOutline, size: 22, color: urgent ? c.dangerText : c.textPrimary),
                           const SizedBox(width: 10),
                           SizedBox(
                             width: 44,

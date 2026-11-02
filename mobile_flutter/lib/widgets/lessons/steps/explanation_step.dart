@@ -40,7 +40,7 @@ class ExplanationStep extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const StepOverline(icon: Ionicons.bulb_outline, label: 'À COMPRENDRE'),
+                  const StepOverline(icon: Ionicons.bulbOutline, label: 'À COMPRENDRE'),
                   const SizedBox(height: stepGapTight),
                   ...withGap(stepGap, [
                     Semantics(
@@ -82,7 +82,7 @@ class ExplanationStep extends StatelessWidget {
                                 key: ValueKey(point),
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Ionicons.checkmark_circle, size: 20, color: c.success),
+                                  Icon(Ionicons.checkmarkCircle, size: 20, color: c.success),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(point,

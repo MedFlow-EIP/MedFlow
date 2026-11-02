@@ -90,7 +90,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Ionicons.logo_google, size: 20, color: c.textPrimary),
+                      Icon(Ionicons.logoGoogle, size: 20, color: c.textPrimary),
                       const SizedBox(width: 10),
                       Text('Continuer avec Google',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.textPrimary)),

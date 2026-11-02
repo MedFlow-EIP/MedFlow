@@ -48,8 +48,8 @@ IconData badgeIcon(String name) => switch (name) {
       'flame' => Ionicons.flame,
       'star' => Ionicons.star,
       'trophy' => Ionicons.trophy,
-      'checkmark-done' => Ionicons.checkmark_done,
-      'checkmark-done-circle' => Ionicons.checkmark_done_circle,
+      'checkmark-done' => Ionicons.checkmarkDone,
+      'checkmark-done-circle' => Ionicons.checkmarkDoneCircle,
       'ribbon' => Ionicons.ribbon,
       'medal' => Ionicons.medal,
       _ => Ionicons.ribbon,
@@ -147,7 +147,7 @@ class _BadgeUnlockModalState extends State<BadgeUnlockModal> with TickerProvider
         decoration: BoxDecoration(
           color: c.surface,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
         ),
         child: Stack(
           clipBehavior: Clip.none,
@@ -170,7 +170,7 @@ class _BadgeUnlockModalState extends State<BadgeUnlockModal> with TickerProvider
                     return Transform(
                       alignment: Alignment.center,
                       transform: Matrix4.identity()
-                        ..scale(_scale.value, _scale.value)
+                        ..scaleByDouble(_scale.value, _scale.value, 1, 1)
                         ..rotateZ(degrees * math.pi / 180),
                       child: child,
                     );

@@ -134,7 +134,7 @@ class _AppDialog extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        destructive ? Ionicons.alert_circle_outline : Ionicons.information_circle_outline,
+                        destructive ? Ionicons.alertCircleOutline : Ionicons.informationCircleOutline,
                         size: 28,
                         color: destructive ? colors.dangerText : colors.primaryDark,
                       ),

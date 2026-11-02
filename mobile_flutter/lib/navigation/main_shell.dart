@@ -23,10 +23,10 @@ class _Tab {
 }
 
 const _tabs = [
-  _Tab('Home', 'Accueil', 'Accueil', Ionicons.home_outline, Ionicons.home),
-  _Tab('AIChat', 'IA Chat', 'Assistant IA', Ionicons.chatbubble_ellipses_outline, Ionicons.chatbubble_ellipses),
-  _Tab('Dashboard', 'Cours', 'Mes cours', Ionicons.book_outline, Ionicons.book),
-  _Tab('Account', 'Compte', 'Compte', Ionicons.person_outline, Ionicons.person),
+  _Tab('Home', 'Accueil', 'Accueil', Ionicons.homeOutline, Ionicons.home),
+  _Tab('AIChat', 'IA Chat', 'Assistant IA', Ionicons.chatbubbleEllipsesOutline, Ionicons.chatbubbleEllipses),
+  _Tab('Dashboard', 'Cours', 'Mes cours', Ionicons.bookOutline, Ionicons.book),
+  _Tab('Account', 'Compte', 'Compte', Ionicons.personOutline, Ionicons.person),
 ];
 
 /// Onglets principaux avec la barre du bas maison et le bouton « Ajouter ».
@@ -297,7 +297,7 @@ class _AddButton extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.action,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: c.primaryDark.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                boxShadow: [BoxShadow(color: c.primaryDark.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
               ),
               child: Icon(Ionicons.add, size: 28, color: c.onAction),
             ),
@@ -323,14 +323,14 @@ class _AddButton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _AddOption(
-              icon: Ionicons.cloud_upload_outline,
+              icon: Ionicons.cloudUploadOutline,
               title: 'Importer un cours',
               description: 'PDF, Word, PowerPoint ou photo d’un poly',
               onTap: () => go('UploadCourse'),
             ),
             const SizedBox(height: 18),
             _AddOption(
-              icon: Ionicons.medkit_outline,
+              icon: Ionicons.medkitOutline,
               title: 'Cas clinique',
               description: 'Prends les décisions face à un patient',
               semanticLabel: 'Faire un cas clinique',
@@ -338,7 +338,7 @@ class _AddButton extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             _AddOption(
-              icon: Ionicons.timer_outline,
+              icon: Ionicons.timerOutline,
               title: 'Examen blanc',
               description: 'Chronométré, noté sur 20',
               semanticLabel: 'Lancer un examen blanc',
@@ -346,7 +346,7 @@ class _AddButton extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             _AddOption(
-              icon: Ionicons.calendar_outline,
+              icon: Ionicons.calendarOutline,
               title: 'Ajouter un examen',
               description: 'Ses cours passent en priorité dans tes révisions',
               semanticLabel: 'Ajouter un examen au calendrier',
@@ -405,7 +405,7 @@ class _AddOption extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Ionicons.chevron_forward, size: 20, color: c.textSecondary),
+            Icon(Ionicons.chevronForward, size: 20, color: c.textSecondary),
           ],
         ),
       ),

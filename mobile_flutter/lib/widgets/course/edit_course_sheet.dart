@@ -263,7 +263,7 @@ class _EditCourseSheetState extends State<EditCourseSheet> {
                           decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
                           child: Row(
                             children: [
-                              Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                              Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(_error!,
@@ -349,7 +349,7 @@ class _EditCourseSheetState extends State<EditCourseSheet> {
                                 Text('CARTE ${index + 1}',
                                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c.primaryText)),
                                 _IconButton(
-                                  icon: Ionicons.trash_outline,
+                                  icon: Ionicons.trashOutline,
                                   size: 40,
                                   iconSize: 18,
                                   color: c.dangerText,

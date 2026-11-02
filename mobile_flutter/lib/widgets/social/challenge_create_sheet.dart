@@ -152,7 +152,7 @@ class _ChallengeCreateBodyState extends State<_ChallengeCreateBody> {
                   decoration: BoxDecoration(color: c.tintDanger, borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     children: [
-                      Icon(Ionicons.alert_circle, size: 18, color: c.dangerText),
+                      Icon(Ionicons.alertCircle, size: 18, color: c.dangerText),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_error!,
@@ -297,7 +297,7 @@ class _ChallengeCreateBodyState extends State<_ChallengeCreateBody> {
         ),
         child: Row(
           children: [
-            Icon(active ? Ionicons.radio_button_on : Ionicons.radio_button_off,
+            Icon(active ? Ionicons.radioButtonOn : Ionicons.radioButtonOff,
                 size: 20, color: active ? c.primaryDark : c.textSecondary),
             const SizedBox(width: 10),
             Expanded(

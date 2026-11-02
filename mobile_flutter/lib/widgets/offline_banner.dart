@@ -18,7 +18,7 @@ class OfflineBanner extends StatelessWidget {
         decoration: BoxDecoration(color: c.tintWarning, borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
-            Icon(Ionicons.cloud_offline_outline, size: 18, color: c.warningText),
+            Icon(Ionicons.cloudOfflineOutline, size: 18, color: c.warningText),
             const SizedBox(width: 10),
             Expanded(
               child: Text(message, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: c.warningText)),

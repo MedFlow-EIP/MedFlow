@@ -6,12 +6,10 @@ import 'package:medflow/theme/colors.dart';
 
 // Rapport de contraste WCAG entre deux couleurs.
 double _luminance(Color c) {
-  double channel(int v) {
-    final x = v / 255;
-    return x <= 0.03928 ? x / 12.92 : math.pow((x + 0.055) / 1.055, 2.4).toDouble();
-  }
+  // Composantes entre 0 et 1.
+  double channel(double x) => x <= 0.03928 ? x / 12.92 : math.pow((x + 0.055) / 1.055, 2.4).toDouble();
 
-  return 0.2126 * channel(c.red) + 0.7152 * channel(c.green) + 0.0722 * channel(c.blue);
+  return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
 }
 
 double _contrast(Color a, Color b) {
